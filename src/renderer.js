@@ -2244,6 +2244,8 @@ function initNewspaper() {
     const wasPlaying = state.playing;
     if (wasPlaying) stop();
 
+    const canvas = $('#previewCanvas');
+    const wrapper = $('#previewWrapper');
     const [w, h] = getResolution();
     const fps = 30;
     const slideDurationMs = state.speed;
@@ -2257,18 +2259,16 @@ function initNewspaper() {
     if (state.lineH !== 1.72) overrides.push(`line-height:${state.lineH}!important`);
     const overrideStyle = overrides.length ? `<style>.so *{${overrides.join(';')}}</style>` : '';
 
-    const offscreen = document.createElement('div');
-    offscreen.style.cssText = `position:fixed;left:-99999px;top:0;width:${w}px;height:${h}px;overflow:hidden;`;
-    document.body.appendChild(offscreen);
+    const oldW = wrapper.style.width;
+    const oldH = wrapper.style.height;
+    const oldTransform = wrapper.style.transform;
+    wrapper.style.width = w + 'px';
+    wrapper.style.height = h + 'px';
+    wrapper.style.transform = 'none';
+    canvas.innerHTML = '';
 
     setNewsExporting(true, 'Przygotowuję...');
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-
-    const rect = offscreen.getBoundingClientRect();
-    const captureRect = {
-      x: Math.round(rect.x), y: Math.round(rect.y),
-      width: Math.round(rect.width), height: Math.round(rect.height)
-    };
 
     buildQueue();
     const frames = [];
@@ -2280,7 +2280,7 @@ function initNewspaper() {
 
       const bgMatch = html.match(/background:\s*(#[0-9a-fA-F]{3,8})/);
 
-      offscreen.innerHTML = `
+      canvas.innerHTML = `
         <div style="position:absolute;inset:0;background:${bgMatch ? bgMatch[1] : '#fff'}">
           ${overrideStyle}
           <div class="zoom-scroll" style="position:absolute;inset:0;overflow:hidden;">
@@ -2290,10 +2290,10 @@ function initNewspaper() {
           </div>
         </div>`;
 
-      await new Promise(r => requestAnimationFrame(r));
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
-      const kwEl = offscreen.querySelector('.keyword-highlight');
-      const scroller = offscreen.querySelector('.zoom-scroll');
+      const kwEl = canvas.querySelector('.keyword-highlight');
+      const scroller = canvas.querySelector('.zoom-scroll');
       if (kwEl && scroller) {
         const sRect = scroller.getBoundingClientRect();
         const kRect = kwEl.getBoundingClientRect();
@@ -2301,10 +2301,12 @@ function initNewspaper() {
         const kCY = kRect.top + kRect.height / 2 - sRect.top;
         const offX = sRect.width / 2 - kCX + state.zoomOffsetX;
         const offY = sRect.height / 2 - kCY + state.zoomOffsetY;
-        offscreen.querySelector('.article-inner').style.transform = `translate(${offX}px, ${offY}px) scale(${state.zoomLevel})`;
+        canvas.querySelector('.article-inner').style.transform = `translate(${offX}px, ${offY}px) scale(${state.zoomLevel})`;
         await new Promise(r => requestAnimationFrame(r));
       }
 
+      const rect = wrapper.getBoundingClientRect();
+      const captureRect = { x: Math.round(rect.x), y: Math.round(rect.y), width: Math.round(rect.width), height: Math.round(rect.height) };
       const base64 = await ipcRenderer.invoke('capture-frame', { rect: captureRect });
       frames.push({ data: base64, duration: framesPerSlide });
 
@@ -2318,7 +2320,11 @@ function initNewspaper() {
 
     await ipcRenderer.invoke('export-mp4', { frames, savePath, fps, width: w, height: h });
 
-    offscreen.remove();
+    wrapper.style.width = oldW;
+    wrapper.style.height = oldH;
+    wrapper.style.transform = oldTransform;
+    canvas.innerHTML = '';
+    updatePreviewSize();
     setNewsExporting(false);
   });
 
@@ -2610,10 +2616,12 @@ function chatRenderPreview(animate, upTo, showTypingFrom) {
 
   const animClass = animate ? ' chat-animate' : '';
   const limit = typeof upTo === 'number' ? upTo : chatState.messages.length;
+  const startEmpty = animate && typeof upTo === 'undefined';
 
   let messagesHTML = '';
-  for (let i = 0; i < limit; i++) {
-    const isLast = animate && i === limit - 1;
+  const renderCount = startEmpty ? 0 : limit;
+  for (let i = 0; i < renderCount; i++) {
+    const isLast = animate && i === renderCount - 1;
     messagesHTML += chatBubbleHTML(chatState.messages[i], i, p, bubbleLStyle, bubbleRStyle, isLast);
   }
 
@@ -2631,8 +2639,8 @@ function chatRenderPreview(animate, upTo, showTypingFrom) {
       </div>
     </div>`;
 
-  if (animate && chatState.animSpeed > 0) {
-    chatRunAnimation(limit, p, bubbleLStyle, bubbleRStyle, bodyStyle, textStyle, headerHTML);
+  if (animate && chatState.animSpeed > 0 && startEmpty) {
+    chatRunAnimation(0, p, bubbleLStyle, bubbleRStyle, bodyStyle, textStyle, headerHTML);
   }
 }
 
