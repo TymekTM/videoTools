@@ -187,11 +187,38 @@
 
         <div class="control-group">
           <label class="control-label">Platforma</label>
-          <div class="control-btn-group" id="chatPlatformGroup">
+          <div class="control-btn-group chat-platform-grid" id="chatPlatformGroup">
             <button class="control-btn active" data-platform="imessage">iMessage</button>
             <button class="control-btn" data-platform="whatsapp">WhatsApp</button>
             <button class="control-btn" data-platform="telegram">Telegram</button>
             <button class="control-btn" data-platform="discord">Discord</button>
+            <button class="control-btn" data-platform="messenger">Messenger</button>
+            <button class="control-btn" data-platform="custom">Custom</button>
+          </div>
+        </div>
+
+        <div class="chat-custom-theme" id="chatCustomTheme" style="display:none">
+          <div class="custom-group">
+            <label class="custom-label">Tło czatu</label>
+            <input type="color" class="control-color" id="chatCustomBg" value="#1a1a2e">
+          </div>
+          <div class="custom-group">
+            <label class="custom-label">Tło nagłówka</label>
+            <input type="color" class="control-color" id="chatCustomHeaderBg" value="#16213e">
+          </div>
+          <div class="custom-row">
+            <div class="custom-color">
+              <label class="custom-label">Dymek L</label>
+              <input type="color" class="control-color" id="chatCustomBubbleL" value="#2a2a4a">
+            </div>
+            <div class="custom-color">
+              <label class="custom-label">Dymek P</label>
+              <input type="color" class="control-color" id="chatCustomBubbleR" value="#6366f1">
+            </div>
+          </div>
+          <div class="custom-group">
+            <label class="custom-label">Kolor tekstu</label>
+            <input type="color" class="control-color" id="chatCustomText" value="#e4e4e7">
           </div>
         </div>
 
@@ -217,14 +244,22 @@
           <label class="control-label">Osoby</label>
           <div class="chat-contact-row">
             <div class="chat-contact-item">
-              <span class="chat-contact-dot" id="chatContact1Dot" style="background:#007AFF"></span>
+              <div class="chat-avatar-upload" id="chatAvatar1Wrap" title="Upload avatar">
+                <img class="chat-avatar-preview" id="chatAvatar1Img" src="" style="display:none">
+                <span class="chat-avatar-initial" id="chatAvatar1Initial">J</span>
+                <input type="file" class="chat-avatar-file" id="chatAvatar1File" accept="image/*">
+              </div>
               <input type="text" class="control-input chat-contact-input" id="chatContact1Name" value="Jan" placeholder="Imię">
               <input type="color" class="control-color chat-contact-color" id="chatContact1Color" value="#007AFF">
             </div>
           </div>
           <div class="chat-contact-row">
             <div class="chat-contact-item">
-              <span class="chat-contact-dot" id="chatContact2Dot" style="background:#34C759"></span>
+              <div class="chat-avatar-upload" id="chatAvatar2Wrap" title="Upload avatar">
+                <img class="chat-avatar-preview" id="chatAvatar2Img" src="" style="display:none">
+                <span class="chat-avatar-initial" id="chatAvatar2Initial">A</span>
+                <input type="file" class="chat-avatar-file" id="chatAvatar2File" accept="image/*">
+              </div>
               <input type="text" class="control-input chat-contact-input" id="chatContact2Name" value="Anna" placeholder="Imię">
               <input type="color" class="control-color chat-contact-color" id="chatContact2Color" value="#34C759">
             </div>
