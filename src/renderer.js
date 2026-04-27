@@ -2225,6 +2225,79 @@ function initNewspaper() {
   $('#btnStop').addEventListener('click', stop);
   $('#btnShuffle').addEventListener('click', shuffle);
 
+  const setNewsExporting = (active, label) => {
+    const prog = $('#newsExportProgress');
+    if (!prog) return;
+    prog.style.display = active ? 'block' : 'none';
+    if (active) $('#newsExportLabel').textContent = label || '';
+    $('#newsExportBarFill').style.width = active ? '0%' : '';
+  };
+
+  $('#btnExportMp4').addEventListener('click', async () => {
+    const { ipcRenderer } = require('electron');
+    const savePath = await ipcRenderer.invoke('save-dialog', {
+      defaultName: `news-${Date.now()}.mp4`,
+      filters: [{ name: 'MP4', extensions: ['mp4'] }]
+    });
+    if (!savePath) return;
+
+    const wasPlaying = state.playing;
+    if (wasPlaying) stop();
+
+    const wrapper = $('#previewWrapper');
+    const [w, h] = getResolution();
+    const fps = 30;
+    const slideDurationMs = state.speed;
+    const enabledCount = state.enabledTemplates.size;
+    const totalSlides = Math.min(enabledCount, 20);
+    const framesPerSlide = Math.max(1, Math.round((slideDurationMs / 1000) * fps));
+    const totalFrames = totalSlides * framesPerSlide;
+
+    const oldW = wrapper.style.width;
+    const oldH = wrapper.style.height;
+    const oldOverflow = wrapper.style.overflow;
+    wrapper.style.width = w + 'px';
+    wrapper.style.height = h + 'px';
+    wrapper.style.overflow = 'hidden';
+
+    setNewsExporting(true, 'Przygotowuję...');
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+    const rect = wrapper.getBoundingClientRect();
+    const captureRect = {
+      x: Math.round(rect.x), y: Math.round(rect.y),
+      width: Math.round(rect.width), height: Math.round(rect.height)
+    };
+
+    buildQueue();
+    const frames = [];
+
+    for (let s = 0; s < totalSlides; s++) {
+      const template = state.queue[s % state.queue.length];
+      showSlide(template);
+      await new Promise(r => setTimeout(r, state.transitionMs + 50));
+
+      for (let f = 0; f < framesPerSlide; f++) {
+        const pngBuf = await ipcRenderer.invoke('capture-frame', { rect: captureRect });
+        frames.push(pngBuf.toString('base64'));
+        const pct = Math.round(((s * framesPerSlide + f) / totalFrames) * 100);
+        $('#newsExportBarFill').style.width = pct + '%';
+        $('#newsExportLabel').textContent = `Slajd ${s + 1}/${totalSlides} — klatka ${f + 1}/${framesPerSlide}`;
+        await new Promise(r => setTimeout(r, 1000 / fps));
+      }
+    }
+
+    setNewsExporting(true, 'Koduję MP4...');
+    $('#newsExportBarFill').style.width = '100%';
+
+    await ipcRenderer.invoke('export-mp4', { frames, savePath, fps, width: w, height: h });
+
+    wrapper.style.width = oldW;
+    wrapper.style.height = oldH;
+    wrapper.style.overflow = oldOverflow;
+    setNewsExporting(false);
+  });
+
   $('#customToggle').addEventListener('click', () => {
     document.querySelector('[data-tool="newspaper"] .custom-section').classList.toggle('collapsed');
   });
@@ -2404,7 +2477,68 @@ function chatTimeStr(i) {
   return `${14 + Math.floor(i / 3)}:${String(i * 7 % 60).padStart(2, '0')}`;
 }
 
-function chatRenderPreview(animate) {
+let chatAnimTimer = null;
+
+function chatBubbleHTML(msg, i, p, bubbleLStyle, bubbleRStyle) {
+  const contact = chatState.contacts[msg.sender];
+  const isRight = msg.sender === 0;
+  const time = chatTimeStr(i);
+
+  if (p === 'discord') {
+    const discAvatar = chatAvatarHTML(contact, 'clamp(26px,3.2vw,38px)');
+    return `
+      <div class="chat-bubble ${isRight ? 'chat-bubble-right' : 'chat-bubble-left'}">
+        ${discAvatar}
+        <div class="chat-bubble-content">
+          <div class="chat-bubble-meta">
+            <span class="chat-bubble-author" style="color:${contact.color}">${contact.name}</span>
+            <span class="chat-bubble-time">${time}</span>
+          </div>
+          <div class="chat-bubble-text">${msg.text}</div>
+        </div>
+      </div>`;
+  }
+
+  let bubbleStyle = isRight ? bubbleRStyle : bubbleLStyle;
+  let styleAttr = bubbleStyle ? `style="${bubbleStyle}"` : '';
+
+  return `
+    <div class="chat-bubble ${isRight ? 'chat-bubble-right' : 'chat-bubble-left'}" ${styleAttr}>
+      ${msg.text}
+      <div class="chat-bubble-time">${time}</div>
+    </div>`;
+}
+
+function chatTypingHTML(sender) {
+  const contact = chatState.contacts[sender];
+  const p = chatState.platform;
+  const isRight = sender === 0;
+
+  if (p === 'discord') {
+    const discAvatar = chatAvatarHTML(contact, 'clamp(26px,3.2vw,38px)');
+    return `
+      <div class="chat-typing-indicator">
+        ${discAvatar}
+        <div style="display:flex;align-items:center;gap:clamp(3px,0.4vw,5px)">
+          <div class="chat-typing-dot"></div>
+          <div class="chat-typing-dot"></div>
+          <div class="chat-typing-dot"></div>
+        </div>
+      </div>`;
+  }
+
+  const align = isRight ? 'align-self:flex-end' : '';
+  return `
+    <div class="chat-typing-indicator" style="${align}">
+      <div class="chat-typing-dot"></div>
+      <div class="chat-typing-dot"></div>
+      <div class="chat-typing-dot"></div>
+    </div>`;
+}
+
+function chatRenderPreview(animate, upTo, showTypingFrom) {
+  if (chatAnimTimer) { clearTimeout(chatAnimTimer); chatAnimTimer = null; }
+
   const canvas = $('#chatPreviewCanvas');
   const p = chatState.platform;
   const c1 = chatState.contacts[0];
@@ -2450,48 +2584,82 @@ function chatRenderPreview(animate) {
     </div>`;
 
   const animClass = animate ? ' chat-animate' : '';
+  const limit = typeof upTo === 'number' ? upTo : chatState.messages.length;
 
-  let messagesHTML = chatState.messages.map((msg, i) => {
-    const contact = chatState.contacts[msg.sender];
-    const isRight = msg.sender === 0;
-    const time = chatTimeStr(i);
-    const delayStyle = animate ? `animation-delay:${i * (chatState.animSpeed / 1000)}s` : '';
+  let messagesHTML = '';
+  for (let i = 0; i < limit; i++) {
+    messagesHTML += chatBubbleHTML(chatState.messages[i], i, p, bubbleLStyle, bubbleRStyle);
+  }
 
-    if (p === 'discord') {
-      const discAvatar = chatAvatarHTML(contact, 'clamp(26px,3.2vw,38px)');
-      return `
-        <div class="chat-bubble ${isRight ? 'chat-bubble-right' : 'chat-bubble-left'}" style="${delayStyle}">
-          ${discAvatar}
-          <div class="chat-bubble-content">
-            <div class="chat-bubble-meta">
-              <span class="chat-bubble-author" style="color:${contact.color}">${contact.name}</span>
-              <span class="chat-bubble-time">${time}</span>
-            </div>
-            <div class="chat-bubble-text">${msg.text}</div>
-          </div>
-        </div>`;
-    }
-
-    let bubbleStyle = isRight ? bubbleRStyle : bubbleLStyle;
-    let styleParts = [];
-    if (bubbleStyle) styleParts.push(bubbleStyle);
-    if (delayStyle) styleParts.push(delayStyle);
-    let styleAttr = styleParts.length ? `style="${styleParts.join(';')}"` : '';
-
-    return `
-      <div class="chat-bubble ${isRight ? 'chat-bubble-right' : 'chat-bubble-left'}" ${styleAttr}>
-        ${msg.text}
-        <div class="chat-bubble-time">${time}</div>
-      </div>`;
-  }).join('');
+  let typingHTML = '';
+  if (typeof showTypingFrom === 'number' && showTypingFrom < chatState.messages.length) {
+    typingHTML = chatTypingHTML(chatState.messages[showTypingFrom].sender);
+  }
 
   canvas.innerHTML = `
     <div class="chat-render chat-platform-${p}${animClass}" ${textStyle ? `style="${textStyle}"` : ''}>
       ${headerHTML}
       <div class="chat-render-body" ${bodyStyle ? `style="${bodyStyle}"` : ''}>
         ${messagesHTML}
+        ${typingHTML}
       </div>
     </div>`;
+
+  if (animate && chatState.animSpeed > 0) {
+    chatRunAnimation(limit, p, bubbleLStyle, bubbleRStyle, bodyStyle, textStyle, headerHTML);
+  }
+}
+
+function chatRunAnimation(from, p, bubbleLStyle, bubbleRStyle, bodyStyle, textStyle, headerHTML) {
+  if (chatAnimTimer) { clearTimeout(chatAnimTimer); chatAnimTimer = null; }
+  if (from >= chatState.messages.length) return;
+
+  const speed = chatState.animSpeed;
+  const typingDuration = Math.min(speed * 0.6, 800);
+  const bubbleGap = speed;
+
+  const step = (i) => {
+    if (i >= chatState.messages.length) return;
+
+    chatAnimTimer = setTimeout(() => {
+      const nextBubble = chatBubbleHTML(chatState.messages[i], i, p, bubbleLStyle, bubbleRStyle);
+      const canvas = $('#chatPreviewCanvas');
+      const body = canvas.querySelector('.chat-render-body');
+
+      const typingEl = body.querySelector('.chat-typing-indicator');
+      if (typingEl) {
+        typingEl.classList.add('chat-typing-hide');
+        setTimeout(() => typingEl.remove(), 200);
+      }
+
+      setTimeout(() => {
+        const temp = document.createElement('div');
+        temp.innerHTML = nextBubble.trim();
+        const bubble = temp.firstChild;
+        body.appendChild(bubble);
+
+        if (i + 1 < chatState.messages.length) {
+          chatAnimTimer = setTimeout(() => {
+            const typing = chatTypingHTML(chatState.messages[i + 1].sender);
+            const temp2 = document.createElement('div');
+            temp2.innerHTML = typing.trim();
+            body.appendChild(temp2.firstChild);
+            step(i + 1);
+          }, bubbleGap);
+        }
+      }, 150);
+    }, typingDuration);
+  };
+
+  chatAnimTimer = setTimeout(() => {
+    const canvas = $('#chatPreviewCanvas');
+    const body = canvas.querySelector('.chat-render-body');
+    const typing = chatTypingHTML(chatState.messages[from].sender);
+    const temp = document.createElement('div');
+    temp.innerHTML = typing.trim();
+    body.appendChild(temp.firstChild);
+    step(from);
+  }, 400);
 }
 
 function chatRenderMessageList() {
@@ -2555,7 +2723,7 @@ function initChat() {
       chatState.platform = btn.dataset.platform;
       const customPanel = $('#chatCustomTheme');
       customPanel.style.display = chatState.platform === 'custom' ? 'flex' : 'none';
-      chatRenderPreview();
+      chatRefresh();
     });
   });
 
@@ -2565,7 +2733,7 @@ function initChat() {
       btn.classList.add('active');
       chatState.format = btn.dataset.format;
       chatUpdatePreviewSize();
-      chatRenderPreview();
+      chatRefresh();
     });
   });
 
@@ -2581,7 +2749,7 @@ function initChat() {
     chatState.messages.push({ sender, text });
     $('#chatAddText').value = '';
     chatRenderMessageList();
-    chatRenderPreview();
+    chatRefresh();
     const list = $('#chatMessagesList');
     list.scrollTop = list.scrollHeight;
   };
@@ -2594,7 +2762,7 @@ function initChat() {
   $('#chatClearBtn').addEventListener('click', () => {
     chatState.messages = [];
     chatRenderMessageList();
-    chatRenderPreview();
+    chatRefresh();
   });
 
   const updateContact = (idx) => {
@@ -2607,14 +2775,14 @@ function initChat() {
       chatUpdateAvatarUI(idx);
       chatUpdateSenderDropdown();
       chatRenderMessageList();
-      chatRenderPreview();
+      chatRefresh();
     });
 
     colorInput.addEventListener('input', () => {
       chatState.contacts[idx].color = colorInput.value;
       chatUpdateAvatarUI(idx);
       chatRenderMessageList();
-      chatRenderPreview();
+      chatRefresh();
     });
 
     fileInput.addEventListener('change', (e) => {
@@ -2624,7 +2792,7 @@ function initChat() {
       reader.onload = (ev) => {
         chatState.contacts[idx].avatar = ev.target.result;
         chatUpdateAvatarUI(idx);
-        chatRenderPreview();
+        chatRefresh();
       };
       reader.readAsDataURL(file);
     });
