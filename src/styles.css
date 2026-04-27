@@ -639,3 +639,30 @@ html, body {
   outline: none;
   border-color: var(--accent);
 }
+
+.custom-highlight-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.custom-highlight-row .control-color {
+  width: 40px;
+  height: 28px;
+  flex: none;
+}
+
+.custom-highlight-preview {
+  flex: 1;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #000;
+  background: linear-gradient(120deg, #fde047, #facc15);
+  box-shadow: 0 0 12px rgba(250, 204, 21, 0.4);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

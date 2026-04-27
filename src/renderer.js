@@ -1901,7 +1901,13 @@ function applyAccent() {
   let el = $('#accentStyle');
   if (!el) { el = document.createElement('style'); el.id = 'accentStyle'; document.head.appendChild(el); }
   const c = state.colorAccent;
-  el.textContent = `.keyword-highlight{background:linear-gradient(120deg,${c}ee,${c});box-shadow:0 0 20px ${c}66,0 0 60px ${c}26;animation:keywordPulse .8s ease-in-out infinite}.playing .keyword-highlight{animation:keywordPulse .5s ease-in-out infinite}`;
+  el.textContent = `.keyword-highlight{background:linear-gradient(120deg,${c}ee,${c})!important;box-shadow:0 0 20px ${c}66,0 0 60px ${c}26!important;animation:keywordPulse .8s ease-in-out infinite}.playing .keyword-highlight{animation:keywordPulse .5s ease-in-out infinite}`;
+  const preview = $('#accentPreview');
+  if (preview) {
+    preview.style.background = `linear-gradient(120deg, ${c}ee, ${c})`;
+    preview.style.boxShadow = `0 0 12px ${c}66`;
+    preview.textContent = state.keyword;
+  }
 }
 
 function buildQueue() {
@@ -2157,6 +2163,7 @@ function init() {
 
   $('#keywordInput').addEventListener('input', (e) => {
     state.keyword = e.target.value || 'KEYWORD';
+    applyAccent();
     if (!state.playing) {
       const idx = Math.max(0, state.currentIndex - 1) % state.queue.length;
       showSlide(state.queue[idx]);
