@@ -2244,7 +2244,6 @@ function initNewspaper() {
     const wasPlaying = state.playing;
     if (wasPlaying) stop();
 
-    const wrapper = $('#previewWrapper');
     const [w, h] = getResolution();
     const fps = 30;
     const slideDurationMs = state.speed;
@@ -2253,22 +2252,19 @@ function initNewspaper() {
     const totalFrames = targetDurationSec * fps;
     const totalSlides = Math.ceil(totalFrames / framesPerSlide);
 
-    const oldW = wrapper.style.width;
-    const oldH = wrapper.style.height;
-    const oldOverflow = wrapper.style.overflow;
-    const oldTransform = wrapper.style.transform;
-    const oldPosition = wrapper.style.position;
+    const overrides = [];
+    if (state.fontSizeScale !== 100) overrides.push(`font-size:${state.fontSizeScale}%!important`);
+    if (state.lineH !== 1.72) overrides.push(`line-height:${state.lineH}!important`);
+    const overrideStyle = overrides.length ? `<style>.so *{${overrides.join(';')}}</style>` : '';
 
-    wrapper.style.width = w + 'px';
-    wrapper.style.height = h + 'px';
-    wrapper.style.overflow = 'hidden';
-    wrapper.style.transform = 'none';
-    wrapper.style.position = 'relative';
+    const offscreen = document.createElement('div');
+    offscreen.style.cssText = `position:fixed;left:-99999px;top:0;width:${w}px;height:${h}px;overflow:hidden;`;
+    document.body.appendChild(offscreen);
 
     setNewsExporting(true, 'Przygotowuję...');
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
-    const rect = wrapper.getBoundingClientRect();
+    const rect = offscreen.getBoundingClientRect();
     const captureRect = {
       x: Math.round(rect.x), y: Math.round(rect.y),
       width: Math.round(rect.width), height: Math.round(rect.height)
@@ -2279,8 +2275,35 @@ function initNewspaper() {
 
     for (let s = 0; s < totalSlides; s++) {
       const template = state.queue[s % state.queue.length];
-      showSlide(template);
-      await new Promise(r => setTimeout(r, state.transitionMs + 80));
+      const helpers = getTemplateHelpers();
+      const html = template.render.call(helpers, state.keyword);
+
+      const bgMatch = html.match(/background:\s*(#[0-9a-fA-F]{3,8})/);
+
+      offscreen.innerHTML = `
+        <div style="position:absolute;inset:0;background:${bgMatch ? bgMatch[1] : '#fff'}">
+          ${overrideStyle}
+          <div class="zoom-scroll" style="position:absolute;inset:0;overflow:hidden;">
+            <div class="article-inner so" style="width:100%;height:100%;overflow:hidden;display:flex;flex-direction:column;transform:scale(${state.zoomLevel});transform-origin:0 0;">
+              ${html}
+            </div>
+          </div>
+        </div>`;
+
+      await new Promise(r => requestAnimationFrame(r));
+
+      const kwEl = offscreen.querySelector('.keyword-highlight');
+      const scroller = offscreen.querySelector('.zoom-scroll');
+      if (kwEl && scroller) {
+        const sRect = scroller.getBoundingClientRect();
+        const kRect = kwEl.getBoundingClientRect();
+        const kCX = kRect.left + kRect.width / 2 - sRect.left;
+        const kCY = kRect.top + kRect.height / 2 - sRect.top;
+        const offX = sRect.width / 2 - kCX + state.zoomOffsetX;
+        const offY = sRect.height / 2 - kCY + state.zoomOffsetY;
+        offscreen.querySelector('.article-inner').style.transform = `translate(${offX}px, ${offY}px) scale(${state.zoomLevel})`;
+        await new Promise(r => requestAnimationFrame(r));
+      }
 
       const base64 = await ipcRenderer.invoke('capture-frame', { rect: captureRect });
       frames.push({ data: base64, duration: framesPerSlide });
@@ -2295,11 +2318,7 @@ function initNewspaper() {
 
     await ipcRenderer.invoke('export-mp4', { frames, savePath, fps, width: w, height: h });
 
-    wrapper.style.width = oldW;
-    wrapper.style.height = oldH;
-    wrapper.style.overflow = oldOverflow;
-    wrapper.style.transform = oldTransform;
-    wrapper.style.position = oldPosition;
+    offscreen.remove();
     setNewsExporting(false);
   });
 
@@ -2594,7 +2613,8 @@ function chatRenderPreview(animate, upTo, showTypingFrom) {
 
   let messagesHTML = '';
   for (let i = 0; i < limit; i++) {
-    messagesHTML += chatBubbleHTML(chatState.messages[i], i, p, bubbleLStyle, bubbleRStyle);
+    const isLast = animate && i === limit - 1;
+    messagesHTML += chatBubbleHTML(chatState.messages[i], i, p, bubbleLStyle, bubbleRStyle, isLast);
   }
 
   let typingHTML = '';
@@ -2626,7 +2646,7 @@ function chatRunAnimation(from, p, bubbleLStyle, bubbleRStyle, bodyStyle, textSt
   const isDiscord = p === 'discord';
 
   const addBubble = (i, cb) => {
-    const nextBubble = chatBubbleHTML(chatState.messages[i], i, p, bubbleLStyle, bubbleRStyle);
+    const nextBubble = chatBubbleHTML(chatState.messages[i], i, p, bubbleLStyle, bubbleRStyle, true);
     const canvas = $('#chatPreviewCanvas');
     const body = canvas.querySelector('.chat-render-body');
 

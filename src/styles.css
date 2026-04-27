@@ -1000,8 +1000,19 @@ html, body {
 .chat-platform-whatsapp .chat-typing-indicator { background: #202c33; }
 .chat-platform-whatsapp .chat-typing-dot { background: #8696a0; }
 
-.chat-platform-messenger .chat-typing-indicator { background: #202c33; }
-.chat-platform-messenger .chat-typing-dot { background: #8696a0; }
+.chat-platform-messenger .chat-typing-indicator { background: #e9e9eb; }
+.chat-platform-messenger .chat-typing-dot { background: #8e8e93; }
+
+.chat-platform-discord .chat-discord-typing {
+  background: transparent;
+  padding: clamp(4px, 0.5vw, 8px) 0;
+  border-radius: 0;
+  gap: clamp(4px, 0.5vw, 6px);
+}
+.chat-platform-discord .chat-discord-typing-name { font-weight: 600; }
+.chat-platform-discord .chat-discord-typing-text { color: #8696a0; }
+.chat-platform-discord .chat-discord-typing-dots { display: inline-flex; align-items: center; gap: 2px; }
+.chat-platform-discord .chat-typing-dot { background: #8696a0; width: clamp(4px, 0.5vw, 6px); height: clamp(4px, 0.5vw, 6px); }
 
 .chat-platform-custom .chat-typing-indicator {}
 .chat-platform-custom .chat-typing-dot {}
