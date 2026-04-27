@@ -48,9 +48,13 @@ ipcMain.handle('export-mp4', async (event, { frames, savePath, fps, width, heigh
   const tmpDir = path.join(os.tmpdir(), `vt-export-${Date.now()}`);
   fs.mkdirSync(tmpDir, { recursive: true });
 
-  for (let i = 0; i < frames.length; i++) {
-    const buf = Buffer.from(frames[i], 'base64');
-    fs.writeFileSync(path.join(tmpDir, `frame_${String(i).padStart(6, '0')}.png`), buf);
+  let frameIdx = 0;
+  for (const frame of frames) {
+    const buf = Buffer.from(frame, 'base64');
+    for (let d = 0; d < frame.duration; d++) {
+      fs.writeFileSync(path.join(tmpDir, `frame_${String(frameIdx).padStart(6, '0')}.png`), buf);
+      frameIdx++;
+    }
   }
 
   return new Promise((resolve, reject) => {
@@ -58,6 +62,7 @@ ipcMain.handle('export-mp4', async (event, { frames, savePath, fps, width, heigh
       '-y',
       '-framerate', String(fps),
       '-i', path.join(tmpDir, 'frame_%06d.png'),
+      '-vf', 'crop=trunc(iw/2)*2:trunc(ih/2)*2',
       '-c:v', 'libx264',
       '-pix_fmt', 'yuv420p',
       '-preset', 'fast',

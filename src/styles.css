@@ -935,6 +935,11 @@ html, body {
   100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+@keyframes discordMsgIn {
+  0% { opacity: 0; transform: translateX(-8px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
 @keyframes typingDot {
   0%, 60%, 100% { opacity: 0.25; transform: scale(0.8); }
   30% { opacity: 1; transform: scale(1.1); }
@@ -958,6 +963,15 @@ html, body {
 .chat-animate .chat-bubble-left,
 .chat-animate .chat-bubble-right {
   animation: bubbleSlideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.chat-animate.chat-platform-discord .chat-bubble {
+  transform: none;
+}
+
+.chat-animate.chat-platform-discord .chat-bubble-left,
+.chat-animate.chat-platform-discord .chat-bubble-right {
+  animation: discordMsgIn 0.3s ease-out forwards;
 }
 
 .chat-typing-indicator {
@@ -985,31 +999,14 @@ html, body {
 .chat-typing-dot:nth-child(2) { animation-delay: 0.15s; }
 .chat-typing-dot:nth-child(3) { animation-delay: 0.3s; }
 
-/* typing indicator theme overrides */
-.chat-platform-imessage .chat-typing-indicator {
-  background: #e9e9eb;
-}
+.chat-platform-imessage .chat-typing-indicator { background: #e9e9eb; }
 .chat-platform-imessage .chat-typing-dot { background: #8e8e93; }
 
-.chat-platform-whatsapp .chat-typing-indicator {
-  background: #202c33;
-}
+.chat-platform-whatsapp .chat-typing-indicator { background: #202c33; }
 .chat-platform-whatsapp .chat-typing-dot { background: #8696a0; }
 
-.chat-platform-discord .chat-typing-indicator {
-  background: transparent;
-  padding: clamp(4px, 0.5vw, 8px) 0;
-  border-radius: 0;
-}
-.chat-platform-discord .chat-typing-dot { background: #dbdee1; }
-
-.chat-platform-messenger .chat-typing-indicator {
-  background: #fff;
-  border-radius: clamp(16px, 2vw, 26px);
-  border-bottom-left-radius: clamp(4px, 0.5vw, 6px);
-  box-shadow: 0 1px 1px rgba(0,0,0,0.06);
-}
-.chat-platform-messenger .chat-typing-dot { background: #0084ff; }
+.chat-platform-messenger .chat-typing-indicator { background: #202c33; }
+.chat-platform-messenger .chat-typing-dot { background: #8696a0; }
 
 .chat-platform-custom .chat-typing-indicator {}
 .chat-platform-custom .chat-typing-dot {}

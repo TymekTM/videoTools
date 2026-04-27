@@ -2251,7 +2251,6 @@ function initNewspaper() {
     const enabledCount = state.enabledTemplates.size;
     const totalSlides = Math.min(enabledCount, 20);
     const framesPerSlide = Math.max(1, Math.round((slideDurationMs / 1000) * fps));
-    const totalFrames = totalSlides * framesPerSlide;
 
     const oldW = wrapper.style.width;
     const oldH = wrapper.style.height;
@@ -2277,14 +2276,12 @@ function initNewspaper() {
       showSlide(template);
       await new Promise(r => setTimeout(r, state.transitionMs + 50));
 
-      for (let f = 0; f < framesPerSlide; f++) {
-        const base64 = await ipcRenderer.invoke('capture-frame', { rect: captureRect });
-        frames.push(base64);
-        const pct = Math.round(((s * framesPerSlide + f) / totalFrames) * 100);
-        $('#newsExportBarFill').style.width = pct + '%';
-        $('#newsExportLabel').textContent = `Slajd ${s + 1}/${totalSlides} — klatka ${f + 1}/${framesPerSlide}`;
-        await new Promise(r => setTimeout(r, 1000 / fps));
-      }
+      const base64 = await ipcRenderer.invoke('capture-frame', { rect: captureRect });
+      frames.push({ data: base64, duration: framesPerSlide });
+
+      const pct = Math.round(((s + 1) / totalSlides) * 100);
+      $('#newsExportBarFill').style.width = pct + '%';
+      $('#newsExportLabel').textContent = `Slajd ${s + 1}/${totalSlides}`;
     }
 
     setNewsExporting(true, 'Koduję MP4...');
@@ -2765,6 +2762,47 @@ function initChat() {
     chatRefresh();
   });
 
+  let chatPreviewing = false;
+
+  $('#chatPreviewAnimBtn').addEventListener('click', () => {
+    if (chatPreviewing) return;
+    if (chatState.messages.length === 0) return;
+    chatPreviewing = true;
+
+    const btn = $('#chatPreviewAnimBtn');
+    btn.classList.add('btn-primary');
+    btn.classList.remove('btn-secondary');
+
+    const speed = chatState.animSpeed > 0 ? chatState.animSpeed : 600;
+    const typingMs = Math.min(speed * 0.6, 800);
+    const bubbleMs = 350;
+    const pauseMs = 600;
+    const msgCount = chatState.messages.length;
+
+    chatRenderPreview(false, 0);
+
+    let i = 0;
+    const showTyping = () => {
+      if (i >= msgCount) { finish(); return; }
+      chatRenderPreview(false, i, i);
+      chatAnimTimer = setTimeout(showBubble, typingMs);
+    };
+
+    const showBubble = () => {
+      i++;
+      chatRenderPreview(true, i);
+      chatAnimTimer = setTimeout(showTyping, bubbleMs + pauseMs);
+    };
+
+    const finish = () => {
+      chatPreviewing = false;
+      btn.classList.remove('btn-primary');
+      btn.classList.add('btn-secondary');
+    };
+
+    chatAnimTimer = setTimeout(showTyping, 400);
+  });
+
   const updateContact = (idx) => {
     const nameInput = $(`#chatContact${idx + 1}Name`);
     const colorInput = $(`#chatContact${idx + 1}Color`);
@@ -2909,7 +2947,7 @@ function initChat() {
     const emptyFrame = async () => {
       chatRenderPreview(false, 0);
       await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-      for (let f = 0; f < framesPerPause; f++) frames.push(await capture());
+      frames.push({ data: await capture(), duration: framesPerPause });
     };
 
     await emptyFrame();
@@ -2919,24 +2957,20 @@ function initChat() {
     for (let i = 0; i < msgCount; i++) {
       chatRenderPreview(false, i, i);
       await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-      for (let f = 0; f < framesPerTyping; f++) {
-        frames.push(await capture());
-        done++;
-      }
+      frames.push({ data: await capture(), duration: framesPerTyping });
+      done += framesPerTyping;
 
       chatRenderPreview(true, i + 1);
       await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-      for (let f = 0; f < framesPerBubble + framesPerPause; f++) {
-        frames.push(await capture());
-        done++;
-      }
+      frames.push({ data: await capture(), duration: framesPerBubble + framesPerPause });
+      done += framesPerBubble + framesPerPause;
 
       const pct = Math.round((done / total) * 80);
       $('#chatExportBarFill').style.width = pct + '%';
       $('#chatExportLabel').textContent = `Wiadomość ${i + 1}/${msgCount}`;
     }
 
-    for (let f = 0; f < framesEnd; f++) frames.push(await capture());
+    frames.push({ data: await capture(), duration: framesEnd });
 
     setExporting(true, 'Koduję MP4...');
     $('#chatExportBarFill').style.width = '100%';
