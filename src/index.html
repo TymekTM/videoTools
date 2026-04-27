@@ -11,29 +11,48 @@
 </head>
 <body>
   <div class="app">
-    <header class="app-header">
-      <div class="app-logo">
+    <nav class="tool-nav">
+      <div class="tool-nav-logo">
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
           <rect x="1" y="1" width="18" height="18" rx="3" stroke="currentColor" stroke-width="1.5"/>
           <polygon points="8,6 14,10 8,14" fill="currentColor"/>
         </svg>
-        <span>Video Tools</span>
       </div>
-      <div class="app-header-info">
-        <span class="slide-counter" id="slideCounter">— / —</span>
+      <div class="tool-nav-items">
+        <button class="tool-nav-btn active" data-tool="newspaper" title="News Mockup">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 4h16v16H4z"/>
+            <path d="M4 9h16"/>
+            <path d="M4 14h10"/>
+            <path d="M4 17h7"/>
+          </svg>
+        </button>
+        <button class="tool-nav-btn" data-tool="chat" title="Fake Chat">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+          </svg>
+        </button>
       </div>
-    </header>
+      <div class="tool-nav-bottom">
+        <div class="tool-nav-res" id="globalResInfo">1920x1080</div>
+      </div>
+    </nav>
 
-    <main class="app-body">
+    <!-- TOOL: Newspaper -->
+    <div class="tool-panel active" data-tool="newspaper">
       <section class="preview-area">
         <div class="preview-wrapper" id="previewWrapper">
-          <div class="preview-canvas" id="previewCanvas">
-          </div>
+          <div class="preview-canvas" id="previewCanvas"></div>
           <div class="preview-vignette" id="vignette"></div>
         </div>
       </section>
 
       <aside class="sidebar">
+        <div class="sidebar-header">
+          <span class="sidebar-title">News Mockup</span>
+          <span class="slide-counter" id="slideCounter">— / —</span>
+        </div>
+
         <div class="control-group">
           <label class="control-label">Słowo kluczowe</label>
           <input type="text" class="control-input" id="keywordInput" value="SZTUKA" placeholder="Wpisz słowo...">
@@ -42,14 +61,6 @@
         <div class="control-group">
           <label class="control-label">Prędkość <span class="control-value" id="speedValue">0.8s</span></label>
           <input type="range" class="control-range" id="speedRange" min="100" max="3000" step="50" value="800">
-        </div>
-
-        <div class="control-group">
-          <label class="control-label">Highlight kolor</label>
-          <div class="custom-highlight-row">
-            <input type="color" class="control-color" id="colorAccent" value="#facc15">
-            <div class="custom-highlight-preview" id="accentPreview">SZTUKA</div>
-          </div>
         </div>
 
         <div class="control-group">
@@ -70,13 +81,12 @@
           </select>
         </div>
 
-        <div class="custom-section">
+        <div class="custom-section collapsed">
           <div class="custom-header" id="customToggle">
             <span class="custom-header-arrow">&#9660;</span>
             <span>Customizacja</span>
           </div>
           <div class="custom-body" id="customBody">
-
             <div class="custom-group">
               <label class="custom-label">Nagłówek</label>
               <input type="text" class="control-input" id="customHeadline" placeholder="Losowy lorem ipsum">
@@ -85,7 +95,6 @@
               <label class="custom-label">Lead (1. akapit)</label>
               <textarea class="control-textarea" id="customLead" rows="2" placeholder="Losowy lorem ipsum"></textarea>
             </div>
-
             <div class="custom-group">
               <label class="custom-label">Zoom <span class="control-value" id="zoomVal">1.8x</span></label>
               <input type="range" class="control-range" id="zoomRange" min="1" max="3" step="0.1" value="1.8">
@@ -98,7 +107,6 @@
               <label class="custom-label">Offset Y <span class="control-value" id="offYVal">0</span></label>
               <input type="range" class="control-range" id="offYRange" min="-300" max="300" step="5" value="0">
             </div>
-
             <div class="custom-group">
               <label class="custom-label">Skala czcionki <span class="control-value" id="fontScaleVal">100%</span></label>
               <input type="range" class="control-range" id="fontScaleRange" min="50" max="200" step="5" value="100">
@@ -107,7 +115,6 @@
               <label class="custom-label">Line-height <span class="control-value" id="lineHVal">1.72</span></label>
               <input type="range" class="control-range" id="lineHRange" min="1.0" max="2.5" step="0.05" value="1.72">
             </div>
-
             <div class="custom-row">
               <div class="custom-color">
                 <label class="custom-label">Tło</label>
@@ -118,7 +125,13 @@
                 <input type="color" class="control-color" id="colorText" value="#333333">
               </div>
             </div>
-
+            <div class="custom-group">
+              <label class="custom-label">Highlight kolor</label>
+              <div class="custom-highlight-row">
+                <input type="color" class="control-color" id="colorAccent" value="#facc15">
+                <div class="custom-highlight-preview" id="accentPreview">SZTUKA</div>
+              </div>
+            </div>
             <div class="custom-group">
               <label class="custom-label">Winieta <span class="control-value" id="vignetteVal">55%</span></label>
               <input type="range" class="control-range" id="vignetteRange" min="0" max="100" step="5" value="55">
@@ -127,14 +140,12 @@
               <label class="custom-label">Przejście <span class="control-value" id="transitionVal">120ms</span></label>
               <input type="range" class="control-range" id="transitionRange" min="0" max="1000" step="20" value="120">
             </div>
-
           </div>
         </div>
 
         <div class="control-group">
           <label class="control-label">Szablony stron</label>
-          <div class="template-toggles" id="templateToggles">
-          </div>
+          <div class="template-toggles" id="templateToggles"></div>
         </div>
 
         <div class="control-actions">
@@ -159,7 +170,95 @@
           <div class="resolution-info" id="resolutionInfo">1920 × 1080</div>
         </div>
       </aside>
-    </main>
+    </div>
+
+    <!-- TOOL: Fake Chat -->
+    <div class="tool-panel" data-tool="chat">
+      <section class="preview-area" id="chatPreviewArea">
+        <div class="preview-wrapper" id="chatPreviewWrapper">
+          <div class="preview-canvas" id="chatPreviewCanvas"></div>
+        </div>
+      </section>
+
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <span class="sidebar-title">Fake Chat</span>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Platforma</label>
+          <div class="control-btn-group" id="chatPlatformGroup">
+            <button class="control-btn active" data-platform="imessage">iMessage</button>
+            <button class="control-btn" data-platform="whatsapp">WhatsApp</button>
+            <button class="control-btn" data-platform="telegram">Telegram</button>
+            <button class="control-btn" data-platform="discord">Discord</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Format</label>
+          <div class="control-btn-group" id="chatFormatGroup">
+            <button class="control-btn active" data-format="16:9">16:9</button>
+            <button class="control-btn" data-format="9:16">9:16</button>
+            <button class="control-btn" data-format="1:1">1:1</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Rozdzielczość</label>
+          <select class="control-select" id="chatResolutionSelect">
+            <option value="720p">720p</option>
+            <option value="1080p" selected>1080p</option>
+            <option value="4K">4K</option>
+          </select>
+        </div>
+
+        <div class="chat-contacts">
+          <label class="control-label">Osoby</label>
+          <div class="chat-contact-row">
+            <div class="chat-contact-item">
+              <span class="chat-contact-dot" id="chatContact1Dot" style="background:#007AFF"></span>
+              <input type="text" class="control-input chat-contact-input" id="chatContact1Name" value="Jan" placeholder="Imię">
+              <input type="color" class="control-color chat-contact-color" id="chatContact1Color" value="#007AFF">
+            </div>
+          </div>
+          <div class="chat-contact-row">
+            <div class="chat-contact-item">
+              <span class="chat-contact-dot" id="chatContact2Dot" style="background:#34C759"></span>
+              <input type="text" class="control-input chat-contact-input" id="chatContact2Name" value="Anna" placeholder="Imię">
+              <input type="color" class="control-color chat-contact-color" id="chatContact2Color" value="#34C759">
+            </div>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Wiadomości</label>
+          <div class="chat-messages-list" id="chatMessagesList"></div>
+        </div>
+
+        <div class="chat-add-message">
+          <select class="control-select chat-add-sender" id="chatAddSender">
+            <option value="0">Jan</option>
+            <option value="1">Anna</option>
+          </select>
+          <input type="text" class="control-input chat-add-text" id="chatAddText" placeholder="Wpisz wiadomość...">
+          <button class="btn btn-primary chat-add-btn" id="chatAddBtn">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 1v12M1 7h12"/></svg>
+          </button>
+        </div>
+
+        <div class="control-actions" style="margin-top:auto">
+          <button class="btn btn-ghost" id="chatClearBtn">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h10M5 4V2.5A.5.5 0 015.5 2h3a.5.5 0 01.5.5V4M11 4v7.5a1.5 1.5 0 01-1.5 1.5h-5A1.5 1.5 0 013 11.5V4"/></svg>
+            <span>Wyczyść</span>
+          </button>
+          <button class="btn btn-primary" id="chatExportBtn">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 10v2a1 1 0 001 1h8a1 1 0 001-1v-2M7 2v8M4 5l3-3 3 3"/></svg>
+            <span>Export PNG</span>
+          </button>
+        </div>
+      </aside>
+    </div>
   </div>
 
   <script src="renderer.js"></script>

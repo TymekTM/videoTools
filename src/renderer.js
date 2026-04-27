@@ -1926,7 +1926,8 @@ function shuffleArray(arr) {
 
 function updatePreviewSize() {
   const [w, h] = getResolution();
-  const area = $('.preview-area');
+  const area = $('[data-tool="newspaper"] .preview-area');
+  if (!area) return;
   const areaW = area.clientWidth - 60;
   const areaH = area.clientHeight - 60;
   const scale = Math.min(areaW / w, areaH / h, 1);
@@ -2152,7 +2153,27 @@ function refreshCategoryCounts() {
   });
 }
 
-function init() {
+let activeTool = 'newspaper';
+
+function switchTool(toolId) {
+  activeTool = toolId;
+  $$('.tool-nav-btn').forEach(b => b.classList.toggle('active', b.dataset.tool === toolId));
+  $$('.tool-panel').forEach(p => p.classList.toggle('active', p.dataset.tool === toolId));
+  if (toolId === 'newspaper') {
+    updatePreviewSize();
+  } else if (toolId === 'chat') {
+    chatUpdatePreviewSize();
+    chatRenderPreview();
+  }
+}
+
+function initToolNav() {
+  $$('.tool-nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => switchTool(btn.dataset.tool));
+  });
+}
+
+function initNewspaper() {
   buildTemplateToggles();
   buildQueue();
   updatePreviewSize();
@@ -2160,6 +2181,9 @@ function init() {
   applyAccent();
   showSlide(state.queue[state.currentIndex]);
   state.currentIndex++;
+
+  const [nw, nh] = getResolution();
+  $('#globalResInfo').textContent = `${nw}x${nh}`;
 
   $('#keywordInput').addEventListener('input', (e) => {
     state.keyword = e.target.value || 'KEYWORD';
@@ -2191,6 +2215,8 @@ function init() {
   $('#resolutionSelect').addEventListener('change', (e) => {
     state.resolution = e.target.value;
     updatePreviewSize();
+    const [w, h] = getResolution();
+    $('#globalResInfo').textContent = `${w}x${h}`;
   });
 
   $('#btnPlay').addEventListener('click', () => {
@@ -2202,7 +2228,7 @@ function init() {
   $('#btnShuffle').addEventListener('click', shuffle);
 
   $('#customToggle').addEventListener('click', () => {
-    document.querySelector('.custom-section').classList.toggle('collapsed');
+    document.querySelector('[data-tool="newspaper"] .custom-section').classList.toggle('collapsed');
   });
 
   $('#customHeadline').addEventListener('input', (e) => {
@@ -2298,10 +2324,279 @@ function init() {
     $('#transitionVal').textContent = state.transitionMs + 'ms';
   });
 
-  const ro = new ResizeObserver(() => updatePreviewSize());
-  ro.observe($('.preview-area'));
+  const ro = new ResizeObserver(() => {
+    if (activeTool === 'newspaper') updatePreviewSize();
+    else chatUpdatePreviewSize();
+  });
+  ro.observe($('[data-tool="newspaper"] .preview-area'));
 
-  window.addEventListener('resize', updatePreviewSize);
+  window.addEventListener('resize', () => {
+    if (activeTool === 'newspaper') updatePreviewSize();
+    else chatUpdatePreviewSize();
+  });
+}
+
+/* ═══════════════════════════════════════
+   CHAT TOOL
+   ═══════════════════════════════════════ */
+
+const chatState = {
+  platform: 'imessage',
+  format: '16:9',
+  resolution: '1080p',
+  contacts: [
+    { name: 'Jan', color: '#007AFF' },
+    { name: 'Anna', color: '#34C759' }
+  ],
+  messages: [
+    { sender: 0, text: 'Hej, widziałeś to?' },
+    { sender: 1, text: 'Co dokładnie?' },
+    { sender: 0, text: 'Ten nowy film dokumentalny o sztuce' },
+    { sender: 1, text: 'O tak, słyszałam o nim! Podobno świetny' },
+    { sender: 0, text: 'Dokładnie, musimy go obejrzeć' }
+  ]
+};
+
+function chatGetResolution() {
+  return RESOLUTIONS[chatState.format][chatState.resolution];
+}
+
+function chatUpdatePreviewSize() {
+  const [w, h] = chatGetResolution();
+  const area = $('#chatPreviewArea');
+  if (!area) return;
+  const areaW = area.clientWidth - 60;
+  const areaH = area.clientHeight - 60;
+  const scale = Math.min(areaW / w, areaH / h, 1);
+  const displayW = Math.round(w * scale);
+  const displayH = Math.round(h * scale);
+
+  const wrapper = $('#chatPreviewWrapper');
+  wrapper.style.width = displayW + 'px';
+  wrapper.style.height = displayH + 'px';
+
+  const canvas = $('#chatPreviewCanvas');
+  canvas.style.fontSize = Math.round(scale * 16) + 'px';
+
+  const [fullW, fullH] = chatGetResolution();
+  $('#globalResInfo').textContent = `${fullW}x${fullH}`;
+}
+
+function chatRenderPreview() {
+  const canvas = $('#chatPreviewCanvas');
+  const p = chatState.platform;
+  const contact1 = chatState.contacts[0];
+  const contact2 = chatState.contacts[1];
+  const headerContact = contact2;
+
+  const initial = headerContact.name.charAt(0).toUpperCase();
+
+  let headerBg = '';
+  let headerExtra = '';
+  if (p === 'whatsapp') headerBg = `style="background:#1f2c34"`;
+  if (p === 'telegram') headerBg = `style="background:#517da2"`;
+  if (p === 'discord') headerBg = `style="background:#2b2d31"`;
+
+  let bodyExtra = '';
+  if (p === 'whatsapp') bodyExtra = `style="background:#0b141a"`;
+  if (p === 'telegram') bodyExtra = `style="background:#9ccde7"`;
+  if (p === 'discord') bodyExtra = `style="background:#313338"`;
+
+  let headerHTML = '';
+  if (p === 'discord') {
+    headerHTML = `
+      <div class="chat-render-header" ${headerBg}>
+        <div class="chat-render-avatar" style="background:${headerContact.color}">${initial}</div>
+        <div>
+          <div class="chat-render-name">${headerContact.name}</div>
+          <div class="chat-render-status">${chatState.messages.length} wiadomości</div>
+        </div>
+      </div>`;
+  } else {
+    headerHTML = `
+      <div class="chat-render-header" ${headerBg}>
+        <div class="chat-render-avatar" style="background:${headerContact.color}">${initial}</div>
+        <div>
+          <div class="chat-render-name">${headerContact.name}</div>
+          <div class="chat-render-status">${p === 'imessage' ? 'iMessage' : p === 'whatsapp' ? 'online' : p === 'telegram' ? 'last seen recently' : 'online'}</div>
+        </div>
+      </div>`;
+  }
+
+  let messagesHTML = chatState.messages.map((msg, i) => {
+    const contact = chatState.contacts[msg.sender];
+    const isRight = msg.sender === 0;
+    const time = `${14 + Math.floor(i / 3)}:${String(i * 7 % 60).padStart(2, '0')}`;
+
+    if (p === 'discord') {
+      const discInitial = contact.name.charAt(0).toUpperCase();
+      return `
+        <div class="chat-bubble ${isRight ? 'chat-bubble-right' : 'chat-bubble-left'}">
+          <div class="chat-render-avatar" style="background:${contact.color}">${discInitial}</div>
+          <div class="chat-bubble-content">
+            <div class="chat-bubble-author" style="color:${contact.color}">${contact.name}</div>
+            <div class="chat-bubble-text">${msg.text}</div>
+            <div class="chat-bubble-time">${time}</div>
+          </div>
+        </div>`;
+    }
+
+    return `
+      <div class="chat-bubble ${isRight ? 'chat-bubble-right' : 'chat-bubble-left'}">
+        ${msg.text}
+        <div class="chat-bubble-time">${time}</div>
+      </div>`;
+  }).join('');
+
+  canvas.innerHTML = `
+    <div class="chat-render chat-platform-${p}">
+      ${headerHTML}
+      <div class="chat-render-body" ${bodyExtra}>
+        ${messagesHTML}
+      </div>
+    </div>`;
+}
+
+function chatRenderMessageList() {
+  const list = $('#chatMessagesList');
+  list.innerHTML = chatState.messages.map((msg, i) => {
+    const contact = chatState.contacts[msg.sender];
+    return `
+      <div class="chat-msg-item" data-idx="${i}">
+        <span class="chat-msg-dot" style="background:${contact.color}"></span>
+        <span class="chat-msg-text">${contact.name}: ${msg.text}</span>
+        <button class="chat-msg-delete" data-idx="${i}" title="Usuń">
+          <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3l8 8M11 3l-8 8"/></svg>
+        </button>
+      </div>`;
+  }).join('');
+
+  list.querySelectorAll('.chat-msg-delete').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      chatState.messages.splice(parseInt(btn.dataset.idx), 1);
+      chatRenderMessageList();
+      chatRenderPreview();
+    });
+  });
+}
+
+function chatUpdateSenderDropdown() {
+  const sel = $('#chatAddSender');
+  sel.innerHTML = chatState.contacts.map((c, i) =>
+    `<option value="${i}">${c.name}</option>`
+  ).join('');
+}
+
+function initChat() {
+  chatRenderPreview();
+  chatRenderMessageList();
+
+  $$('#chatPlatformGroup .control-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      $$('#chatPlatformGroup .control-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      chatState.platform = btn.dataset.platform;
+      chatRenderPreview();
+    });
+  });
+
+  $$('#chatFormatGroup .control-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      $$('#chatFormatGroup .control-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      chatState.format = btn.dataset.format;
+      chatUpdatePreviewSize();
+      chatRenderPreview();
+    });
+  });
+
+  $('#chatResolutionSelect').addEventListener('change', (e) => {
+    chatState.resolution = e.target.value;
+    chatUpdatePreviewSize();
+  });
+
+  const addMsg = () => {
+    const text = $('#chatAddText').value.trim();
+    if (!text) return;
+    const sender = parseInt($('#chatAddSender').value);
+    chatState.messages.push({ sender, text });
+    $('#chatAddText').value = '';
+    chatRenderMessageList();
+    chatRenderPreview();
+    const list = $('#chatMessagesList');
+    list.scrollTop = list.scrollHeight;
+  };
+
+  $('#chatAddBtn').addEventListener('click', addMsg);
+  $('#chatAddText').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') addMsg();
+  });
+
+  $('#chatClearBtn').addEventListener('click', () => {
+    chatState.messages = [];
+    chatRenderMessageList();
+    chatRenderPreview();
+  });
+
+  const updateContact = (idx) => {
+    const nameInput = $(`#chatContact${idx + 1}Name`);
+    const colorInput = $(`#chatContact${idx + 1}Color`);
+    const dot = $(`#chatContact${idx + 1}Dot`);
+
+    nameInput.addEventListener('input', () => {
+      chatState.contacts[idx].name = nameInput.value || `Osoba ${idx + 1}`;
+      dot.textContent = '';
+      chatUpdateSenderDropdown();
+      chatRenderMessageList();
+      chatRenderPreview();
+    });
+
+    colorInput.addEventListener('input', () => {
+      chatState.contacts[idx].color = colorInput.value;
+      dot.style.background = colorInput.value;
+      chatRenderMessageList();
+      chatRenderPreview();
+    });
+  };
+
+  updateContact(0);
+  updateContact(1);
+
+  $('#chatExportBtn').addEventListener('click', () => {
+    const canvas = $('#chatPreviewCanvas');
+    const [w, h] = chatGetResolution();
+    const scale = 2;
+    const c = document.createElement('canvas');
+    c.width = w * scale;
+    c.height = h * scale;
+    const ctx = c.getContext('2d');
+    ctx.scale(scale, scale);
+
+    const svgEl = canvas.querySelector('.chat-render');
+    if (!svgEl) return;
+
+    const data = new XMLSerializer().serializeToString(svgEl);
+    const img = new Image();
+    img.onload = () => {
+      ctx.drawImage(img, 0, 0, w, h);
+      const link = document.createElement('a');
+      link.download = `chat-${chatState.platform}-${Date.now()}.png`;
+      link.href = c.toDataURL('image/png');
+      link.click();
+    };
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(data);
+  });
+}
+
+/* ═══════════════════════════════════════
+   INIT
+   ═══════════════════════════════════════ */
+
+function init() {
+  initToolNav();
+  initNewspaper();
+  initChat();
 }
 
 document.addEventListener('DOMContentLoaded', init);
