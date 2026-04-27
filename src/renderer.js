@@ -2248,16 +2248,23 @@ function initNewspaper() {
     const [w, h] = getResolution();
     const fps = 30;
     const slideDurationMs = state.speed;
+    const loops = parseInt($('#exportLoops').value) || 1;
     const enabledCount = state.enabledTemplates.size;
-    const totalSlides = Math.min(enabledCount, 20);
+    const slidesPerLoop = Math.min(enabledCount, 20);
+    const totalSlides = slidesPerLoop * loops;
     const framesPerSlide = Math.max(1, Math.round((slideDurationMs / 1000) * fps));
 
     const oldW = wrapper.style.width;
     const oldH = wrapper.style.height;
     const oldOverflow = wrapper.style.overflow;
+    const oldTransform = wrapper.style.transform;
+    const oldPosition = wrapper.style.position;
+
     wrapper.style.width = w + 'px';
     wrapper.style.height = h + 'px';
     wrapper.style.overflow = 'hidden';
+    wrapper.style.transform = 'none';
+    wrapper.style.position = 'relative';
 
     setNewsExporting(true, 'Przygotowuję...');
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
@@ -2274,7 +2281,7 @@ function initNewspaper() {
     for (let s = 0; s < totalSlides; s++) {
       const template = state.queue[s % state.queue.length];
       showSlide(template);
-      await new Promise(r => setTimeout(r, state.transitionMs + 50));
+      await new Promise(r => setTimeout(r, state.transitionMs + 80));
 
       const base64 = await ipcRenderer.invoke('capture-frame', { rect: captureRect });
       frames.push({ data: base64, duration: framesPerSlide });
@@ -2292,6 +2299,8 @@ function initNewspaper() {
     wrapper.style.width = oldW;
     wrapper.style.height = oldH;
     wrapper.style.overflow = oldOverflow;
+    wrapper.style.transform = oldTransform;
+    wrapper.style.position = oldPosition;
     setNewsExporting(false);
   });
 
@@ -2799,29 +2808,41 @@ function initChat() {
     const bubbleMs = 350;
     const pauseMs = 600;
     const msgCount = chatState.messages.length;
+    const isDiscord = chatState.platform === 'discord';
 
     chatRenderPreview(false, 0);
 
-    let i = 0;
-    const showTyping = () => {
-      if (i >= msgCount) { finish(); return; }
-      chatRenderPreview(false, i, i);
-      chatAnimTimer = setTimeout(showBubble, typingMs);
-    };
+    if (isDiscord) {
+      let i = 0;
+      const showNext = () => {
+        if (i >= msgCount) { finish(); return; }
+        i++;
+        chatRenderPreview(true, i);
+        chatAnimTimer = setTimeout(showNext, bubbleMs + pauseMs);
+      };
+      chatAnimTimer = setTimeout(showNext, 400);
+    } else {
+      let i = 0;
+      const showTyping = () => {
+        if (i >= msgCount) { finish(); return; }
+        chatRenderPreview(false, i, i);
+        chatAnimTimer = setTimeout(showBubble, typingMs);
+      };
 
-    const showBubble = () => {
-      i++;
-      chatRenderPreview(true, i);
-      chatAnimTimer = setTimeout(showTyping, bubbleMs + pauseMs);
-    };
+      const showBubble = () => {
+        i++;
+        chatRenderPreview(true, i);
+        chatAnimTimer = setTimeout(showTyping, bubbleMs + pauseMs);
+      };
+
+      chatAnimTimer = setTimeout(showTyping, 400);
+    }
 
     const finish = () => {
       chatPreviewing = false;
       btn.classList.remove('btn-primary');
       btn.classList.add('btn-secondary');
     };
-
-    chatAnimTimer = setTimeout(showTyping, 400);
   });
 
   const updateContact = (idx) => {
@@ -2972,14 +2993,22 @@ function initChat() {
     };
 
     await emptyFrame();
-    let total = framesPerPause * msgCount + (framesPerTyping + framesPerBubble + framesPerPause) * msgCount + framesEnd;
-    let done = 0;
+    const isDiscord = chatState.platform === 'discord';
+    let total, done = 0;
+
+    if (isDiscord) {
+      total = framesPerPause + (framesPerBubble + framesPerPause) * msgCount + framesEnd;
+    } else {
+      total = framesPerPause + (framesPerTyping + framesPerBubble + framesPerPause) * msgCount + framesEnd;
+    }
 
     for (let i = 0; i < msgCount; i++) {
-      chatRenderPreview(false, i, i);
-      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-      frames.push({ data: await capture(), duration: framesPerTyping });
-      done += framesPerTyping;
+      if (!isDiscord) {
+        chatRenderPreview(false, i, i);
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+        frames.push({ data: await capture(), duration: framesPerTyping });
+        done += framesPerTyping;
+      }
 
       chatRenderPreview(true, i + 1);
       await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
