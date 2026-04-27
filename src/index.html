@@ -64,6 +64,14 @@
         </div>
 
         <div class="control-group">
+          <label class="control-label">Highlight</label>
+          <div class="custom-highlight-row">
+            <input type="color" class="control-color" id="colorAccent" value="#facc15">
+            <div class="custom-highlight-preview" id="accentPreview">SZTUKA</div>
+          </div>
+        </div>
+
+        <div class="control-group">
           <label class="control-label">Format</label>
           <div class="control-btn-group" id="formatGroup">
             <button class="control-btn active" data-format="16:9">16:9</button>
@@ -116,23 +124,16 @@
               <input type="range" class="control-range" id="lineHRange" min="1.0" max="2.5" step="0.05" value="1.72" data-default="1.72">
             </div>
             <div class="custom-group">
-              <label class="custom-label">Highlight kolor</label>
-              <div class="custom-highlight-row">
-                <input type="color" class="control-color" id="colorAccent" value="#facc15">
-                <div class="custom-highlight-preview" id="accentPreview">SZTUKA</div>
-              </div>
+              <label class="custom-label">Winieta moc <span class="control-value" id="vignetteVal">70%</span></label>
+              <input type="range" class="control-range" id="vignetteRange" min="0" max="100" step="5" value="70" data-default="70">
             </div>
             <div class="custom-group">
-              <label class="custom-label">Winieta moc <span class="control-value" id="vignetteVal">55%</span></label>
-              <input type="range" class="control-range" id="vignetteRange" min="0" max="100" step="5" value="55" data-default="55">
+              <label class="custom-label">Winieta rozmiar <span class="control-value" id="vignetteSizeVal">60%</span></label>
+              <input type="range" class="control-range" id="vignetteSizeRange" min="20" max="80" step="5" value="60" data-default="60">
             </div>
             <div class="custom-group">
-              <label class="custom-label">Winieta rozmiar <span class="control-value" id="vignetteSizeVal">50%</span></label>
-              <input type="range" class="control-range" id="vignetteSizeRange" min="20" max="80" step="5" value="50" data-default="50">
-            </div>
-            <div class="custom-group">
-              <label class="custom-label">Winieta rozmycie <span class="control-value" id="vignetteSpreadVal">45%</span></label>
-              <input type="range" class="control-range" id="vignetteSpreadRange" min="10" max="80" step="5" value="45" data-default="45">
+              <label class="custom-label">Winieta rozmycie <span class="control-value" id="vignetteSpreadVal">70%</span></label>
+              <input type="range" class="control-range" id="vignetteSpreadRange" min="10" max="80" step="5" value="70" data-default="70">
             </div>
             <div class="custom-group">
               <label class="custom-label">Przejście <span class="control-value" id="transitionVal">120ms</span></label>
@@ -263,6 +264,16 @@
           </div>
         </div>
 
+        <div class="chat-anim-controls">
+          <label class="control-label">Animacja</label>
+          <div class="control-btn-group" id="chatAnimSpeedGroup">
+            <button class="control-btn" data-speed="0">Wył.</button>
+            <button class="control-btn active" data-speed="600">Szybka</button>
+            <button class="control-btn" data-speed="1200">Normal</button>
+            <button class="control-btn" data-speed="2200">Wolna</button>
+          </div>
+        </div>
+
         <div class="control-group">
           <label class="control-label">Wiadomości</label>
           <div class="chat-messages-list" id="chatMessagesList"></div>
@@ -279,6 +290,11 @@
           </button>
         </div>
 
+        <div class="chat-export-progress" id="chatExportProgress">
+          <div class="chat-export-bar"><div class="chat-export-bar-fill" id="chatExportBarFill"></div></div>
+          <span class="chat-export-label" id="chatExportLabel">...</span>
+        </div>
+
         <div class="control-actions" style="margin-top:auto">
           <button class="btn btn-ghost" id="chatClearBtn">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h10M5 4V2.5A.5.5 0 015.5 2h3a.5.5 0 01.5.5V4M11 4v7.5a1.5 1.5 0 01-1.5 1.5h-5A1.5 1.5 0 013 11.5V4"/></svg>
@@ -286,7 +302,11 @@
           </button>
           <button class="btn btn-primary" id="chatExportBtn">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 10v2a1 1 0 001 1h8a1 1 0 001-1v-2M7 2v8M4 5l3-3 3 3"/></svg>
-            <span>Export PNG</span>
+            <span>PNG</span>
+          </button>
+          <button class="btn btn-secondary" id="chatExportMp4Btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+            <span>MP4</span>
           </button>
         </div>
       </aside>

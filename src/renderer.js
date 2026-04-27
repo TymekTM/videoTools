@@ -1868,9 +1868,9 @@ const state = {
   fontSizeScale: 100,
   lineH: 1.72,
   colorAccent: '#facc15',
-  vignetteOpacity: 55,
-  vignetteSize: 50,
-  vignetteSpread: 45,
+  vignetteOpacity: 70,
+  vignetteSize: 60,
+  vignetteSpread: 70,
   transitionMs: 120
 };
 
@@ -1887,14 +1887,12 @@ function updateVignette() {
   if (o <= 0) { v.style.background = 'none'; return; }
   const size = state.vignetteSize;
   const spread = state.vignetteSpread;
-  const innerStop = 100 - spread;
   v.style.background = `radial-gradient(
-    ellipse ${size}% ${size * 0.9}% at 50% 50%,
+    ellipse ${size}% ${Math.round(size * 0.9)}% at 50% 50%,
     transparent 0%,
-    transparent ${innerStop * 0.5}%,
-    rgba(0,0,0,${(o * 0.15).toFixed(2)}) ${innerStop * 0.7}%,
-    rgba(0,0,0,${(o * 0.35).toFixed(2)}) ${innerStop * 0.85}%,
-    rgba(0,0,0,${(o * 0.6).toFixed(2)}) ${innerStop}%,
+    rgba(0,0,0,${(o * 0.08).toFixed(2)}) ${100 - spread}%,
+    rgba(0,0,0,${(o * 0.25).toFixed(2)}) ${100 - spread * 0.7}%,
+    rgba(0,0,0,${(o * 0.5).toFixed(2)}) ${100 - spread * 0.4}%,
     rgba(0,0,0,${o.toFixed(2)}) 100%
   )`;
 }
@@ -2348,6 +2346,7 @@ const chatState = {
   platform: 'imessage',
   format: '16:9',
   resolution: '1080p',
+  animSpeed: 600,
   contacts: [
     { name: 'Jan', color: '#007AFF', avatar: null },
     { name: 'Anna', color: '#34C759', avatar: null }
@@ -2405,7 +2404,7 @@ function chatTimeStr(i) {
   return `${14 + Math.floor(i / 3)}:${String(i * 7 % 60).padStart(2, '0')}`;
 }
 
-function chatRenderPreview() {
+function chatRenderPreview(animate) {
   const canvas = $('#chatPreviewCanvas');
   const p = chatState.platform;
   const c1 = chatState.contacts[0];
@@ -2433,7 +2432,6 @@ function chatRenderPreview() {
   const statuses = {
     imessage: 'iMessage',
     whatsapp: 'online',
-    telegram: 'last seen recently',
     discord: `${chatState.messages.length} wiadomości`,
     messenger: 'Active now',
     custom: 'online'
@@ -2451,15 +2449,18 @@ function chatRenderPreview() {
       </div>
     </div>`;
 
+  const animClass = animate ? ' chat-animate' : '';
+
   let messagesHTML = chatState.messages.map((msg, i) => {
     const contact = chatState.contacts[msg.sender];
     const isRight = msg.sender === 0;
     const time = chatTimeStr(i);
+    const delayStyle = animate ? `animation-delay:${i * (chatState.animSpeed / 1000)}s` : '';
 
     if (p === 'discord') {
       const discAvatar = chatAvatarHTML(contact, 'clamp(26px,3.2vw,38px)');
       return `
-        <div class="chat-bubble ${isRight ? 'chat-bubble-right' : 'chat-bubble-left'}">
+        <div class="chat-bubble ${isRight ? 'chat-bubble-right' : 'chat-bubble-left'}" style="${delayStyle}">
           ${discAvatar}
           <div class="chat-bubble-content">
             <div class="chat-bubble-meta">
@@ -2472,7 +2473,10 @@ function chatRenderPreview() {
     }
 
     let bubbleStyle = isRight ? bubbleRStyle : bubbleLStyle;
-    let styleAttr = bubbleStyle ? `style="${bubbleStyle}"` : '';
+    let styleParts = [];
+    if (bubbleStyle) styleParts.push(bubbleStyle);
+    if (delayStyle) styleParts.push(delayStyle);
+    let styleAttr = styleParts.length ? `style="${styleParts.join(';')}"` : '';
 
     return `
       <div class="chat-bubble ${isRight ? 'chat-bubble-right' : 'chat-bubble-left'}" ${styleAttr}>
@@ -2482,7 +2486,7 @@ function chatRenderPreview() {
   }).join('');
 
   canvas.innerHTML = `
-    <div class="chat-render chat-platform-${p}" ${textStyle ? `style="${textStyle}"` : ''}>
+    <div class="chat-render chat-platform-${p}${animClass}" ${textStyle ? `style="${textStyle}"` : ''}>
       ${headerHTML}
       <div class="chat-render-body" ${bodyStyle ? `style="${bodyStyle}"` : ''}>
         ${messagesHTML}
@@ -2538,7 +2542,8 @@ function chatUpdateAvatarUI(idx) {
 }
 
 function initChat() {
-  chatRenderPreview();
+  const chatRefresh = () => chatRenderPreview(chatState.animSpeed > 0);
+  chatRenderPreview(chatState.animSpeed > 0);
   chatRenderMessageList();
   chatUpdateAvatarUI(0);
   chatUpdateAvatarUI(1);
@@ -2638,9 +2643,26 @@ function initChat() {
         chatCustomText: 'text'
       };
       chatState.customTheme[map[id]] = e.target.value;
-      chatRenderPreview();
+      chatRenderPreview(chatState.animSpeed > 0);
     });
   });
+
+  $$('#chatAnimSpeedGroup .control-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      $$('#chatAnimSpeedGroup .control-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      chatState.animSpeed = parseInt(btn.dataset.speed);
+      chatRenderPreview(chatState.animSpeed > 0);
+    });
+  });
+
+  const setExporting = (active, label) => {
+    const prog = $('#chatExportProgress');
+    if (!prog) return;
+    prog.classList.toggle('active', active);
+    if (active) $('#chatExportLabel').textContent = label || '';
+    $('#chatExportBarFill').style.width = active ? '0%' : '';
+  };
 
   $('#chatExportBtn').addEventListener('click', async () => {
     const { ipcRenderer } = require('electron');
@@ -2671,6 +2693,64 @@ function initChat() {
     wrapper.style.width = oldW;
     wrapper.style.height = oldH;
     wrapper.style.overflow = oldOverflow;
+  });
+
+  $('#chatExportMp4Btn').addEventListener('click', async () => {
+    const { ipcRenderer } = require('electron');
+    const savePath = await ipcRenderer.invoke('save-dialog', {
+      defaultName: `chat-${chatState.platform}-${Date.now()}.mp4`,
+      filters: [{ name: 'MP4', extensions: ['mp4'] }]
+    });
+    if (!savePath) return;
+
+    const wrapper = $('#chatPreviewWrapper');
+    const [w, h] = chatGetResolution();
+    const fps = 30;
+    const msgCount = chatState.messages.length;
+    const delayPerMsg = chatState.animSpeed > 0 ? chatState.animSpeed : 400;
+    const totalMs = delayPerMsg * msgCount + 2000;
+    const totalFrames = Math.ceil((totalMs / 1000) * fps);
+
+    const oldW = wrapper.style.width;
+    const oldH = wrapper.style.height;
+    const oldOverflow = wrapper.style.overflow;
+
+    wrapper.style.width = w + 'px';
+    wrapper.style.height = h + 'px';
+    wrapper.style.overflow = 'hidden';
+
+    setExporting(true, 'Przygotowuję...');
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+    const rect = wrapper.getBoundingClientRect();
+    const captureRect = {
+      x: Math.round(rect.x), y: Math.round(rect.y),
+      width: Math.round(rect.width), height: Math.round(rect.height)
+    };
+
+    chatRenderPreview(true);
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+    const frames = [];
+    for (let f = 0; f < totalFrames; f++) {
+      const pngBuf = await ipcRenderer.invoke('capture-frame', { rect: captureRect });
+      frames.push(pngBuf.toString('base64'));
+      const pct = Math.round((f / totalFrames) * 100);
+      $('#chatExportBarFill').style.width = pct + '%';
+      $('#chatExportLabel').textContent = `Klatka ${f + 1}/${totalFrames}`;
+      await new Promise(r => setTimeout(r, 1000 / fps));
+    }
+
+    setExporting(true, 'Koduję MP4...');
+    $('#chatExportBarFill').style.width = '100%';
+
+    await ipcRenderer.invoke('export-mp4', { frames, savePath, fps, width: w, height: h });
+
+    wrapper.style.width = oldW;
+    wrapper.style.height = oldH;
+    wrapper.style.overflow = oldOverflow;
+    chatRenderPreview(chatState.animSpeed > 0);
+    setExporting(false);
   });
 }
 

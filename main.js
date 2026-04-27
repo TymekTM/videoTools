@@ -1,6 +1,9 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
+const { spawn } = require('child_process');
+const ffmpegPath = require('ffmpeg-static');
 
 let mainWindow;
 
@@ -21,10 +24,10 @@ function createWindow() {
   mainWindow.loadFile(path.join(__dirname, 'src', 'index.html'));
 }
 
-ipcMain.handle('save-dialog', async (event, { defaultName }) => {
+ipcMain.handle('save-dialog', async (event, { defaultName, filters }) => {
   const result = await dialog.showSaveDialog(mainWindow, {
     defaultPath: defaultName,
-    filters: [{ name: 'PNG', extensions: ['png'] }]
+    filters: filters || [{ name: 'PNG', extensions: ['png'] }]
   });
   return result.canceled ? null : result.filePath;
 });
@@ -34,6 +37,44 @@ ipcMain.handle('export-png', async (event, { rect, savePath }) => {
   const png = image.toPNG();
   fs.writeFileSync(savePath, png);
   return savePath;
+});
+
+ipcMain.handle('capture-frame', async (event, { rect }) => {
+  const image = await mainWindow.webContents.capturePage(rect);
+  return image.toPNG();
+});
+
+ipcMain.handle('export-mp4', async (event, { frames, savePath, fps, width, height }) => {
+  const tmpDir = path.join(os.tmpdir(), `vt-export-${Date.now()}`);
+  fs.mkdirSync(tmpDir, { recursive: true });
+
+  for (let i = 0; i < frames.length; i++) {
+    const buf = Buffer.from(frames[i], 'base64');
+    fs.writeFileSync(path.join(tmpDir, `frame_${String(i).padStart(6, '0')}.png`), buf);
+  }
+
+  return new Promise((resolve, reject) => {
+    const args = [
+      '-y',
+      '-framerate', String(fps),
+      '-i', path.join(tmpDir, 'frame_%06d.png'),
+      '-c:v', 'libx264',
+      '-pix_fmt', 'yuv420p',
+      '-preset', 'fast',
+      '-crf', '18',
+      '-movflags', '+faststart',
+      savePath
+    ];
+
+    const proc = spawn(ffmpegPath, args);
+    let stderr = '';
+    proc.stderr.on('data', d => stderr += d.toString());
+    proc.on('close', (code) => {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+      if (code === 0) resolve(savePath);
+      else reject(new Error(`ffmpeg exited ${code}: ${stderr}`));
+    });
+  });
 });
 
 app.whenReady().then(createWindow);
