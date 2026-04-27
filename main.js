@@ -17,42 +17,51 @@ ${FONTS_LINK}
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:100%;height:100%;overflow:hidden}
-.keyword-highlight{color:#000;font-weight:800;padding:2px 6px;border-radius:2px;white-space:nowrap;display:inline}
+.keyword-highlight{font-weight:800;padding:2px 6px;border-radius:2px;white-space:nowrap;display:inline}
 </style>
 <script>
-window._renderAndCapture = function(slides) {
-  var results = [];
-  var i = 0;
-  function next() {
-    if (i >= slides.length) return Promise.resolve(results);
-    var d = slides[i];
-    document.body.innerHTML = d.bodyHtml;
-    return document.fonts.ready.then(function() {
-      return new Promise(function(r) { requestAnimationFrame(function() { requestAnimationFrame(r); }); });
-    }).then(function() {
-      var kw = document.querySelector('.keyword-highlight');
-      var sc = document.querySelector('.zoom-scroll');
-      if (kw && sc) {
-        var sR = sc.getBoundingClientRect();
-        var kR = kw.getBoundingClientRect();
-        var cx = kR.left + kR.width / 2 - sR.left;
-        var cy = kR.top + kR.height / 2 - sR.top;
-        var ox = sR.width / 2 - cx + d.offX;
-        var oy = sR.height / 2 - cy + d.offY;
-        document.querySelector('.article-inner').style.transform =
-          'translate(' + ox + 'px,' + oy + 'px) scale(' + d.zoom + ')';
-      }
-      return new Promise(function(r) { requestAnimationFrame(function() { requestAnimationFrame(r); }); });
-    }).then(function() {
-      results.push({ idx: i });
-      i++;
-      return next();
+window._setAccent = function(c) {
+  var el = document.getElementById('dynAccent');
+  if (!el) { el = document.createElement('style'); el.id = 'dynAccent'; document.head.appendChild(el); }
+  el.textContent = '.keyword-highlight{background:linear-gradient(120deg,'+c+'ee,'+c+');color:#000;box-shadow:0 0 20px '+c+'66,0 0 60px '+c+'26}';
+};
+window._renderAndCapture = function(d) {
+  return new Promise(function(resolve) {
+    document.getElementById('slide').innerHTML = d.bodyHtml;
+    document.fonts.ready.then(function() {
+      requestAnimationFrame(function() {
+        requestAnimationFrame(function() {
+          var kw = document.querySelector('.keyword-highlight');
+          var sc = document.querySelector('.zoom-scroll');
+          if (kw && sc) {
+            var sR = sc.getBoundingClientRect();
+            var kR = kw.getBoundingClientRect();
+            var cx = kR.left + kR.width/2 - sR.left;
+            var cy = kR.top + kR.height/2 - sR.top;
+            var ox = sR.width/2 - cx + d.offX;
+            var oy = sR.height/2 - cy + d.offY;
+            document.querySelector('.article-inner').style.transform =
+              'translate('+ox+'px,'+oy+'px) scale('+d.zoom+')';
+          }
+          requestAnimationFrame(function() { resolve(); });
+        });
+      });
     });
-  }
-  return next();
+  });
+};
+window._setVignette = function(o, size, spread) {
+  var v = document.getElementById('vignette');
+  if (!v) return;
+  if (o <= 0) { v.style.background = 'none'; return; }
+  var sp = spread;
+  var inner = 100 - sp;
+  v.style.background = 'radial-gradient(ellipse '+size+'% '+Math.round(size*0.9)+'% at 50% 50%,transparent 0%,rgba(0,0,0,'+(o*0.08).toFixed(2)+') '+(100-spread)+'%,rgba(0,0,0,'+(o*0.25).toFixed(2)+') '+(100-spread*0.7)+'%,rgba(0,0,0,'+(o*0.5).toFixed(2)+') '+(100-spread*0.4)+'%,rgba(0,0,0,'+o.toFixed(2)+') 100%)';
 };
 </script>
-</head><body></body></html>`;
+</head><body>
+<div id="slide" style="position:absolute;inset:0"></div>
+<div id="vignette" style="position:absolute;inset:0;pointer-events:none;z-index:10"></div>
+</body></html>`;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -91,7 +100,7 @@ ipcMain.handle('capture-frame', async (event, { rect }) => {
   return image.toPNG().toString('base64');
 });
 
-ipcMain.handle('export-init', async (event, { width, height }) => {
+ipcMain.handle('export-init', async (event, { width, height, accent, vignetteOpacity, vignetteSize, vignetteSpread }) => {
   if (exportWindow) { exportWindow.close(); exportWindow = null; }
   exportWindow = new BrowserWindow({
     width, height,
@@ -99,17 +108,21 @@ ipcMain.handle('export-init', async (event, { width, height }) => {
     webPreferences: { offscreen: true }
   });
   await exportWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(EXPORT_HTML));
-  await exportWindow.webContents.executeJavaScript('document.fonts.ready');
+  await exportWindow.webContents.executeJavaScript(`
+    document.fonts.ready.then(function() {
+      window._setAccent(${JSON.stringify(accent)});
+      window._setVignette(${vignetteOpacity/100}, ${vignetteSize}, ${vignetteSpread});
+    })
+  `);
   return true;
 });
 
 ipcMain.handle('export-slides', async (event, { slides }) => {
   if (!exportWindow) return [];
   const frames = [];
-  for (let i = 0; i < slides.length; i++) {
-    const d = slides[i];
+  for (const d of slides) {
     await exportWindow.webContents.executeJavaScript(
-      'window._renderAndCapture(' + JSON.stringify([d]) + ')'
+      'window._renderAndCapture(' + JSON.stringify(d) + ')'
     );
     const image = await exportWindow.webContents.capturePage();
     frames.push({ data: image.toPNG().toString('base64'), duration: d.duration });

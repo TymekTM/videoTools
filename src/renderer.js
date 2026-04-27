@@ -2258,7 +2258,13 @@ function initNewspaper() {
     const overrideStyle = overrides.length ? `<style>.so *{${overrides.join(';')}}</style>` : '';
 
     setNewsExporting(true, 'Inicjalizacja...');
-    await ipcRenderer.invoke('export-init', { width: w, height: h });
+    await ipcRenderer.invoke('export-init', {
+      width: w, height: h,
+      accent: state.colorAccent,
+      vignetteOpacity: state.vignetteOpacity,
+      vignetteSize: state.vignetteSize,
+      vignetteSpread: state.vignetteSpread
+    });
 
     buildQueue();
     const slidesData = [];
@@ -2619,7 +2625,7 @@ function chatRenderPreview(animate, upTo, showTypingFrom) {
   }
 }
 
-function chatRunAnimation(from, p, bubbleLStyle, bubbleRStyle, bodyStyle, textStyle, headerHTML) {
+function chatRunAnimation(from, p, bubbleLStyle, bubbleRStyle, bodyStyle, textStyle, headerHTML, onDone) {
   if (chatAnimTimer) { clearTimeout(chatAnimTimer); chatAnimTimer = null; }
   if (from >= chatState.messages.length) return;
 
@@ -2659,13 +2665,15 @@ function chatRunAnimation(from, p, bubbleLStyle, bubbleRStyle, bodyStyle, textSt
   };
 
   const step = (i) => {
-    if (i >= chatState.messages.length) return;
+    if (i >= chatState.messages.length) { if (onDone) onDone(); return; }
     chatAnimTimer = setTimeout(() => {
       addBubble(i, () => {
         if (i + 1 < chatState.messages.length) {
           chatAnimTimer = setTimeout(() => {
             showTyping(i + 1, () => step(i + 1));
           }, bubbleGap);
+        } else {
+          if (onDone) onDone();
         }
       });
     }, typingDuration);
@@ -2784,40 +2792,37 @@ function initChat() {
   $('#chatPreviewAnimBtn').addEventListener('click', () => {
     if (chatPreviewing) return;
     if (chatState.messages.length === 0) return;
+    if (chatState.animSpeed <= 0) return;
     chatPreviewing = true;
 
     const btn = $('#chatPreviewAnimBtn');
     btn.classList.add('btn-primary');
     btn.classList.remove('btn-secondary');
 
-    const speed = chatState.animSpeed > 0 ? chatState.animSpeed : 600;
-    const typingMs = Math.min(speed * 0.6, 800);
-    const bubbleMs = 350;
-    const pauseMs = 600;
-    const msgCount = chatState.messages.length;
+    const p = chatState.platform;
+    let headerStyle = '', bodyStyle = '', bubbleLStyle = '', bubbleRStyle = '', textStyle = '';
+    if (p === 'custom') {
+      const t = chatState.customTheme;
+      headerStyle = `background:${t.headerBg}`;
+      bodyStyle = `background:${t.bg}`;
+      bubbleLStyle = `background:${t.bubbleL};color:${t.text}`;
+      bubbleRStyle = `background:${t.bubbleR};color:#fff`;
+      textStyle = `color:${t.text}`;
+    }
+    const avatarSize = p === 'discord' ? 'clamp(26px,3.2vw,38px)' : 'clamp(30px,3.8vw,44px)';
+    const headerContact = chatState.contacts[1];
+    const avatar = chatAvatarHTML(headerContact, avatarSize);
+    const statuses = { imessage:'iMessage', whatsapp:'online', discord:`${chatState.messages.length} wiadomości`, messenger:'Active now', custom:'online' };
+    const headerHTML = `<div class="chat-render-header" ${headerStyle?`style="${headerStyle}"`:''}><div class="chat-render-back"><svg width="${p==='discord'?'16':'20'}" height="${p==='discord'?'16':'20'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></div>${avatar}<div class="chat-render-info"><div class="chat-render-name">${headerContact.name}</div><div class="chat-render-status">${statuses[p]||''}</div></div></div>`;
 
-    chatRenderPreview(false, 0);
+    const canvas = $('#chatPreviewCanvas');
+    canvas.innerHTML = `<div class="chat-render chat-platform-${p} chat-animate" ${textStyle?`style="${textStyle}"`:''}>${headerHTML}<div class="chat-render-body" ${bodyStyle?`style="${bodyStyle}"`:''}></div></div>`;
 
-    let i = 0;
-    const showTyping = () => {
-      if (i >= msgCount) { finish(); return; }
-      chatRenderPreview(false, i, i);
-      chatAnimTimer = setTimeout(showBubble, typingMs);
-    };
-
-    const showBubble = () => {
-      i++;
-      chatRenderPreview(true, i);
-      chatAnimTimer = setTimeout(showTyping, bubbleMs + pauseMs);
-    };
-
-    chatAnimTimer = setTimeout(showTyping, 400);
-
-    const finish = () => {
+    chatRunAnimation(0, p, bubbleLStyle, bubbleRStyle, bodyStyle, textStyle, headerHTML, () => {
       chatPreviewing = false;
       btn.classList.remove('btn-primary');
       btn.classList.add('btn-secondary');
-    };
+    });
   });
 
   const updateContact = (idx) => {
