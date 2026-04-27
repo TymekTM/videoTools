@@ -1937,12 +1937,15 @@ function updatePreviewSize() {
   const wrapper = $('#previewWrapper');
   wrapper.style.width = displayW + 'px';
   wrapper.style.height = displayH + 'px';
-  wrapper.style.transform = `scale(1)`;
   wrapper.dataset.baseWidth = w;
   wrapper.dataset.baseHeight = h;
 
   const canvas = $('#previewCanvas');
-  canvas.style.fontSize = Math.round(scale * 16) + 'px';
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+  canvas.style.transform = `scale(${scale})`;
+  canvas.style.transformOrigin = '0 0';
+  canvas.style.fontSize = '16px';
 
   $('#resolutionInfo').textContent = `${w} \u00d7 ${h}`;
 }
@@ -2490,7 +2493,11 @@ function chatUpdatePreviewSize() {
   wrapper.style.height = displayH + 'px';
 
   const canvas = $('#chatPreviewCanvas');
-  canvas.style.fontSize = Math.round(scale * 16) + 'px';
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+  canvas.style.transform = `scale(${scale})`;
+  canvas.style.transformOrigin = '0 0';
+  canvas.style.fontSize = '16px';
 
   const [fullW, fullH] = chatGetResolution();
   $('#globalResInfo').textContent = `${fullW}x${fullH}`;
@@ -2999,20 +3006,22 @@ function initChat() {
     const statuses = { imessage:'iMessage', whatsapp:'online', discord:`${chatState.messages.length} wiadomości`, messenger:'Active now', custom:'online' };
     const headerHTML = `<div class="chat-render-header" ${headerStyle?`style="${headerStyle}"`:''}><div class="chat-render-back"><svg width="${p==='discord'?'16':'20'}" height="${p==='discord'?'16':'20'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></div>${avatar}<div class="chat-render-info"><div class="chat-render-name">${headerContact.name}</div><div class="chat-render-status">${statuses[p]||''}</div></div></div>`;
 
-    const buildFrame = (limit, showTypingFrom) => {
+    const buildFrame = (limit, showTypingFrom, animateLast) => {
       let msgHTML = '';
       for (let i = 0; i < limit; i++) {
-        msgHTML += chatBubbleHTML(chatState.messages[i], i, p, bubbleLStyle, bubbleRStyle, false);
+        const isLast = animateLast && i === limit - 1;
+        msgHTML += chatBubbleHTML(chatState.messages[i], i, p, bubbleLStyle, bubbleRStyle, isLast);
       }
       let typingHTML = '';
       if (typeof showTypingFrom === 'number' && showTypingFrom < chatState.messages.length) {
         typingHTML = chatTypingHTML(chatState.messages[showTypingFrom].sender);
       }
-      return `<div class="chat-render chat-platform-${p}" ${textStyle?`style="${textStyle}"`:''}>${headerHTML}<div class="chat-render-body" ${bodyStyle?`style="${bodyStyle}"`:''}>${msgHTML}${typingHTML}</div></div>`;
+      const animClass = animateLast ? ' chat-animate' : '';
+      return `<div class="chat-render chat-platform-${p}${animClass}" ${textStyle?`style="${textStyle}"`:''}>${headerHTML}<div class="chat-render-body" ${bodyStyle?`style="${bodyStyle}"`:''}>${msgHTML}${typingHTML}</div></div>`;
     };
 
-    const capture = async (html) => {
-      return await ipcRenderer.invoke('bg-render', { html });
+    const capture = async (html, delay) => {
+      return await ipcRenderer.invoke('bg-render', { html, delay });
     };
 
     const frames = [];
@@ -3028,7 +3037,7 @@ function initChat() {
       frames.push({ data: typingData, duration: framesPerTyping });
       done += framesPerTyping;
 
-      const bubbleData = await capture(buildFrame(i + 1));
+      const bubbleData = await capture(buildFrame(i + 1, undefined, true), 450);
       frames.push({ data: bubbleData, duration: framesPerBubble + framesPerPause });
       done += framesPerBubble + framesPerPause;
 

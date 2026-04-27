@@ -133,13 +133,18 @@ window._bgSetBody = function(html) {
   return true;
 });
 
-ipcMain.handle('bg-render', async (event, { html }) => {
+ipcMain.handle('bg-render', async (event, { html, delay }) => {
   if (!bgWindow) return null;
   const wc = bgWindow.webContents;
   await wc.executeJavaScript(
     'window._bgRender(' + JSON.stringify(html) + ');' +
     'new Promise(function(r){requestAnimationFrame(function(){requestAnimationFrame(r);});});'
   );
+  if (delay) {
+    await wc.executeJavaScript(
+      'new Promise(function(r){setTimeout(r,' + delay + ');});'
+    );
+  }
   const image = await wc.capturePage();
   return image.toJPEG(92).toString('base64');
 });
