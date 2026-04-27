@@ -1,7 +1,6 @@
-const { app, BrowserWindow, ipcMain, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const os = require('os');
 
 let mainWindow;
 
@@ -21,6 +20,14 @@ function createWindow() {
 
   mainWindow.loadFile(path.join(__dirname, 'src', 'index.html'));
 }
+
+ipcMain.handle('save-dialog', async (event, { defaultName }) => {
+  const result = await dialog.showSaveDialog(mainWindow, {
+    defaultPath: defaultName,
+    filters: [{ name: 'PNG', extensions: ['png'] }]
+  });
+  return result.canceled ? null : result.filePath;
+});
 
 ipcMain.handle('export-png', async (event, { rect, savePath }) => {
   const image = await mainWindow.webContents.capturePage(rect);

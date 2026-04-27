@@ -97,33 +97,23 @@
             </div>
             <div class="custom-group">
               <label class="custom-label">Zoom <span class="control-value" id="zoomVal">1.8x</span></label>
-              <input type="range" class="control-range" id="zoomRange" min="1" max="3" step="0.1" value="1.8">
+              <input type="range" class="control-range" id="zoomRange" min="1" max="3" step="0.1" value="1.8" data-default="1.8">
             </div>
             <div class="custom-group">
               <label class="custom-label">Offset X <span class="control-value" id="offXVal">0</span></label>
-              <input type="range" class="control-range" id="offXRange" min="-300" max="300" step="5" value="0">
+              <input type="range" class="control-range" id="offXRange" min="-300" max="300" step="5" value="0" data-default="0">
             </div>
             <div class="custom-group">
               <label class="custom-label">Offset Y <span class="control-value" id="offYVal">0</span></label>
-              <input type="range" class="control-range" id="offYRange" min="-300" max="300" step="5" value="0">
+              <input type="range" class="control-range" id="offYRange" min="-300" max="300" step="5" value="0" data-default="0">
             </div>
             <div class="custom-group">
               <label class="custom-label">Skala czcionki <span class="control-value" id="fontScaleVal">100%</span></label>
-              <input type="range" class="control-range" id="fontScaleRange" min="50" max="200" step="5" value="100">
+              <input type="range" class="control-range" id="fontScaleRange" min="80" max="140" step="5" value="100" data-default="100">
             </div>
             <div class="custom-group">
               <label class="custom-label">Line-height <span class="control-value" id="lineHVal">1.72</span></label>
-              <input type="range" class="control-range" id="lineHRange" min="1.0" max="2.5" step="0.05" value="1.72">
-            </div>
-            <div class="custom-row">
-              <div class="custom-color">
-                <label class="custom-label">Tło</label>
-                <input type="color" class="control-color" id="colorBg" value="#ffffff">
-              </div>
-              <div class="custom-color">
-                <label class="custom-label">Tekst</label>
-                <input type="color" class="control-color" id="colorText" value="#333333">
-              </div>
+              <input type="range" class="control-range" id="lineHRange" min="1.0" max="2.5" step="0.05" value="1.72" data-default="1.72">
             </div>
             <div class="custom-group">
               <label class="custom-label">Highlight kolor</label>
@@ -133,12 +123,20 @@
               </div>
             </div>
             <div class="custom-group">
-              <label class="custom-label">Winieta <span class="control-value" id="vignetteVal">55%</span></label>
-              <input type="range" class="control-range" id="vignetteRange" min="0" max="100" step="5" value="55">
+              <label class="custom-label">Winieta moc <span class="control-value" id="vignetteVal">55%</span></label>
+              <input type="range" class="control-range" id="vignetteRange" min="0" max="100" step="5" value="55" data-default="55">
+            </div>
+            <div class="custom-group">
+              <label class="custom-label">Winieta rozmiar <span class="control-value" id="vignetteSizeVal">50%</span></label>
+              <input type="range" class="control-range" id="vignetteSizeRange" min="20" max="80" step="5" value="50" data-default="50">
+            </div>
+            <div class="custom-group">
+              <label class="custom-label">Winieta rozmycie <span class="control-value" id="vignetteSpreadVal">45%</span></label>
+              <input type="range" class="control-range" id="vignetteSpreadRange" min="10" max="80" step="5" value="45" data-default="45">
             </div>
             <div class="custom-group">
               <label class="custom-label">Przejście <span class="control-value" id="transitionVal">120ms</span></label>
-              <input type="range" class="control-range" id="transitionRange" min="0" max="1000" step="20" value="120">
+              <input type="range" class="control-range" id="transitionRange" min="0" max="500" step="10" value="120" data-default="120">
             </div>
           </div>
         </div>

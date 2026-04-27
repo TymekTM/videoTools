@@ -1,6 +1,3 @@
-const path = require('path');
-const os = require('os');
-
 const RESOLUTIONS = {
   '16:9': { '720p': [1280, 720], '1080p': [1920, 1080], '4K': [3840, 2160] },
   '9:16': { '720p': [720, 1280], '1080p': [1080, 1920], '4K': [2160, 3840] },
@@ -2642,6 +2639,12 @@ function initChat() {
   });
 
   $('#chatExportBtn').addEventListener('click', async () => {
+    const { ipcRenderer } = require('electron');
+    const savePath = await ipcRenderer.invoke('save-dialog', {
+      defaultName: `chat-${chatState.platform}-${Date.now()}.png`
+    });
+    if (!savePath) return;
+
     const wrapper = $('#chatPreviewWrapper');
     const [w, h] = chatGetResolution();
 
@@ -2656,10 +2659,9 @@ function initChat() {
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
     const rect = wrapper.getBoundingClientRect();
-    const { ipcRenderer } = require('electron');
-    const savePath = await ipcRenderer.invoke('export-png', {
+    await ipcRenderer.invoke('export-png', {
       rect: { x: Math.round(rect.x), y: Math.round(rect.y), width: Math.round(rect.width), height: Math.round(rect.height) },
-      savePath: path.join(os.homedir(), `Desktop/chat-${chatState.platform}-${Date.now()}.png`)
+      savePath
     });
 
     wrapper.style.width = oldW;
