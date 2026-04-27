@@ -2262,9 +2262,17 @@ function initNewspaper() {
     const oldW = wrapper.style.width;
     const oldH = wrapper.style.height;
     const oldTransform = wrapper.style.transform;
+    const oldPosition = wrapper.style.position;
+    const oldTop = wrapper.style.top;
+    const oldLeft = wrapper.style.left;
+    const oldZIndex = wrapper.style.zIndex;
     wrapper.style.width = w + 'px';
     wrapper.style.height = h + 'px';
     wrapper.style.transform = 'none';
+    wrapper.style.position = 'fixed';
+    wrapper.style.top = '0';
+    wrapper.style.left = '0';
+    wrapper.style.zIndex = '99999';
     canvas.innerHTML = '';
 
     setNewsExporting(true, 'Przygotowuję...');
@@ -2323,6 +2331,10 @@ function initNewspaper() {
     wrapper.style.width = oldW;
     wrapper.style.height = oldH;
     wrapper.style.transform = oldTransform;
+    wrapper.style.position = oldPosition;
+    wrapper.style.top = oldTop;
+    wrapper.style.left = oldLeft;
+    wrapper.style.zIndex = oldZIndex;
     canvas.innerHTML = '';
     updatePreviewSize();
     setNewsExporting(false);
