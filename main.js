@@ -1,8 +1,12 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain, nativeImage } = require('electron');
 const path = require('path');
+const fs = require('fs');
+const os = require('os');
+
+let mainWindow;
 
 function createWindow() {
-  const win = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1500,
     height: 950,
     minWidth: 1100,
@@ -15,8 +19,15 @@ function createWindow() {
     }
   });
 
-  win.loadFile(path.join(__dirname, 'src', 'index.html'));
+  mainWindow.loadFile(path.join(__dirname, 'src', 'index.html'));
 }
+
+ipcMain.handle('export-png', async (event, { rect, savePath }) => {
+  const image = await mainWindow.webContents.capturePage(rect);
+  const png = image.toPNG();
+  fs.writeFileSync(savePath, png);
+  return savePath;
+});
 
 app.whenReady().then(createWindow);
 

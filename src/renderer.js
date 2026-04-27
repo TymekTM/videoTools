@@ -2638,35 +2638,30 @@ function initChat() {
     });
   });
 
-  $('#chatExportBtn').addEventListener('click', () => {
-    const canvasEl = document.createElement('canvas');
+  $('#chatExportBtn').addEventListener('click', async () => {
+    const wrapper = $('#chatPreviewWrapper');
     const [w, h] = chatGetResolution();
-    const scale = 2;
-    canvasEl.width = w * scale;
-    canvasEl.height = h * scale;
-    const ctx = canvasEl.getContext('2d');
 
-    const source = $('#chatPreviewCanvas');
-    const html = source.innerHTML;
-    const svgStr = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">
-      <foreignObject width="100%" height="100%">
-        <div xmlns="http://www.w3.org/1999/xhtml" style="font-size:16px">${html}</div>
-      </foreignObject>
-    </svg>`;
+    const oldW = wrapper.style.width;
+    const oldH = wrapper.style.height;
+    const oldOverflow = wrapper.style.overflow;
 
-    const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const img = new Image();
-    img.onload = () => {
-      ctx.scale(scale, scale);
-      ctx.drawImage(img, 0, 0, w, h);
-      URL.revokeObjectURL(url);
-      const link = document.createElement('a');
-      link.download = `chat-${chatState.platform}-${Date.now()}.png`;
-      link.href = canvasEl.toDataURL('image/png');
-      link.click();
-    };
-    img.src = url;
+    wrapper.style.width = w + 'px';
+    wrapper.style.height = h + 'px';
+    wrapper.style.overflow = 'hidden';
+
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+    const rect = wrapper.getBoundingClientRect();
+    const { ipcRenderer } = require('electron');
+    const savePath = await ipcRenderer.invoke('export-png', {
+      rect: { x: Math.round(rect.x), y: Math.round(rect.y), width: Math.round(rect.width), height: Math.round(rect.height) },
+      savePath: path.join(os.homedir(), `Desktop/chat-${chatState.platform}-${Date.now()}.png`)
+    });
+
+    wrapper.style.width = oldW;
+    wrapper.style.height = oldH;
+    wrapper.style.overflow = oldOverflow;
   });
 }
 

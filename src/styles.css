@@ -634,14 +634,10 @@ html, body {
   flex-direction: column;
   gap: 6px;
   padding: 8px;
-  max-height: 2000px;
-  transition: max-height 0.25s ease, padding 0.25s ease;
-  overflow: hidden;
 }
 
 .custom-section.collapsed .custom-body {
-  max-height: 0;
-  padding: 0 8px;
+  display: none;
 }
 
 .custom-group {
@@ -1082,69 +1078,6 @@ html, body {
   border-top-right-radius: 0;
 }
 .chat-platform-whatsapp .chat-bubble-time { color: #8696a0; }
-
-/* ─── Telegram ─── */
-.chat-platform-telegram .chat-render-header {
-  background: #fff;
-  border-bottom: 1px solid #e6e6e6;
-  padding: clamp(8px, 1.2vw, 16px) clamp(10px, 1.8vw, 22px);
-}
-.chat-platform-telegram .chat-render-back { color: #2AABEE; opacity: 1; }
-.chat-platform-telegram .chat-render-avatar {
-  border: none;
-}
-.chat-platform-telegram .chat-render-name { color: #000; font-weight: 600; }
-.chat-platform-telegram .chat-render-status { color: #8e8e93; opacity: 1; }
-.chat-platform-telegram .chat-render-body {
-  background-color: #c8dce8;
-  background-image:
-    url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23b4ccda' fill-opacity='0.35'%3E%3Cpath d='M20 20h8v8h-8zM52 20h8v8h-8zM36 36h8v8h-8zM4 52h8v8H4zM68 52h8v8h-8zM20 60h8v8h-8zM52 60h8v8h-8z'/%3E%3C/g%3E%3C/svg%3E");
-}
-.chat-platform-telegram .chat-bubble {
-  border-radius: clamp(10px, 1.2vw, 16px);
-  padding: clamp(6px, 0.9vw, 11px) clamp(10px, 1.3vw, 16px);
-  box-shadow: 0 1px 1px rgba(0,0,0,0.06);
-  position: relative;
-}
-.chat-platform-telegram .chat-bubble-left {
-  background: #fff;
-  color: #000;
-  border-bottom-left-radius: clamp(4px, 0.5vw, 6px);
-}
-.chat-platform-telegram .chat-bubble-left::before {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: clamp(-6px, -0.8vw, -8px);
-  width: 0;
-  height: 0;
-  border-style: solid;
-  border-width: 0 0 clamp(8px, 1vw, 12px) clamp(8px, 1vw, 12px);
-  border-color: transparent transparent #fff transparent;
-}
-.chat-platform-telegram .chat-bubble-right {
-  background: #eeffca;
-  color: #000;
-  border-bottom-right-radius: clamp(4px, 0.5vw, 6px);
-}
-.chat-platform-telegram .chat-bubble-right::before {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  right: clamp(-6px, -0.8vw, -8px);
-  width: 0;
-  height: 0;
-  border-style: solid;
-  border-width: 0 clamp(8px, 1vw, 12px) clamp(8px, 1vw, 12px) 0;
-  border-color: transparent #eeffca transparent transparent;
-}
-.chat-platform-telegram .chat-bubble-time {
-  color: #6fb5d3;
-  opacity: 0.7;
-}
-.chat-platform-telegram .chat-bubble-right .chat-bubble-time {
-  color: #6faa3d;
-}
 
 /* ─── Discord ─── */
 .chat-platform-discord .chat-render {
