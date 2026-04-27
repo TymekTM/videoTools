@@ -955,22 +955,17 @@ html, body {
   100% { opacity: 0; transform: translateY(-8px) scale(0.9); }
 }
 
-.chat-animate .chat-bubble {
-  opacity: 0;
-  transform: translateY(40px);
-}
-
 .chat-animate .chat-bubble-left,
 .chat-animate .chat-bubble-right {
+}
+
+.chat-animate .chat-bubble-animate.chat-bubble-left,
+.chat-animate .chat-bubble-animate.chat-bubble-right {
   animation: bubbleSlideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
-.chat-animate.chat-platform-discord .chat-bubble {
-  transform: none;
-}
-
-.chat-animate.chat-platform-discord .chat-bubble-left,
-.chat-animate.chat-platform-discord .chat-bubble-right {
+.chat-animate.chat-platform-discord .chat-bubble-animate.chat-bubble-left,
+.chat-animate.chat-platform-discord .chat-bubble-animate.chat-bubble-right {
   animation: discordMsgIn 0.3s ease-out forwards;
 }
 

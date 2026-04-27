@@ -2248,11 +2248,10 @@ function initNewspaper() {
     const [w, h] = getResolution();
     const fps = 30;
     const slideDurationMs = state.speed;
-    const loops = parseInt($('#exportLoops').value) || 1;
-    const enabledCount = state.enabledTemplates.size;
-    const slidesPerLoop = Math.min(enabledCount, 20);
-    const totalSlides = slidesPerLoop * loops;
+    const targetDurationSec = parseInt($('#exportDuration').value) || 30;
     const framesPerSlide = Math.max(1, Math.round((slideDurationMs / 1000) * fps));
+    const totalFrames = targetDurationSec * fps;
+    const totalSlides = Math.ceil(totalFrames / framesPerSlide);
 
     const oldW = wrapper.style.width;
     const oldH = wrapper.style.height;
@@ -2485,15 +2484,16 @@ function chatTimeStr(i) {
 
 let chatAnimTimer = null;
 
-function chatBubbleHTML(msg, i, p, bubbleLStyle, bubbleRStyle) {
+function chatBubbleHTML(msg, i, p, bubbleLStyle, bubbleRStyle, animateBubble) {
   const contact = chatState.contacts[msg.sender];
   const isRight = msg.sender === 0;
   const time = chatTimeStr(i);
+  const animCls = animateBubble ? ' chat-bubble-animate' : '';
 
   if (p === 'discord') {
     const discAvatar = chatAvatarHTML(contact, 'clamp(26px,3.2vw,38px)');
     return `
-      <div class="chat-bubble ${isRight ? 'chat-bubble-right' : 'chat-bubble-left'}">
+      <div class="chat-bubble ${isRight ? 'chat-bubble-right' : 'chat-bubble-left'}${animCls}">
         ${discAvatar}
         <div class="chat-bubble-content">
           <div class="chat-bubble-meta">
@@ -2509,7 +2509,7 @@ function chatBubbleHTML(msg, i, p, bubbleLStyle, bubbleRStyle) {
   let styleAttr = bubbleStyle ? `style="${bubbleStyle}"` : '';
 
   return `
-    <div class="chat-bubble ${isRight ? 'chat-bubble-right' : 'chat-bubble-left'}" ${styleAttr}>
+    <div class="chat-bubble ${isRight ? 'chat-bubble-right' : 'chat-bubble-left'}${animCls}" ${styleAttr}>
       ${msg.text}
       <div class="chat-bubble-time">${time}</div>
     </div>`;
@@ -2521,15 +2521,15 @@ function chatTypingHTML(sender) {
   const isRight = sender === 0;
 
   if (p === 'discord') {
-    const discAvatar = chatAvatarHTML(contact, 'clamp(26px,3.2vw,38px)');
     return `
-      <div class="chat-typing-indicator">
-        ${discAvatar}
-        <div style="display:flex;align-items:center;gap:clamp(3px,0.4vw,5px)">
-          <div class="chat-typing-dot"></div>
-          <div class="chat-typing-dot"></div>
-          <div class="chat-typing-dot"></div>
-        </div>
+      <div class="chat-typing-indicator chat-discord-typing">
+        <span class="chat-discord-typing-name" style="color:${contact.color}">${contact.name}</span>
+        <span class="chat-discord-typing-text">pisze</span>
+        <span class="chat-discord-typing-dots">
+          <span class="chat-typing-dot"></span>
+          <span class="chat-typing-dot"></span>
+          <span class="chat-typing-dot"></span>
+        </span>
       </div>`;
   }
 
