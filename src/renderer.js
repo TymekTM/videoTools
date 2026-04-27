@@ -2244,8 +2244,6 @@ function initNewspaper() {
     const wasPlaying = state.playing;
     if (wasPlaying) stop();
 
-    const canvas = $('#previewCanvas');
-    const wrapper = $('#previewWrapper');
     const [w, h] = getResolution();
     const fps = 30;
     const slideDurationMs = state.speed;
@@ -2259,24 +2257,8 @@ function initNewspaper() {
     if (state.lineH !== 1.72) overrides.push(`line-height:${state.lineH}!important`);
     const overrideStyle = overrides.length ? `<style>.so *{${overrides.join(';')}}</style>` : '';
 
-    const oldW = wrapper.style.width;
-    const oldH = wrapper.style.height;
-    const oldTransform = wrapper.style.transform;
-    const oldPosition = wrapper.style.position;
-    const oldTop = wrapper.style.top;
-    const oldLeft = wrapper.style.left;
-    const oldZIndex = wrapper.style.zIndex;
-    wrapper.style.width = w + 'px';
-    wrapper.style.height = h + 'px';
-    wrapper.style.transform = 'none';
-    wrapper.style.position = 'fixed';
-    wrapper.style.top = '0';
-    wrapper.style.left = '0';
-    wrapper.style.zIndex = '99999';
-    canvas.innerHTML = '';
-
-    setNewsExporting(true, 'Przygotowuję...');
-    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    setNewsExporting(true, 'Inicjalizacja...');
+    await ipcRenderer.invoke('export-init', { width: w, height: h });
 
     buildQueue();
     const frames = [];
@@ -2285,37 +2267,17 @@ function initNewspaper() {
       const template = state.queue[s % state.queue.length];
       const helpers = getTemplateHelpers();
       const html = template.render.call(helpers, state.keyword);
-
       const bgMatch = html.match(/background:\s*(#[0-9a-fA-F]{3,8})/);
+      const bg = bgMatch ? bgMatch[1] : '#fff';
 
-      canvas.innerHTML = `
-        <div style="position:absolute;inset:0;background:${bgMatch ? bgMatch[1] : '#fff'}">
-          ${overrideStyle}
-          <div class="zoom-scroll" style="position:absolute;inset:0;overflow:hidden;">
-            <div class="article-inner so" style="width:100%;height:100%;overflow:hidden;display:flex;flex-direction:column;transform:scale(${state.zoomLevel});transform-origin:0 0;">
-              ${html}
-            </div>
-          </div>
-        </div>`;
+      const bodyHtml = `<div style="position:absolute;inset:0;background:${bg}">${overrideStyle}<div class="zoom-scroll" style="position:absolute;inset:0;overflow:hidden;"><div class="article-inner so" style="width:100%;height:100%;overflow:hidden;display:flex;flex-direction:column;transform:scale(${state.zoomLevel});transform-origin:0 0;">${html}</div></div></div>`;
 
-      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-
-      const kwEl = canvas.querySelector('.keyword-highlight');
-      const scroller = canvas.querySelector('.zoom-scroll');
-      if (kwEl && scroller) {
-        const sRect = scroller.getBoundingClientRect();
-        const kRect = kwEl.getBoundingClientRect();
-        const kCX = kRect.left + kRect.width / 2 - sRect.left;
-        const kCY = kRect.top + kRect.height / 2 - sRect.top;
-        const offX = sRect.width / 2 - kCX + state.zoomOffsetX;
-        const offY = sRect.height / 2 - kCY + state.zoomOffsetY;
-        canvas.querySelector('.article-inner').style.transform = `translate(${offX}px, ${offY}px) scale(${state.zoomLevel})`;
-        await new Promise(r => requestAnimationFrame(r));
-      }
-
-      const rect = wrapper.getBoundingClientRect();
-      const captureRect = { x: Math.round(rect.x), y: Math.round(rect.y), width: Math.round(rect.width), height: Math.round(rect.height) };
-      const base64 = await ipcRenderer.invoke('capture-frame', { rect: captureRect });
+      const base64 = await ipcRenderer.invoke('export-slide', {
+        bodyHtml, bg,
+        zoom: state.zoomLevel,
+        offX: state.zoomOffsetX,
+        offY: state.zoomOffsetY
+      });
       frames.push({ data: base64, duration: framesPerSlide });
 
       const pct = Math.round(((s + 1) / totalSlides) * 100);
@@ -2327,16 +2289,7 @@ function initNewspaper() {
     $('#newsExportBarFill').style.width = '100%';
 
     await ipcRenderer.invoke('export-mp4', { frames, savePath, fps, width: w, height: h });
-
-    wrapper.style.width = oldW;
-    wrapper.style.height = oldH;
-    wrapper.style.transform = oldTransform;
-    wrapper.style.position = oldPosition;
-    wrapper.style.top = oldTop;
-    wrapper.style.left = oldLeft;
-    wrapper.style.zIndex = oldZIndex;
-    canvas.innerHTML = '';
-    updatePreviewSize();
+    await ipcRenderer.invoke('export-cleanup');
     setNewsExporting(false);
   });
 
@@ -2558,15 +2511,19 @@ function chatTypingHTML(sender) {
   const isRight = sender === 0;
 
   if (p === 'discord') {
+    const discAvatar = chatAvatarHTML(contact, 'clamp(26px,3.2vw,38px)');
     return `
       <div class="chat-typing-indicator chat-discord-typing">
-        <span class="chat-discord-typing-name" style="color:${contact.color}">${contact.name}</span>
-        <span class="chat-discord-typing-text">pisze</span>
-        <span class="chat-discord-typing-dots">
-          <span class="chat-typing-dot"></span>
-          <span class="chat-typing-dot"></span>
-          <span class="chat-typing-dot"></span>
-        </span>
+        ${discAvatar}
+        <div class="chat-bubble-content">
+          <span class="chat-discord-typing-name" style="color:${contact.color}">${contact.name}</span>
+          <span class="chat-discord-typing-text">pisze</span>
+          <span class="chat-discord-typing-dots">
+            <span class="chat-typing-dot"></span>
+            <span class="chat-typing-dot"></span>
+            <span class="chat-typing-dot"></span>
+          </span>
+        </div>
       </div>`;
   }
 
@@ -2638,7 +2595,7 @@ function chatRenderPreview(animate, upTo, showTypingFrom) {
   }
 
   let typingHTML = '';
-  if (typeof showTypingFrom === 'number' && showTypingFrom < chatState.messages.length && p !== 'discord') {
+  if (typeof showTypingFrom === 'number' && showTypingFrom < chatState.messages.length) {
     typingHTML = chatTypingHTML(chatState.messages[showTypingFrom].sender);
   }
 
@@ -2670,12 +2627,10 @@ function chatRunAnimation(from, p, bubbleLStyle, bubbleRStyle, bodyStyle, textSt
     const canvas = $('#chatPreviewCanvas');
     const body = canvas.querySelector('.chat-render-body');
 
-    if (!isDiscord) {
-      const typingEl = body.querySelector('.chat-typing-indicator');
-      if (typingEl) {
-        typingEl.classList.add('chat-typing-hide');
-        setTimeout(() => typingEl.remove(), 200);
-      }
+    const typingEl = body.querySelector('.chat-typing-indicator');
+    if (typingEl) {
+      typingEl.classList.add('chat-typing-hide');
+      setTimeout(() => typingEl.remove(), 200);
     }
 
     setTimeout(() => {
@@ -2687,46 +2642,32 @@ function chatRunAnimation(from, p, bubbleLStyle, bubbleRStyle, bodyStyle, textSt
     }, 150);
   };
 
-  if (isDiscord) {
-    const step = (i) => {
-      if (i >= chatState.messages.length) return;
-      chatAnimTimer = setTimeout(() => {
-        addBubble(i, () => {
-          if (i + 1 < chatState.messages.length) step(i + 1);
-        });
-      }, bubbleGap);
-    };
-    chatAnimTimer = setTimeout(() => step(from), 400);
-  } else {
-    const step = (i) => {
-      if (i >= chatState.messages.length) return;
-      chatAnimTimer = setTimeout(() => {
-        addBubble(i, () => {
-          if (i + 1 < chatState.messages.length) {
-            chatAnimTimer = setTimeout(() => {
-              const canvas = $('#chatPreviewCanvas');
-              const body = canvas.querySelector('.chat-render-body');
-              const typing = chatTypingHTML(chatState.messages[i + 1].sender);
-              const temp2 = document.createElement('div');
-              temp2.innerHTML = typing.trim();
-              body.appendChild(temp2.firstChild);
-              step(i + 1);
-            }, bubbleGap);
-          }
-        });
-      }, typingDuration);
-    };
+  const showTyping = (i, cb) => {
+    const canvas = $('#chatPreviewCanvas');
+    const body = canvas.querySelector('.chat-render-body');
+    const typing = chatTypingHTML(chatState.messages[i].sender);
+    const temp = document.createElement('div');
+    temp.innerHTML = typing.trim();
+    body.appendChild(temp.firstChild);
+    cb();
+  };
 
+  const step = (i) => {
+    if (i >= chatState.messages.length) return;
     chatAnimTimer = setTimeout(() => {
-      const canvas = $('#chatPreviewCanvas');
-      const body = canvas.querySelector('.chat-render-body');
-      const typing = chatTypingHTML(chatState.messages[from].sender);
-      const temp = document.createElement('div');
-      temp.innerHTML = typing.trim();
-      body.appendChild(temp.firstChild);
-      step(from);
-    }, 400);
-  }
+      addBubble(i, () => {
+        if (i + 1 < chatState.messages.length) {
+          chatAnimTimer = setTimeout(() => {
+            showTyping(i + 1, () => step(i + 1));
+          }, bubbleGap);
+        }
+      });
+    }, typingDuration);
+  };
+
+  chatAnimTimer = setTimeout(() => {
+    showTyping(from, () => step(from));
+  }, 400);
 }
 
 function chatRenderMessageList() {
@@ -2848,35 +2789,23 @@ function initChat() {
     const bubbleMs = 350;
     const pauseMs = 600;
     const msgCount = chatState.messages.length;
-    const isDiscord = chatState.platform === 'discord';
 
     chatRenderPreview(false, 0);
 
-    if (isDiscord) {
-      let i = 0;
-      const showNext = () => {
-        if (i >= msgCount) { finish(); return; }
-        i++;
-        chatRenderPreview(true, i);
-        chatAnimTimer = setTimeout(showNext, bubbleMs + pauseMs);
-      };
-      chatAnimTimer = setTimeout(showNext, 400);
-    } else {
-      let i = 0;
-      const showTyping = () => {
-        if (i >= msgCount) { finish(); return; }
-        chatRenderPreview(false, i, i);
-        chatAnimTimer = setTimeout(showBubble, typingMs);
-      };
+    let i = 0;
+    const showTyping = () => {
+      if (i >= msgCount) { finish(); return; }
+      chatRenderPreview(false, i, i);
+      chatAnimTimer = setTimeout(showBubble, typingMs);
+    };
 
-      const showBubble = () => {
-        i++;
-        chatRenderPreview(true, i);
-        chatAnimTimer = setTimeout(showTyping, bubbleMs + pauseMs);
-      };
+    const showBubble = () => {
+      i++;
+      chatRenderPreview(true, i);
+      chatAnimTimer = setTimeout(showTyping, bubbleMs + pauseMs);
+    };
 
-      chatAnimTimer = setTimeout(showTyping, 400);
-    }
+    chatAnimTimer = setTimeout(showTyping, 400);
 
     const finish = () => {
       chatPreviewing = false;
@@ -3033,22 +2962,14 @@ function initChat() {
     };
 
     await emptyFrame();
-    const isDiscord = chatState.platform === 'discord';
-    let total, done = 0;
-
-    if (isDiscord) {
-      total = framesPerPause + (framesPerBubble + framesPerPause) * msgCount + framesEnd;
-    } else {
-      total = framesPerPause + (framesPerTyping + framesPerBubble + framesPerPause) * msgCount + framesEnd;
-    }
+    let total = framesPerPause + (framesPerTyping + framesPerBubble + framesPerPause) * msgCount + framesEnd;
+    let done = 0;
 
     for (let i = 0; i < msgCount; i++) {
-      if (!isDiscord) {
-        chatRenderPreview(false, i, i);
-        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-        frames.push({ data: await capture(), duration: framesPerTyping });
-        done += framesPerTyping;
-      }
+      chatRenderPreview(false, i, i);
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+      frames.push({ data: await capture(), duration: framesPerTyping });
+      done += framesPerTyping;
 
       chatRenderPreview(true, i + 1);
       await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));

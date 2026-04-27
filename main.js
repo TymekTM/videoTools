@@ -6,6 +6,45 @@ const { spawn } = require('child_process');
 const ffmpegPath = require('ffmpeg-static');
 
 let mainWindow;
+let exportWindow = null;
+
+const FONTS_LINK = '<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;700;900&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Crimson+Pro:ital,wght@0,400;0,600;0,700;0,900;1,400&family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;0,9..40,900;1,9..40,400&family=EB+Garamond:ital,wght@0,400;0,700;1,400&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;0,9..144,900;1,9..144,400&family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,600;0,700;1,400&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;600;700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Libre+Franklin:wght@400;600;700;900&family=Lora:ital,wght@0,400;0,700;1,400&family=Manrope:wght@300;400;500;600;700;800&family=Merriweather:wght@400;700;900&family=Outfit:wght@400;500;600;700;800&family=Oswald:wght@400;600;700&family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Roboto+Slab:wght@400;700&family=Sora:wght@400;600;700;800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=Space+Grotesk:wght@400;600;700&family=Work+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">';
+
+const EXPORT_HTML = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+${FONTS_LINK}
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden}
+</style>
+<script>
+window._renderSlide = function(d) {
+  return new Promise(function(resolve) {
+    document.body.innerHTML = d.bodyHtml;
+    document.fonts.ready.then(function() {
+      requestAnimationFrame(function() {
+        requestAnimationFrame(function() {
+          var kw = document.querySelector('.keyword-highlight');
+          var sc = document.querySelector('.zoom-scroll');
+          if (kw && sc) {
+            var sR = sc.getBoundingClientRect();
+            var kR = kw.getBoundingClientRect();
+            var cx = kR.left + kR.width / 2 - sR.left;
+            var cy = kR.top + kR.height / 2 - sR.top;
+            var ox = sR.width / 2 - cx + d.offX;
+            var oy = sR.height / 2 - cy + d.offY;
+            document.querySelector('.article-inner').style.transform =
+              'translate(' + ox + 'px,' + oy + 'px) scale(' + d.zoom + ')';
+            requestAnimationFrame(function() { resolve(); });
+          } else { resolve(); }
+        });
+      });
+    });
+  });
+};
+</script>
+</head><body></body></html>`;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -42,6 +81,31 @@ ipcMain.handle('export-png', async (event, { rect, savePath }) => {
 ipcMain.handle('capture-frame', async (event, { rect }) => {
   const image = await mainWindow.webContents.capturePage(rect);
   return image.toPNG().toString('base64');
+});
+
+ipcMain.handle('export-init', async (event, { width, height }) => {
+  if (exportWindow) { exportWindow.close(); exportWindow = null; }
+  exportWindow = new BrowserWindow({
+    width, height,
+    show: false,
+    webPreferences: { offscreen: true }
+  });
+  await exportWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(EXPORT_HTML));
+  await exportWindow.webContents.executeJavaScript('document.fonts.ready');
+  return true;
+});
+
+ipcMain.handle('export-slide', async (event, data) => {
+  if (!exportWindow) return null;
+  await exportWindow.webContents.executeJavaScript(
+    'window._renderSlide(' + JSON.stringify(data) + ')'
+  );
+  const image = await exportWindow.webContents.capturePage();
+  return image.toPNG().toString('base64');
+});
+
+ipcMain.handle('export-cleanup', () => {
+  if (exportWindow) { exportWindow.close(); exportWindow = null; }
 });
 
 ipcMain.handle('export-mp4', async (event, { frames, savePath, fps, width, height }) => {

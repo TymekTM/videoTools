@@ -1007,12 +1007,19 @@ html, body {
   background: transparent;
   padding: clamp(4px, 0.5vw, 8px) 0;
   border-radius: 0;
+  gap: clamp(6px, 0.7vw, 10px);
+  max-width: 100%;
+  font-size: clamp(11px, 1.3vw, 15px);
+}
+.chat-platform-discord .chat-discord-typing .chat-bubble-content {
+  display: flex;
+  align-items: center;
   gap: clamp(4px, 0.5vw, 6px);
 }
 .chat-platform-discord .chat-discord-typing-name { font-weight: 600; }
 .chat-platform-discord .chat-discord-typing-text { color: #8696a0; }
 .chat-platform-discord .chat-discord-typing-dots { display: inline-flex; align-items: center; gap: 2px; }
-.chat-platform-discord .chat-typing-dot { background: #8696a0; width: clamp(4px, 0.5vw, 6px); height: clamp(4px, 0.5vw, 6px); }
+.chat-platform-discord .chat-discord-typing .chat-typing-dot { background: #8696a0; width: clamp(4px, 0.5vw, 6px); height: clamp(4px, 0.5vw, 6px); }
 
 .chat-platform-custom .chat-typing-indicator {}
 .chat-platform-custom .chat-typing-dot {}
