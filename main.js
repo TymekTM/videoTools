@@ -41,7 +41,7 @@ ipcMain.handle('export-png', async (event, { rect, savePath }) => {
 
 ipcMain.handle('capture-frame', async (event, { rect }) => {
   const image = await mainWindow.webContents.capturePage(rect);
-  return image.toPNG();
+  return image.toPNG().toString('base64');
 });
 
 ipcMain.handle('export-mp4', async (event, { frames, savePath, fps, width, height }) => {

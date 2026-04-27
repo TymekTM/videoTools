@@ -2278,8 +2278,8 @@ function initNewspaper() {
       await new Promise(r => setTimeout(r, state.transitionMs + 50));
 
       for (let f = 0; f < framesPerSlide; f++) {
-        const pngBuf = await ipcRenderer.invoke('capture-frame', { rect: captureRect });
-        frames.push(pngBuf.toString('base64'));
+        const base64 = await ipcRenderer.invoke('capture-frame', { rect: captureRect });
+        frames.push(base64);
         const pct = Math.round(((s * framesPerSlide + f) / totalFrames) * 100);
         $('#newsExportBarFill').style.width = pct + '%';
         $('#newsExportLabel').textContent = `Slajd ${s + 1}/${totalSlides} — klatka ${f + 1}/${framesPerSlide}`;
@@ -2875,9 +2875,13 @@ function initChat() {
     const [w, h] = chatGetResolution();
     const fps = 30;
     const msgCount = chatState.messages.length;
-    const delayPerMsg = chatState.animSpeed > 0 ? chatState.animSpeed : 400;
-    const totalMs = delayPerMsg * msgCount + 2000;
-    const totalFrames = Math.ceil((totalMs / 1000) * fps);
+    const speed = chatState.animSpeed > 0 ? chatState.animSpeed : 600;
+    const typingMs = Math.min(speed * 0.6, 800);
+    const pauseMs = 600;
+    const framesPerTyping = Math.round((typingMs / 1000) * fps);
+    const framesPerBubble = Math.round((350 / 1000) * fps);
+    const framesPerPause = Math.round((pauseMs / 1000) * fps);
+    const framesEnd = Math.round(1.5 * fps);
 
     const oldW = wrapper.style.width;
     const oldH = wrapper.style.height;
@@ -2896,18 +2900,43 @@ function initChat() {
       width: Math.round(rect.width), height: Math.round(rect.height)
     };
 
-    chatRenderPreview(true);
-    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const capture = async () => {
+      return await ipcRenderer.invoke('capture-frame', { rect: captureRect });
+    };
 
     const frames = [];
-    for (let f = 0; f < totalFrames; f++) {
-      const pngBuf = await ipcRenderer.invoke('capture-frame', { rect: captureRect });
-      frames.push(pngBuf.toString('base64'));
-      const pct = Math.round((f / totalFrames) * 100);
+
+    const emptyFrame = async () => {
+      chatRenderPreview(false, 0);
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+      for (let f = 0; f < framesPerPause; f++) frames.push(await capture());
+    };
+
+    await emptyFrame();
+    let total = framesPerPause * msgCount + (framesPerTyping + framesPerBubble + framesPerPause) * msgCount + framesEnd;
+    let done = 0;
+
+    for (let i = 0; i < msgCount; i++) {
+      chatRenderPreview(false, i, i);
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+      for (let f = 0; f < framesPerTyping; f++) {
+        frames.push(await capture());
+        done++;
+      }
+
+      chatRenderPreview(true, i + 1);
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+      for (let f = 0; f < framesPerBubble + framesPerPause; f++) {
+        frames.push(await capture());
+        done++;
+      }
+
+      const pct = Math.round((done / total) * 80);
       $('#chatExportBarFill').style.width = pct + '%';
-      $('#chatExportLabel').textContent = `Klatka ${f + 1}/${totalFrames}`;
-      await new Promise(r => setTimeout(r, 1000 / fps));
+      $('#chatExportLabel').textContent = `Wiadomość ${i + 1}/${msgCount}`;
     }
+
+    for (let f = 0; f < framesEnd; f++) frames.push(await capture());
 
     setExporting(true, 'Koduję MP4...');
     $('#chatExportBarFill').style.width = '100%';
