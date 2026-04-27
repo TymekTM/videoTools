@@ -927,6 +927,19 @@ html, body {
   gap: 6px;
 }
 
+.control-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: pointer;
+  margin-top: 2px;
+}
+.control-checkbox input {
+  accent-color: var(--accent);
+}
+
 /* ─── Chat Bubble Animation ─── */
 
 @keyframes bubbleSlideUp {

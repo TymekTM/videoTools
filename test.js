@@ -171,16 +171,12 @@ test('transform-origin centering puts keyword at canvas center', () => {
   ];
 
   cases.forEach(({ natX, natY }) => {
-    const kwCX = natX * cw;
-    const kwCY = natY * ch;
-    const dx = (cw / 2 - kwCX) / ZOOM;
-    const dy = (ch / 2 - kwCY) / ZOOM;
-    // transform-origin at (kwCX, kwCY), transform: translate(dx, dy) scale(ZOOM)
-    // Point p: translate to origin → T → S → translate back
-    // = ((p - origin) * ZOOM + dx * ZOOM) + origin
-    // For keyword at origin: (dx * ZOOM + kwCX, dy * ZOOM + kwCY)
-    const resultX = dx * ZOOM + kwCX;
-    const resultY = dy * ZOOM + kwCY;
+    const kCX = natX * cw;
+    const kCY = natY * ch;
+    const tx = cw / 2 - kCX * ZOOM;
+    const ty = ch / 2 - kCY * ZOOM;
+    const resultX = kCX * ZOOM + tx;
+    const resultY = kCY * ZOOM + ty;
     assert.strictEqual(resultX, cw / 2, `natX=${natX}: expected X=${cw/2}, got ${resultX}`);
     assert.strictEqual(resultY, ch / 2, `natY=${natY}: expected Y=${ch/2}, got ${resultY}`);
   });

@@ -1980,8 +1980,6 @@ function showSlide(template, direction = 'next') {
         overflow:hidden;
         display:flex;
         flex-direction:column;
-        transform:scale(${state.zoomLevel});
-        transform-origin:0 0;
       ">${html}</div>
     </div>`;
 
@@ -1990,15 +1988,16 @@ function showSlide(template, direction = 'next') {
   requestAnimationFrame(() => {
     const kwEl = slide.querySelector('.keyword-highlight');
     const scroller = slide.querySelector('.zoom-scroll');
-    if (kwEl && scroller) {
-      const sRect = scroller.getBoundingClientRect();
-      const kRect = kwEl.getBoundingClientRect();
-      const kCX = kRect.left + kRect.width / 2 - sRect.left;
-      const kCY = kRect.top + kRect.height / 2 - sRect.top;
-      const offX = sRect.width / 2 - kCX + state.zoomOffsetX;
-      const offY = sRect.height / 2 - kCY + state.zoomOffsetY;
-      const inner = slide.querySelector('.article-inner');
-      inner.style.transform = `translate(${offX}px, ${offY}px) scale(${state.zoomLevel})`;
+    const inner = slide.querySelector('.article-inner');
+    if (kwEl && scroller && inner) {
+      const sR = scroller.getBoundingClientRect();
+      const kR = kwEl.getBoundingClientRect();
+      const kCX = kR.left + kR.width / 2 - sR.left;
+      const kCY = kR.top + kR.height / 2 - sR.top;
+      const z = state.zoomLevel;
+      const offX = (sR.width / 2 - kCX * z) + state.zoomOffsetX * z;
+      const offY = (sR.height / 2 - kCY * z) + state.zoomOffsetY * z;
+      inner.style.transform = `translate(${offX}px, ${offY}px) scale(${z})`;
       inner.style.transformOrigin = '0 0';
     }
     slide.classList.add('active');
@@ -2276,7 +2275,7 @@ function initNewspaper() {
       const bgMatch = html.match(/background:\s*(#[0-9a-fA-F]{3,8})/);
       const bg = bgMatch ? bgMatch[1] : '#fff';
 
-      const bodyHtml = `<div style="position:absolute;inset:0;background:${bg}">${overrideStyle}<div class="zoom-scroll" style="position:absolute;inset:0;overflow:hidden;"><div class="article-inner so" style="width:100%;height:100%;overflow:hidden;display:flex;flex-direction:column;transform:scale(${state.zoomLevel});transform-origin:0 0;">${html}</div></div></div>`;
+      const bodyHtml = `<div style="position:absolute;inset:0;background:${bg}">${overrideStyle}<div class="zoom-scroll" style="position:absolute;inset:0;overflow:hidden;"><div class="article-inner so" style="width:100%;height:100%;overflow:hidden;display:flex;flex-direction:column;">${html}</div></div></div>`;
 
       slidesData.push({
         bodyHtml, bg,
@@ -2431,6 +2430,7 @@ const chatState = {
   format: '16:9',
   resolution: '1080p',
   animSpeed: 600,
+  hideTime: false,
   contacts: [
     { name: 'Jan', color: '#007AFF', avatar: null },
     { name: 'Anna', color: '#34C759', avatar: null }
@@ -2489,11 +2489,12 @@ function chatTimeStr(i) {
 }
 
 let chatAnimTimer = null;
+let chatAnimGen = 0;
 
 function chatBubbleHTML(msg, i, p, bubbleLStyle, bubbleRStyle, animateBubble) {
   const contact = chatState.contacts[msg.sender];
   const isRight = msg.sender === 0;
-  const time = chatTimeStr(i);
+  const time = chatState.hideTime ? '' : chatTimeStr(i);
   const animCls = animateBubble ? ' chat-bubble-animate' : '';
 
   if (p === 'discord') {
@@ -2504,7 +2505,7 @@ function chatBubbleHTML(msg, i, p, bubbleLStyle, bubbleRStyle, animateBubble) {
         <div class="chat-bubble-content">
           <div class="chat-bubble-meta">
             <span class="chat-bubble-author" style="color:${contact.color}">${contact.name}</span>
-            <span class="chat-bubble-time">${time}</span>
+            ${time ? `<span class="chat-bubble-time">${time}</span>` : ''}
           </div>
           <div class="chat-bubble-text">${msg.text}</div>
         </div>
@@ -2517,7 +2518,7 @@ function chatBubbleHTML(msg, i, p, bubbleLStyle, bubbleRStyle, animateBubble) {
   return `
     <div class="chat-bubble ${isRight ? 'chat-bubble-right' : 'chat-bubble-left'}${animCls}" ${styleAttr}>
       ${msg.text}
-      <div class="chat-bubble-time">${time}</div>
+      ${time ? `<div class="chat-bubble-time">${time}</div>` : ''}
     </div>`;
 }
 
@@ -2550,6 +2551,7 @@ function chatTypingHTML(sender) {
 
 function chatRenderPreview(animate, upTo, showTypingFrom) {
   if (chatAnimTimer) { clearTimeout(chatAnimTimer); chatAnimTimer = null; }
+  chatAnimGen++;
 
   const canvas = $('#chatPreviewCanvas');
   const p = chatState.platform;
@@ -2629,12 +2631,15 @@ function chatRunAnimation(from, p, bubbleLStyle, bubbleRStyle, bodyStyle, textSt
   if (chatAnimTimer) { clearTimeout(chatAnimTimer); chatAnimTimer = null; }
   if (from >= chatState.messages.length) return;
 
+  const gen = ++chatAnimGen;
   const speed = chatState.animSpeed;
   const typingDuration = Math.min(speed * 0.6, 800);
   const bubbleGap = speed;
-  const isDiscord = p === 'discord';
+
+  const stale = () => gen !== chatAnimGen;
 
   const addBubble = (i, cb) => {
+    if (stale()) return;
     const nextBubble = chatBubbleHTML(chatState.messages[i], i, p, bubbleLStyle, bubbleRStyle, true);
     const canvas = $('#chatPreviewCanvas');
     const body = canvas.querySelector('.chat-render-body');
@@ -2642,10 +2647,11 @@ function chatRunAnimation(from, p, bubbleLStyle, bubbleRStyle, bodyStyle, textSt
     const typingEl = body.querySelector('.chat-typing-indicator');
     if (typingEl) {
       typingEl.classList.add('chat-typing-hide');
-      setTimeout(() => typingEl.remove(), 200);
+      setTimeout(() => { if (!stale()) typingEl.remove(); }, 200);
     }
 
     setTimeout(() => {
+      if (stale()) return;
       const temp = document.createElement('div');
       temp.innerHTML = nextBubble.trim();
       const bubble = temp.firstChild;
@@ -2655,6 +2661,7 @@ function chatRunAnimation(from, p, bubbleLStyle, bubbleRStyle, bodyStyle, textSt
   };
 
   const showTyping = (i, cb) => {
+    if (stale()) return;
     const canvas = $('#chatPreviewCanvas');
     const body = canvas.querySelector('.chat-render-body');
     const typing = chatTypingHTML(chatState.messages[i].sender);
@@ -2665,9 +2672,12 @@ function chatRunAnimation(from, p, bubbleLStyle, bubbleRStyle, bodyStyle, textSt
   };
 
   const step = (i) => {
+    if (stale()) return;
     if (i >= chatState.messages.length) { if (onDone) onDone(); return; }
     chatAnimTimer = setTimeout(() => {
+      if (stale()) return;
       addBubble(i, () => {
+        if (stale()) return;
         if (i + 1 < chatState.messages.length) {
           chatAnimTimer = setTimeout(() => {
             showTyping(i + 1, () => step(i + 1));
@@ -2884,6 +2894,11 @@ function initChat() {
     });
   });
 
+  $('#chatHideTime').addEventListener('change', (e) => {
+    chatState.hideTime = e.target.checked;
+    chatRenderPreview(chatState.animSpeed > 0);
+  });
+
   const setExporting = (active, label) => {
     const prog = $('#chatExportProgress');
     if (!prog) return;
@@ -2931,7 +2946,6 @@ function initChat() {
     });
     if (!savePath) return;
 
-    const wrapper = $('#chatPreviewWrapper');
     const [w, h] = chatGetResolution();
     const fps = 30;
     const msgCount = chatState.messages.length;
@@ -2943,48 +2957,56 @@ function initChat() {
     const framesPerPause = Math.round((pauseMs / 1000) * fps);
     const framesEnd = Math.round(1.5 * fps);
 
-    const oldW = wrapper.style.width;
-    const oldH = wrapper.style.height;
-    const oldOverflow = wrapper.style.overflow;
-
-    wrapper.style.width = w + 'px';
-    wrapper.style.height = h + 'px';
-    wrapper.style.overflow = 'hidden';
-
     setExporting(true, 'Przygotowuję...');
-    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    await ipcRenderer.invoke('chat-export-init', { width: w, height: h });
 
-    const rect = wrapper.getBoundingClientRect();
-    const captureRect = {
-      x: Math.round(rect.x), y: Math.round(rect.y),
-      width: Math.round(rect.width), height: Math.round(rect.height)
+    const p = chatState.platform;
+    let headerStyle = '', bodyStyle = '', bubbleLStyle = '', bubbleRStyle = '', textStyle = '';
+    if (p === 'custom') {
+      const t = chatState.customTheme;
+      headerStyle = `background:${t.headerBg}`;
+      bodyStyle = `background:${t.bg}`;
+      bubbleLStyle = `background:${t.bubbleL};color:${t.text}`;
+      bubbleRStyle = `background:${t.bubbleR};color:#fff`;
+      textStyle = `color:${t.text}`;
+    }
+    const avatarSize = p === 'discord' ? 'clamp(26px,3.2vw,38px)' : 'clamp(30px,3.8vw,44px)';
+    const headerContact = chatState.contacts[1];
+    const avatar = chatAvatarHTML(headerContact, avatarSize);
+    const statuses = { imessage:'iMessage', whatsapp:'online', discord:`${chatState.messages.length} wiadomości`, messenger:'Active now', custom:'online' };
+    const headerHTML = `<div class="chat-render-header" ${headerStyle?`style="${headerStyle}"`:''}><div class="chat-render-back"><svg width="${p==='discord'?'16':'20'}" height="${p==='discord'?'16':'20'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></div>${avatar}<div class="chat-render-info"><div class="chat-render-name">${headerContact.name}</div><div class="chat-render-status">${statuses[p]||''}</div></div></div>`;
+
+    const buildFrame = (limit, showTypingFrom) => {
+      let msgHTML = '';
+      for (let i = 0; i < limit; i++) {
+        msgHTML += chatBubbleHTML(chatState.messages[i], i, p, bubbleLStyle, bubbleRStyle, false);
+      }
+      let typingHTML = '';
+      if (typeof showTypingFrom === 'number' && showTypingFrom < chatState.messages.length) {
+        typingHTML = chatTypingHTML(chatState.messages[showTypingFrom].sender);
+      }
+      return `<div class="chat-render chat-platform-${p}" ${textStyle?`style="${textStyle}"`:''}>${headerHTML}<div class="chat-render-body" ${bodyStyle?`style="${bodyStyle}"`:''}>${msgHTML}${typingHTML}</div></div>`;
     };
 
-    const capture = async () => {
-      return await ipcRenderer.invoke('capture-frame', { rect: captureRect });
+    const capture = async (html) => {
+      return await ipcRenderer.invoke('chat-export-frame', { html });
     };
 
     const frames = [];
 
-    const emptyFrame = async () => {
-      chatRenderPreview(false, 0);
-      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-      frames.push({ data: await capture(), duration: framesPerPause });
-    };
+    const emptyData = await capture(buildFrame(0));
+    frames.push({ data: emptyData, duration: framesPerPause });
 
-    await emptyFrame();
     let total = framesPerPause + (framesPerTyping + framesPerBubble + framesPerPause) * msgCount + framesEnd;
     let done = 0;
 
     for (let i = 0; i < msgCount; i++) {
-      chatRenderPreview(false, i, i);
-      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-      frames.push({ data: await capture(), duration: framesPerTyping });
+      const typingData = await capture(buildFrame(i, i));
+      frames.push({ data: typingData, duration: framesPerTyping });
       done += framesPerTyping;
 
-      chatRenderPreview(true, i + 1);
-      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-      frames.push({ data: await capture(), duration: framesPerBubble + framesPerPause });
+      const bubbleData = await capture(buildFrame(i + 1));
+      frames.push({ data: bubbleData, duration: framesPerBubble + framesPerPause });
       done += framesPerBubble + framesPerPause;
 
       const pct = Math.round((done / total) * 80);
@@ -2992,16 +3014,14 @@ function initChat() {
       $('#chatExportLabel').textContent = `Wiadomość ${i + 1}/${msgCount}`;
     }
 
-    frames.push({ data: await capture(), duration: framesEnd });
+    frames.push({ data: frames[frames.length - 1].data, duration: framesEnd });
 
     setExporting(true, 'Koduję MP4...');
     $('#chatExportBarFill').style.width = '100%';
 
     await ipcRenderer.invoke('export-mp4', { frames, savePath, fps, width: w, height: h });
+    await ipcRenderer.invoke('chat-export-cleanup');
 
-    wrapper.style.width = oldW;
-    wrapper.style.height = oldH;
-    wrapper.style.overflow = oldOverflow;
     chatRenderPreview(chatState.animSpeed > 0);
     setExporting(false);
   });
