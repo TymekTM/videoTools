@@ -2589,7 +2589,7 @@ function chatRenderPreview(animate, upTo, showTypingFrom) {
   }
 
   let typingHTML = '';
-  if (typeof showTypingFrom === 'number' && showTypingFrom < chatState.messages.length) {
+  if (typeof showTypingFrom === 'number' && showTypingFrom < chatState.messages.length && p !== 'discord') {
     typingHTML = chatTypingHTML(chatState.messages[showTypingFrom].sender);
   }
 
@@ -2614,49 +2614,70 @@ function chatRunAnimation(from, p, bubbleLStyle, bubbleRStyle, bodyStyle, textSt
   const speed = chatState.animSpeed;
   const typingDuration = Math.min(speed * 0.6, 800);
   const bubbleGap = speed;
+  const isDiscord = p === 'discord';
 
-  const step = (i) => {
-    if (i >= chatState.messages.length) return;
+  const addBubble = (i, cb) => {
+    const nextBubble = chatBubbleHTML(chatState.messages[i], i, p, bubbleLStyle, bubbleRStyle);
+    const canvas = $('#chatPreviewCanvas');
+    const body = canvas.querySelector('.chat-render-body');
 
-    chatAnimTimer = setTimeout(() => {
-      const nextBubble = chatBubbleHTML(chatState.messages[i], i, p, bubbleLStyle, bubbleRStyle);
-      const canvas = $('#chatPreviewCanvas');
-      const body = canvas.querySelector('.chat-render-body');
-
+    if (!isDiscord) {
       const typingEl = body.querySelector('.chat-typing-indicator');
       if (typingEl) {
         typingEl.classList.add('chat-typing-hide');
         setTimeout(() => typingEl.remove(), 200);
       }
+    }
 
-      setTimeout(() => {
-        const temp = document.createElement('div');
-        temp.innerHTML = nextBubble.trim();
-        const bubble = temp.firstChild;
-        body.appendChild(bubble);
-
-        if (i + 1 < chatState.messages.length) {
-          chatAnimTimer = setTimeout(() => {
-            const typing = chatTypingHTML(chatState.messages[i + 1].sender);
-            const temp2 = document.createElement('div');
-            temp2.innerHTML = typing.trim();
-            body.appendChild(temp2.firstChild);
-            step(i + 1);
-          }, bubbleGap);
-        }
-      }, 150);
-    }, typingDuration);
+    setTimeout(() => {
+      const temp = document.createElement('div');
+      temp.innerHTML = nextBubble.trim();
+      const bubble = temp.firstChild;
+      body.appendChild(bubble);
+      if (cb) cb();
+    }, 150);
   };
 
-  chatAnimTimer = setTimeout(() => {
-    const canvas = $('#chatPreviewCanvas');
-    const body = canvas.querySelector('.chat-render-body');
-    const typing = chatTypingHTML(chatState.messages[from].sender);
-    const temp = document.createElement('div');
-    temp.innerHTML = typing.trim();
-    body.appendChild(temp.firstChild);
-    step(from);
-  }, 400);
+  if (isDiscord) {
+    const step = (i) => {
+      if (i >= chatState.messages.length) return;
+      chatAnimTimer = setTimeout(() => {
+        addBubble(i, () => {
+          if (i + 1 < chatState.messages.length) step(i + 1);
+        });
+      }, bubbleGap);
+    };
+    chatAnimTimer = setTimeout(() => step(from), 400);
+  } else {
+    const step = (i) => {
+      if (i >= chatState.messages.length) return;
+      chatAnimTimer = setTimeout(() => {
+        addBubble(i, () => {
+          if (i + 1 < chatState.messages.length) {
+            chatAnimTimer = setTimeout(() => {
+              const canvas = $('#chatPreviewCanvas');
+              const body = canvas.querySelector('.chat-render-body');
+              const typing = chatTypingHTML(chatState.messages[i + 1].sender);
+              const temp2 = document.createElement('div');
+              temp2.innerHTML = typing.trim();
+              body.appendChild(temp2.firstChild);
+              step(i + 1);
+            }, bubbleGap);
+          }
+        });
+      }, typingDuration);
+    };
+
+    chatAnimTimer = setTimeout(() => {
+      const canvas = $('#chatPreviewCanvas');
+      const body = canvas.querySelector('.chat-render-body');
+      const typing = chatTypingHTML(chatState.messages[from].sender);
+      const temp = document.createElement('div');
+      temp.innerHTML = typing.trim();
+      body.appendChild(temp.firstChild);
+      step(from);
+    }, 400);
+  }
 }
 
 function chatRenderMessageList() {

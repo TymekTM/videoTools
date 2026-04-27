@@ -50,7 +50,7 @@ ipcMain.handle('export-mp4', async (event, { frames, savePath, fps, width, heigh
 
   let frameIdx = 0;
   for (const frame of frames) {
-    const buf = Buffer.from(frame, 'base64');
+    const buf = Buffer.from(frame.data, 'base64');
     for (let d = 0; d < frame.duration; d++) {
       fs.writeFileSync(path.join(tmpDir, `frame_${String(frameIdx).padStart(6, '0')}.png`), buf);
       frameIdx++;
