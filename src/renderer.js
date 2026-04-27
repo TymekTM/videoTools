@@ -2261,7 +2261,7 @@ function initNewspaper() {
     await ipcRenderer.invoke('export-init', { width: w, height: h });
 
     buildQueue();
-    const frames = [];
+    const slidesData = [];
 
     for (let s = 0; s < totalSlides; s++) {
       const template = state.queue[s % state.queue.length];
@@ -2272,17 +2272,27 @@ function initNewspaper() {
 
       const bodyHtml = `<div style="position:absolute;inset:0;background:${bg}">${overrideStyle}<div class="zoom-scroll" style="position:absolute;inset:0;overflow:hidden;"><div class="article-inner so" style="width:100%;height:100%;overflow:hidden;display:flex;flex-direction:column;transform:scale(${state.zoomLevel});transform-origin:0 0;">${html}</div></div></div>`;
 
-      const base64 = await ipcRenderer.invoke('export-slide', {
+      slidesData.push({
         bodyHtml, bg,
         zoom: state.zoomLevel,
         offX: state.zoomOffsetX,
-        offY: state.zoomOffsetY
+        offY: state.zoomOffsetY,
+        duration: framesPerSlide
       });
-      frames.push({ data: base64, duration: framesPerSlide });
+    }
 
-      const pct = Math.round(((s + 1) / totalSlides) * 100);
+    setNewsExporting(true, 'Renderowanie...');
+    const BATCH = 5;
+    const frames = [];
+
+    for (let i = 0; i < slidesData.length; i += BATCH) {
+      const batch = slidesData.slice(i, i + BATCH);
+      const batchFrames = await ipcRenderer.invoke('export-slides', { slides: batch });
+      frames.push(...batchFrames);
+
+      const pct = Math.round(Math.min(i + BATCH, slidesData.length) / slidesData.length * 100);
       $('#newsExportBarFill').style.width = pct + '%';
-      $('#newsExportLabel').textContent = `Slajd ${s + 1}/${totalSlides}`;
+      $('#newsExportLabel').textContent = `Slajd ${Math.min(i + BATCH, slidesData.length)}/${slidesData.length}`;
     }
 
     setNewsExporting(true, 'Koduję MP4...');
@@ -2511,19 +2521,15 @@ function chatTypingHTML(sender) {
   const isRight = sender === 0;
 
   if (p === 'discord') {
-    const discAvatar = chatAvatarHTML(contact, 'clamp(26px,3.2vw,38px)');
     return `
       <div class="chat-typing-indicator chat-discord-typing">
-        ${discAvatar}
-        <div class="chat-bubble-content">
-          <span class="chat-discord-typing-name" style="color:${contact.color}">${contact.name}</span>
-          <span class="chat-discord-typing-text">pisze</span>
-          <span class="chat-discord-typing-dots">
-            <span class="chat-typing-dot"></span>
-            <span class="chat-typing-dot"></span>
-            <span class="chat-typing-dot"></span>
-          </span>
-        </div>
+        <span class="chat-discord-typing-name" style="color:${contact.color}">${contact.name}</span>
+        <span class="chat-discord-typing-text">pisze</span>
+        <span class="chat-discord-typing-dots">
+          <span class="chat-typing-dot"></span>
+          <span class="chat-typing-dot"></span>
+          <span class="chat-typing-dot"></span>
+        </span>
       </div>`;
   }
 
