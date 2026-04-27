@@ -82,6 +82,7 @@ test('Each template has required fields', () => {
     assert.ok(t.name, `Template ${i} missing name`);
     assert.ok(t.flag, `Template ${i} missing flag`);
     assert.strictEqual(typeof t.render, 'function', `Template ${i} render is not a function`);
+    assert.ok(t.category, `Template ${i} (${t.id}) missing category`);
   });
 });
 
