@@ -2345,9 +2345,16 @@ const chatState = {
   format: '16:9',
   resolution: '1080p',
   contacts: [
-    { name: 'Jan', color: '#007AFF' },
-    { name: 'Anna', color: '#34C759' }
+    { name: 'Jan', color: '#007AFF', avatar: null },
+    { name: 'Anna', color: '#34C759', avatar: null }
   ],
+  customTheme: {
+    bg: '#1a1a2e',
+    headerBg: '#16213e',
+    bubbleL: '#2a2a4a',
+    bubbleR: '#6366f1',
+    text: '#e4e4e7'
+  },
   messages: [
     { sender: 0, text: 'Hej, widziałeś to?' },
     { sender: 1, text: 'Co dokładnie?' },
@@ -2382,76 +2389,98 @@ function chatUpdatePreviewSize() {
   $('#globalResInfo').textContent = `${fullW}x${fullH}`;
 }
 
+function chatAvatarHTML(contact, size) {
+  const initial = contact.name.charAt(0).toUpperCase();
+  if (contact.avatar) {
+    return `<div class="chat-render-avatar" style="background:${contact.color};width:${size};height:${size}"><img src="${contact.avatar}" alt=""></div>`;
+  }
+  return `<div class="chat-render-avatar" style="background:${contact.color};width:${size};height:${size}">${initial}</div>`;
+}
+
+function chatTimeStr(i) {
+  return `${14 + Math.floor(i / 3)}:${String(i * 7 % 60).padStart(2, '0')}`;
+}
+
 function chatRenderPreview() {
   const canvas = $('#chatPreviewCanvas');
   const p = chatState.platform;
-  const contact1 = chatState.contacts[0];
-  const contact2 = chatState.contacts[1];
-  const headerContact = contact2;
+  const c1 = chatState.contacts[0];
+  const c2 = chatState.contacts[1];
+  const headerContact = c2;
 
-  const initial = headerContact.name.charAt(0).toUpperCase();
+  let headerStyle = '';
+  let bodyStyle = '';
+  let bubbleLStyle = '';
+  let bubbleRStyle = '';
+  let textStyle = '';
 
-  let headerBg = '';
-  let headerExtra = '';
-  if (p === 'whatsapp') headerBg = `style="background:#1f2c34"`;
-  if (p === 'telegram') headerBg = `style="background:#517da2"`;
-  if (p === 'discord') headerBg = `style="background:#2b2d31"`;
-
-  let bodyExtra = '';
-  if (p === 'whatsapp') bodyExtra = `style="background:#0b141a"`;
-  if (p === 'telegram') bodyExtra = `style="background:#9ccde7"`;
-  if (p === 'discord') bodyExtra = `style="background:#313338"`;
-
-  let headerHTML = '';
-  if (p === 'discord') {
-    headerHTML = `
-      <div class="chat-render-header" ${headerBg}>
-        <div class="chat-render-avatar" style="background:${headerContact.color}">${initial}</div>
-        <div>
-          <div class="chat-render-name">${headerContact.name}</div>
-          <div class="chat-render-status">${chatState.messages.length} wiadomości</div>
-        </div>
-      </div>`;
-  } else {
-    headerHTML = `
-      <div class="chat-render-header" ${headerBg}>
-        <div class="chat-render-avatar" style="background:${headerContact.color}">${initial}</div>
-        <div>
-          <div class="chat-render-name">${headerContact.name}</div>
-          <div class="chat-render-status">${p === 'imessage' ? 'iMessage' : p === 'whatsapp' ? 'online' : p === 'telegram' ? 'last seen recently' : 'online'}</div>
-        </div>
-      </div>`;
+  if (p === 'custom') {
+    const t = chatState.customTheme;
+    headerStyle = `background:${t.headerBg}`;
+    bodyStyle = `background:${t.bg}`;
+    bubbleLStyle = `background:${t.bubbleL};color:${t.text}`;
+    bubbleRStyle = `background:${t.bubbleR};color:#fff`;
+    textStyle = `color:${t.text}`;
   }
+
+  const avatarSize = p === 'discord' ? 'clamp(26px,3.2vw,38px)' : 'clamp(30px,3.8vw,44px)';
+  const avatar = chatAvatarHTML(headerContact, avatarSize);
+
+  const statuses = {
+    imessage: 'iMessage',
+    whatsapp: 'online',
+    telegram: 'last seen recently',
+    discord: `${chatState.messages.length} wiadomości`,
+    messenger: 'Active now',
+    custom: 'online'
+  };
+
+  const headerHTML = `
+    <div class="chat-render-header" ${headerStyle ? `style="${headerStyle}"` : ''}>
+      <div class="chat-render-back">
+        <svg width="${p === 'discord' ? '16' : '20'}" height="${p === 'discord' ? '16' : '20'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </div>
+      ${avatar}
+      <div class="chat-render-info">
+        <div class="chat-render-name">${headerContact.name}</div>
+        <div class="chat-render-status">${statuses[p] || ''}</div>
+      </div>
+    </div>`;
 
   let messagesHTML = chatState.messages.map((msg, i) => {
     const contact = chatState.contacts[msg.sender];
     const isRight = msg.sender === 0;
-    const time = `${14 + Math.floor(i / 3)}:${String(i * 7 % 60).padStart(2, '0')}`;
+    const time = chatTimeStr(i);
 
     if (p === 'discord') {
-      const discInitial = contact.name.charAt(0).toUpperCase();
+      const discAvatar = chatAvatarHTML(contact, 'clamp(26px,3.2vw,38px)');
       return `
         <div class="chat-bubble ${isRight ? 'chat-bubble-right' : 'chat-bubble-left'}">
-          <div class="chat-render-avatar" style="background:${contact.color}">${discInitial}</div>
+          ${discAvatar}
           <div class="chat-bubble-content">
-            <div class="chat-bubble-author" style="color:${contact.color}">${contact.name}</div>
+            <div class="chat-bubble-meta">
+              <span class="chat-bubble-author" style="color:${contact.color}">${contact.name}</span>
+              <span class="chat-bubble-time">${time}</span>
+            </div>
             <div class="chat-bubble-text">${msg.text}</div>
-            <div class="chat-bubble-time">${time}</div>
           </div>
         </div>`;
     }
 
+    let bubbleStyle = isRight ? bubbleRStyle : bubbleLStyle;
+    let styleAttr = bubbleStyle ? `style="${bubbleStyle}"` : '';
+
     return `
-      <div class="chat-bubble ${isRight ? 'chat-bubble-right' : 'chat-bubble-left'}">
+      <div class="chat-bubble ${isRight ? 'chat-bubble-right' : 'chat-bubble-left'}" ${styleAttr}>
         ${msg.text}
         <div class="chat-bubble-time">${time}</div>
       </div>`;
   }).join('');
 
   canvas.innerHTML = `
-    <div class="chat-render chat-platform-${p}">
+    <div class="chat-render chat-platform-${p}" ${textStyle ? `style="${textStyle}"` : ''}>
       ${headerHTML}
-      <div class="chat-render-body" ${bodyExtra}>
+      <div class="chat-render-body" ${bodyStyle ? `style="${bodyStyle}"` : ''}>
         ${messagesHTML}
       </div>
     </div>`;
@@ -2488,15 +2517,35 @@ function chatUpdateSenderDropdown() {
   ).join('');
 }
 
+function chatUpdateAvatarUI(idx) {
+  const contact = chatState.contacts[idx];
+  const img = $(`#chatAvatar${idx + 1}Img`);
+  const initial = $(`#chatAvatar${idx + 1}Initial`);
+  if (contact.avatar) {
+    img.src = contact.avatar;
+    img.style.display = 'block';
+    initial.style.display = 'none';
+  } else {
+    img.src = '';
+    img.style.display = 'none';
+    initial.style.display = 'block';
+    initial.textContent = contact.name.charAt(0).toUpperCase();
+  }
+}
+
 function initChat() {
   chatRenderPreview();
   chatRenderMessageList();
+  chatUpdateAvatarUI(0);
+  chatUpdateAvatarUI(1);
 
   $$('#chatPlatformGroup .control-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       $$('#chatPlatformGroup .control-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       chatState.platform = btn.dataset.platform;
+      const customPanel = $('#chatCustomTheme');
+      customPanel.style.display = chatState.platform === 'custom' ? 'flex' : 'none';
       chatRenderPreview();
     });
   });
@@ -2542,11 +2591,11 @@ function initChat() {
   const updateContact = (idx) => {
     const nameInput = $(`#chatContact${idx + 1}Name`);
     const colorInput = $(`#chatContact${idx + 1}Color`);
-    const dot = $(`#chatContact${idx + 1}Dot`);
+    const fileInput = $(`#chatAvatar${idx + 1}File`);
 
     nameInput.addEventListener('input', () => {
       chatState.contacts[idx].name = nameInput.value || `Osoba ${idx + 1}`;
-      dot.textContent = '';
+      chatUpdateAvatarUI(idx);
       chatUpdateSenderDropdown();
       chatRenderMessageList();
       chatRenderPreview();
@@ -2554,38 +2603,70 @@ function initChat() {
 
     colorInput.addEventListener('input', () => {
       chatState.contacts[idx].color = colorInput.value;
-      dot.style.background = colorInput.value;
+      chatUpdateAvatarUI(idx);
       chatRenderMessageList();
       chatRenderPreview();
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        chatState.contacts[idx].avatar = ev.target.result;
+        chatUpdateAvatarUI(idx);
+        chatRenderPreview();
+      };
+      reader.readAsDataURL(file);
     });
   };
 
   updateContact(0);
   updateContact(1);
 
+  ['chatCustomBg', 'chatCustomHeaderBg', 'chatCustomBubbleL', 'chatCustomBubbleR', 'chatCustomText'].forEach(id => {
+    $(`#${id}`).addEventListener('input', (e) => {
+      const map = {
+        chatCustomBg: 'bg',
+        chatCustomHeaderBg: 'headerBg',
+        chatCustomBubbleL: 'bubbleL',
+        chatCustomBubbleR: 'bubbleR',
+        chatCustomText: 'text'
+      };
+      chatState.customTheme[map[id]] = e.target.value;
+      chatRenderPreview();
+    });
+  });
+
   $('#chatExportBtn').addEventListener('click', () => {
-    const canvas = $('#chatPreviewCanvas');
+    const canvasEl = document.createElement('canvas');
     const [w, h] = chatGetResolution();
     const scale = 2;
-    const c = document.createElement('canvas');
-    c.width = w * scale;
-    c.height = h * scale;
-    const ctx = c.getContext('2d');
-    ctx.scale(scale, scale);
+    canvasEl.width = w * scale;
+    canvasEl.height = h * scale;
+    const ctx = canvasEl.getContext('2d');
 
-    const svgEl = canvas.querySelector('.chat-render');
-    if (!svgEl) return;
+    const source = $('#chatPreviewCanvas');
+    const html = source.innerHTML;
+    const svgStr = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">
+      <foreignObject width="100%" height="100%">
+        <div xmlns="http://www.w3.org/1999/xhtml" style="font-size:16px">${html}</div>
+      </foreignObject>
+    </svg>`;
 
-    const data = new XMLSerializer().serializeToString(svgEl);
+    const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
     const img = new Image();
     img.onload = () => {
+      ctx.scale(scale, scale);
       ctx.drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
       const link = document.createElement('a');
       link.download = `chat-${chatState.platform}-${Date.now()}.png`;
-      link.href = c.toDataURL('image/png');
+      link.href = canvasEl.toDataURL('image/png');
       link.click();
     };
-    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(data);
+    img.src = url;
   });
 }
 
