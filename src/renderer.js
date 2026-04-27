@@ -1867,10 +1867,10 @@ const state = {
   zoomOffsetY: 0,
   fontSizeScale: 100,
   lineH: 1.72,
-  colorBg: '',
-  colorText: '',
   colorAccent: '#facc15',
   vignetteOpacity: 55,
+  vignetteSize: 50,
+  vignetteSpread: 45,
   transitionMs: 120
 };
 
@@ -1885,16 +1885,18 @@ function updateVignette() {
   const o = state.vignetteOpacity / 100;
   const v = $('#vignette');
   if (o <= 0) { v.style.background = 'none'; return; }
-  const steps = [
-    [0.25, 0],
-    [0.40, o * 0.22],
-    [0.55, o * 0.45],
-    [0.70, o * 0.65],
-    [0.85, o * 0.82],
-    [1.00, o]
-  ];
-  const stops = steps.map(([s, a]) => `rgba(0,0,0,${a.toFixed(2)}) ${Math.round(s*100)}%`).join(',');
-  v.style.background = `radial-gradient(ellipse 50% 45% at 50% 50%, transparent 0%, ${stops})`;
+  const size = state.vignetteSize;
+  const spread = state.vignetteSpread;
+  const innerStop = 100 - spread;
+  v.style.background = `radial-gradient(
+    ellipse ${size}% ${size * 0.9}% at 50% 50%,
+    transparent 0%,
+    transparent ${innerStop * 0.5}%,
+    rgba(0,0,0,${(o * 0.15).toFixed(2)}) ${innerStop * 0.7}%,
+    rgba(0,0,0,${(o * 0.35).toFixed(2)}) ${innerStop * 0.85}%,
+    rgba(0,0,0,${(o * 0.6).toFixed(2)}) ${innerStop}%,
+    rgba(0,0,0,${o.toFixed(2)}) 100%
+  )`;
 }
 
 function applyAccent() {
@@ -1967,8 +1969,6 @@ function showSlide(template, direction = 'next') {
   if (bgMatch) slide.style.background = bgMatch[1];
 
   const overrides = [];
-  if (state.colorBg) overrides.push(`background:${state.colorBg}!important`);
-  if (state.colorText) overrides.push(`color:${state.colorText}!important`);
   if (state.fontSizeScale !== 100) overrides.push(`font-size:${state.fontSizeScale}%!important`);
   if (state.lineH !== 1.72) overrides.push(`line-height:${state.lineH}!important`);
   const overrideStyle = overrides.length ? `<style>.so *{${overrides.join(';')}}</style>` : '';
@@ -2292,22 +2292,6 @@ function initNewspaper() {
     }
   });
 
-  $('#colorBg').addEventListener('input', (e) => {
-    state.colorBg = e.target.value === '#ffffff' ? '' : e.target.value;
-    if (!state.playing) {
-      const idx = Math.max(0, state.currentIndex - 1) % state.queue.length;
-      showSlide(state.queue[idx]);
-    }
-  });
-
-  $('#colorText').addEventListener('input', (e) => {
-    state.colorText = e.target.value === '#333333' ? '' : e.target.value;
-    if (!state.playing) {
-      const idx = Math.max(0, state.currentIndex - 1) % state.queue.length;
-      showSlide(state.queue[idx]);
-    }
-  });
-
   $('#colorAccent').addEventListener('input', (e) => {
     state.colorAccent = e.target.value;
     applyAccent();
@@ -2319,9 +2303,29 @@ function initNewspaper() {
     updateVignette();
   });
 
+  $('#vignetteSizeRange').addEventListener('input', (e) => {
+    state.vignetteSize = parseInt(e.target.value);
+    $('#vignetteSizeVal').textContent = state.vignetteSize + '%';
+    updateVignette();
+  });
+
+  $('#vignetteSpreadRange').addEventListener('input', (e) => {
+    state.vignetteSpread = parseInt(e.target.value);
+    $('#vignetteSpreadVal').textContent = state.vignetteSpread + '%';
+    updateVignette();
+  });
+
   $('#transitionRange').addEventListener('input', (e) => {
     state.transitionMs = parseInt(e.target.value);
     $('#transitionVal').textContent = state.transitionMs + 'ms';
+  });
+
+  document.querySelectorAll('.control-range[data-default]').forEach(slider => {
+    slider.addEventListener('dblclick', () => {
+      const def = slider.dataset.default;
+      slider.value = def;
+      slider.dispatchEvent(new Event('input'));
+    });
   });
 
   const ro = new ResizeObserver(() => {
