@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Video Tools</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;0,9..40,900;1,9..40,400&family=Instrument+Serif:ital@0;1&family=Manrope:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Roboto+Slab:wght@400;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <div class="app-logo">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <rect x="1" y="1" width="18" height="18" rx="3" stroke="currentColor" stroke-width="1.5"/>
+          <polygon points="8,6 14,10 8,14" fill="currentColor"/>
+        </svg>
+        <span>Video Tools</span>
+      </div>
+      <div class="app-header-info">
+        <span class="slide-counter" id="slideCounter">— / —</span>
+      </div>
+    </header>
+
+    <main class="app-body">
+      <section class="preview-area">
+        <div class="preview-wrapper" id="previewWrapper">
+          <div class="preview-canvas" id="previewCanvas">
+          </div>
+          <div class="preview-vignette" id="vignette"></div>
+        </div>
+      </section>
+
+      <aside class="sidebar">
+        <div class="control-group">
+          <label class="control-label">Słowo kluczowe</label>
+          <input type="text" class="control-input" id="keywordInput" value="SZTUKA" placeholder="Wpisz słowo...">
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Prędkość <span class="control-value" id="speedValue">0.8s</span></label>
+          <input type="range" class="control-range" id="speedRange" min="100" max="3000" step="50" value="800">
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Format</label>
+          <div class="control-btn-group" id="formatGroup">
+            <button class="control-btn active" data-format="16:9">16:9</button>
+            <button class="control-btn" data-format="9:16">9:16</button>
+            <button class="control-btn" data-format="1:1">1:1</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Rozdzielczość</label>
+          <select class="control-select" id="resolutionSelect">
+            <option value="720p">720p</option>
+            <option value="1080p" selected>1080p</option>
+            <option value="4K">4K</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Szablony stron</label>
+          <div class="template-toggles" id="templateToggles">
+          </div>
+        </div>
+
+        <div class="control-actions">
+          <button class="btn btn-primary" id="btnPlay">
+            <svg width="14" height="14" viewBox="0 0 14 14"><polygon points="2,0 14,7 2,14" fill="currentColor"/></svg>
+            <span>Play</span>
+          </button>
+          <button class="btn btn-secondary" id="btnStop">
+            <svg width="14" height="14" viewBox="0 0 14 14"><rect x="1" y="1" width="12" height="12" rx="2" fill="currentColor"/></svg>
+            <span>Stop</span>
+          </button>
+          <button class="btn btn-ghost" id="btnShuffle">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M1 10h2l3-6h2l3 6h2"/>
+              <path d="M1 4h2l3 6h2l3-6h2"/>
+            </svg>
+            <span>Losuj</span>
+          </button>
+        </div>
+
+        <div class="control-group" style="margin-top:auto">
+          <div class="resolution-info" id="resolutionInfo">1920 × 1080</div>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

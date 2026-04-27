@@ -1,0 +1,13 @@
+{
+  "name": "video-tools",
+  "version": "0.1.0",
+  "description": "Video montage tool - article keyword highlight baseline",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^28.0.0"
+  }
+}
