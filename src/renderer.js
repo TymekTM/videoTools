@@ -946,6 +946,7 @@ function getTemplateHelpers() {
 
   return {
     headline() {
+      if (state.customHeadline) return state.customHeadline;
       let idx;
       do { idx = Math.floor(Math.random() * LOREM_HEADLINES.length); }
       while (usedHeadlines.has(idx) && usedHeadlines.size < LOREM_HEADLINES.length);
@@ -958,6 +959,7 @@ function getTemplateHelpers() {
       return LOREM_PARAGRAPHS[idx];
     },
     textWithKeyword(keyword) {
+      if (state.customLead) return insertKeyword(state.customLead, keyword);
       const idx = Math.floor(Math.random() * LOREM_PARAGRAPHS.length);
       return insertKeyword(LOREM_PARAGRAPHS[idx], keyword);
     },
@@ -1857,7 +1859,19 @@ const state = {
   enabledTemplates: new Set(TEMPLATES.map(t => t.id)),
   timer: null,
   queue: [],
-  helpers: getTemplateHelpers()
+  helpers: getTemplateHelpers(),
+  customHeadline: '',
+  customLead: '',
+  zoomLevel: 1.8,
+  zoomOffsetX: 0,
+  zoomOffsetY: 0,
+  fontSizeScale: 100,
+  lineH: 1.72,
+  colorBg: '',
+  colorText: '',
+  colorAccent: '#facc15',
+  vignetteOpacity: 55,
+  transitionMs: 120
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -1865,6 +1879,29 @@ const $$ = (sel) => document.querySelectorAll(sel);
 
 function getResolution() {
   return RESOLUTIONS[state.format][state.resolution];
+}
+
+function updateVignette() {
+  const o = state.vignetteOpacity / 100;
+  const v = $('#vignette');
+  if (o <= 0) { v.style.background = 'none'; return; }
+  const steps = [
+    [0.25, 0],
+    [0.40, o * 0.22],
+    [0.55, o * 0.45],
+    [0.70, o * 0.65],
+    [0.85, o * 0.82],
+    [1.00, o]
+  ];
+  const stops = steps.map(([s, a]) => `rgba(0,0,0,${a.toFixed(2)}) ${Math.round(s*100)}%`).join(',');
+  v.style.background = `radial-gradient(ellipse 50% 45% at 50% 50%, transparent 0%, ${stops})`;
+}
+
+function applyAccent() {
+  let el = $('#accentStyle');
+  if (!el) { el = document.createElement('style'); el.id = 'accentStyle'; document.head.appendChild(el); }
+  const c = state.colorAccent;
+  el.textContent = `.keyword-highlight{background:linear-gradient(120deg,${c}ee,${c});box-shadow:0 0 20px ${c}66,0 0 60px ${c}26;animation:keywordPulse .8s ease-in-out infinite}.playing .keyword-highlight{animation:keywordPulse .5s ease-in-out infinite}`;
 }
 
 function buildQueue() {
@@ -1914,6 +1951,7 @@ function showSlide(template, direction = 'next') {
   const existing = canvas.querySelector('.article-slide.active');
   const slide = document.createElement('div');
   slide.className = 'article-slide';
+  slide.style.transition = `opacity ${state.transitionMs}ms ease`;
 
   const helpers = getTemplateHelpers();
   const html = template.render.call(helpers, state.keyword);
@@ -1921,15 +1959,23 @@ function showSlide(template, direction = 'next') {
   const bgMatch = html.match(/background:\s*(#[0-9a-fA-F]{3,8})/);
   if (bgMatch) slide.style.background = bgMatch[1];
 
+  const overrides = [];
+  if (state.colorBg) overrides.push(`background:${state.colorBg}!important`);
+  if (state.colorText) overrides.push(`color:${state.colorText}!important`);
+  if (state.fontSizeScale !== 100) overrides.push(`font-size:${state.fontSizeScale}%!important`);
+  if (state.lineH !== 1.72) overrides.push(`line-height:${state.lineH}!important`);
+  const overrideStyle = overrides.length ? `<style>.so *{${overrides.join(';')}}</style>` : '';
+
   slide.innerHTML = `
+    ${overrideStyle}
     <div class="zoom-scroll" style="position:absolute;inset:0;overflow:hidden;">
-      <div class="article-inner" style="
+      <div class="article-inner so" style="
         width:100%;
         height:100%;
         overflow:hidden;
         display:flex;
         flex-direction:column;
-        transform:scale(1.8);
+        transform:scale(${state.zoomLevel});
         transform-origin:0 0;
       ">${html}</div>
     </div>`;
@@ -1944,16 +1990,16 @@ function showSlide(template, direction = 'next') {
       const kRect = kwEl.getBoundingClientRect();
       const kCX = kRect.left + kRect.width / 2 - sRect.left;
       const kCY = kRect.top + kRect.height / 2 - sRect.top;
-      const offX = sRect.width / 2 - kCX;
-      const offY = sRect.height / 2 - kCY;
+      const offX = sRect.width / 2 - kCX + state.zoomOffsetX;
+      const offY = sRect.height / 2 - kCY + state.zoomOffsetY;
       const inner = slide.querySelector('.article-inner');
-      inner.style.transform = `translate(${offX}px, ${offY}px) scale(1.8)`;
+      inner.style.transform = `translate(${offX}px, ${offY}px) scale(${state.zoomLevel})`;
       inner.style.transformOrigin = '0 0';
     }
     slide.classList.add('active');
     if (existing) {
       existing.classList.remove('active');
-      setTimeout(() => existing.remove(), 150);
+      setTimeout(() => existing.remove(), state.transitionMs + 30);
     }
   });
 
@@ -2104,6 +2150,8 @@ function init() {
   buildTemplateToggles();
   buildQueue();
   updatePreviewSize();
+  updateVignette();
+  applyAccent();
   showSlide(state.queue[state.currentIndex]);
   state.currentIndex++;
 
@@ -2145,6 +2193,103 @@ function init() {
 
   $('#btnStop').addEventListener('click', stop);
   $('#btnShuffle').addEventListener('click', shuffle);
+
+  $('#customToggle').addEventListener('click', () => {
+    document.querySelector('.custom-section').classList.toggle('collapsed');
+  });
+
+  $('#customHeadline').addEventListener('input', (e) => {
+    state.customHeadline = e.target.value;
+    if (!state.playing) {
+      const idx = Math.max(0, state.currentIndex - 1) % state.queue.length;
+      showSlide(state.queue[idx]);
+    }
+  });
+
+  $('#customLead').addEventListener('input', (e) => {
+    state.customLead = e.target.value;
+    if (!state.playing) {
+      const idx = Math.max(0, state.currentIndex - 1) % state.queue.length;
+      showSlide(state.queue[idx]);
+    }
+  });
+
+  $('#zoomRange').addEventListener('input', (e) => {
+    state.zoomLevel = parseFloat(e.target.value);
+    $('#zoomVal').textContent = state.zoomLevel.toFixed(1) + 'x';
+    if (!state.playing) {
+      const idx = Math.max(0, state.currentIndex - 1) % state.queue.length;
+      showSlide(state.queue[idx]);
+    }
+  });
+
+  $('#offXRange').addEventListener('input', (e) => {
+    state.zoomOffsetX = parseInt(e.target.value);
+    $('#offXVal').textContent = state.zoomOffsetX;
+    if (!state.playing) {
+      const idx = Math.max(0, state.currentIndex - 1) % state.queue.length;
+      showSlide(state.queue[idx]);
+    }
+  });
+
+  $('#offYRange').addEventListener('input', (e) => {
+    state.zoomOffsetY = parseInt(e.target.value);
+    $('#offYVal').textContent = state.zoomOffsetY;
+    if (!state.playing) {
+      const idx = Math.max(0, state.currentIndex - 1) % state.queue.length;
+      showSlide(state.queue[idx]);
+    }
+  });
+
+  $('#fontScaleRange').addEventListener('input', (e) => {
+    state.fontSizeScale = parseInt(e.target.value);
+    $('#fontScaleVal').textContent = state.fontSizeScale + '%';
+    if (!state.playing) {
+      const idx = Math.max(0, state.currentIndex - 1) % state.queue.length;
+      showSlide(state.queue[idx]);
+    }
+  });
+
+  $('#lineHRange').addEventListener('input', (e) => {
+    state.lineH = parseFloat(e.target.value);
+    $('#lineHVal').textContent = state.lineH.toFixed(2);
+    if (!state.playing) {
+      const idx = Math.max(0, state.currentIndex - 1) % state.queue.length;
+      showSlide(state.queue[idx]);
+    }
+  });
+
+  $('#colorBg').addEventListener('input', (e) => {
+    state.colorBg = e.target.value === '#ffffff' ? '' : e.target.value;
+    if (!state.playing) {
+      const idx = Math.max(0, state.currentIndex - 1) % state.queue.length;
+      showSlide(state.queue[idx]);
+    }
+  });
+
+  $('#colorText').addEventListener('input', (e) => {
+    state.colorText = e.target.value === '#333333' ? '' : e.target.value;
+    if (!state.playing) {
+      const idx = Math.max(0, state.currentIndex - 1) % state.queue.length;
+      showSlide(state.queue[idx]);
+    }
+  });
+
+  $('#colorAccent').addEventListener('input', (e) => {
+    state.colorAccent = e.target.value;
+    applyAccent();
+  });
+
+  $('#vignetteRange').addEventListener('input', (e) => {
+    state.vignetteOpacity = parseInt(e.target.value);
+    $('#vignetteVal').textContent = state.vignetteOpacity + '%';
+    updateVignette();
+  });
+
+  $('#transitionRange').addEventListener('input', (e) => {
+    state.transitionMs = parseInt(e.target.value);
+    $('#transitionVal').textContent = state.transitionMs + 'ms';
+  });
 
   const ro = new ResizeObserver(() => updatePreviewSize());
   ro.observe($('.preview-area'));
