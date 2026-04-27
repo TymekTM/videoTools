@@ -6,8 +6,8 @@ const { spawn } = require('child_process');
 const ffmpegPath = require('ffmpeg-static');
 
 let mainWindow;
+let bgWindow = null;
 let exportWindow = null;
-let chatExportWindow = null;
 
 const FONTS_LINK = '<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;700;900&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Crimson+Pro:ital,wght@0,400;0,600;0,700;0,900;1,400&family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;0,9..40,900;1,9..40,400&family=EB+Garamond:ital,wght@0,400;0,700;1,400&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;0,9..144,900;1,9..144,400&family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,600;0,700;1,400&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;600;700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Libre+Franklin:wght@400;600;700;900&family=Lora:ital,wght@0,400;0,700;1,400&family=Manrope:wght@300;400;500;600;700;800&family=Merriweather:wght@400;700;900&family=Outfit:wght@400;500;600;700;800&family=Oswald:wght@400;600;700&family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Roboto+Slab:wght@400;700&family=Sora:wght@400;600;700;800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=Space+Grotesk:wght@400;600;700&family=Work+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">';
 
@@ -46,13 +46,10 @@ window._renderSlide = function(d) {
 window._waitForFonts = function() {
   return document.fonts.ready.then(function() { _fontsReady = true; });
 };
-window._isFontsReady = function() { return _fontsReady; };
 window._setVignette = function(o, size, spread) {
   var v = document.getElementById('vignette');
   if (!v) return;
   if (o <= 0) { v.style.background = 'none'; return; }
-  var sp = spread;
-  var inner = 100 - sp;
   v.style.background = 'radial-gradient(ellipse '+size+'% '+Math.round(size*0.9)+'% at 50% 50%,transparent 0%,rgba(0,0,0,'+(o*0.08).toFixed(2)+') '+(100-spread)+'%,rgba(0,0,0,'+(o*0.25).toFixed(2)+') '+(100-spread*0.7)+'%,rgba(0,0,0,'+(o*0.5).toFixed(2)+') '+(100-spread*0.4)+'%,rgba(0,0,0,'+o.toFixed(2)+') 100%)';
 };
 </script>
@@ -95,7 +92,82 @@ ipcMain.handle('export-png', async (event, { rect, savePath }) => {
 
 ipcMain.handle('capture-frame', async (event, { rect }) => {
   const image = await mainWindow.webContents.capturePage(rect);
+  return image.toPNG().toString('base64');
+});
+
+ipcMain.handle('bg-init', async (event, { width, height, css, body }) => {
+  if (bgWindow) { bgWindow.close(); bgWindow = null; }
+
+  const extraCss = css
+    ? (css.startsWith('/') || css.match(/^[A-Z]:\\/i) ? fs.readFileSync(css, 'utf8') : css)
+    : '';
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+${FONTS_LINK}
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#000}
+${extraCss}
+</style>
+</head><body>
+<div id="container" style="width:${width}px;height:${height}px;overflow:hidden;position:relative">${body || ''}</div>
+<script>
+window._bgRender = function(html) {
+  document.getElementById('container').innerHTML = html;
+};
+window._bgSetBody = function(html) {
+  document.body.insertAdjacentHTML('beforeend', html);
+};
+</script>
+</body></html>`;
+
+  bgWindow = new BrowserWindow({
+    width, height,
+    show: false,
+    webPreferences: { offscreen: true }
+  });
+  await bgWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
+  await bgWindow.webContents.executeJavaScript('document.fonts.ready');
+  return true;
+});
+
+ipcMain.handle('bg-render', async (event, { html }) => {
+  if (!bgWindow) return null;
+  const wc = bgWindow.webContents;
+  await wc.executeJavaScript(
+    'window._bgRender(' + JSON.stringify(html) + ');' +
+    'new Promise(function(r){requestAnimationFrame(function(){requestAnimationFrame(r);});});'
+  );
+  const image = await wc.capturePage();
   return image.toJPEG(92).toString('base64');
+});
+
+ipcMain.handle('bg-render-js', async (event, { html, js }) => {
+  if (!bgWindow) return null;
+  const wc = bgWindow.webContents;
+  await wc.executeJavaScript(
+    'window._bgRender(' + JSON.stringify(html) + ');' +
+    'new Promise(function(r){requestAnimationFrame(function(){requestAnimationFrame(r);});});'
+  );
+  if (js) {
+    await wc.executeJavaScript(js);
+    await wc.executeJavaScript(
+      'new Promise(function(r){requestAnimationFrame(function(){requestAnimationFrame(r);});});'
+    );
+  }
+  const image = await wc.capturePage();
+  return image.toJPEG(92).toString('base64');
+});
+
+ipcMain.handle('bg-eval', async (event, code) => {
+  if (!bgWindow) return null;
+  return await bgWindow.webContents.executeJavaScript(code);
+});
+
+ipcMain.handle('bg-cleanup', () => {
+  if (bgWindow) { bgWindow.close(); bgWindow = null; }
 });
 
 ipcMain.handle('export-init', async (event, { width, height, accent, vignetteOpacity, vignetteSize, vignetteSpread }) => {
@@ -134,52 +206,6 @@ ipcMain.handle('export-cleanup', () => {
   if (exportWindow) { exportWindow.close(); exportWindow = null; }
 });
 
-ipcMain.handle('chat-export-init', async (event, { width, height }) => {
-  if (chatExportWindow) { chatExportWindow.close(); chatExportWindow = null; }
-  const cssPath = path.join(__dirname, 'src', 'styles.css');
-  const css = fs.readFileSync(cssPath, 'utf8');
-  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-${FONTS_LINK}
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-html,body{width:100%;height:100%;overflow:hidden;background:#000}
-${css}
-</style>
-</head><body><div id="canvas" style="width:${width}px;height:${height}px;overflow:hidden;position:relative"></div>
-<script>
-window._renderChat = function(html) {
-  document.getElementById('canvas').innerHTML = html;
-};
-window._waitForFonts = function() { return document.fonts.ready; };
-</script>
-</body></html>`;
-  chatExportWindow = new BrowserWindow({
-    width: width, height: height,
-    show: false,
-    webPreferences: { offscreen: true }
-  });
-  await chatExportWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
-  await chatExportWindow.webContents.executeJavaScript('window._waitForFonts()');
-  return true;
-});
-
-ipcMain.handle('chat-export-frame', async (event, { html }) => {
-  if (!chatExportWindow) return null;
-  const wc = chatExportWindow.webContents;
-  await wc.executeJavaScript(
-    'window._renderChat(' + JSON.stringify(html) + ');' +
-    'new Promise(function(r){requestAnimationFrame(function(){requestAnimationFrame(r);});});'
-  );
-  const image = await wc.capturePage();
-  return image.toJPEG(92).toString('base64');
-});
-
-ipcMain.handle('chat-export-cleanup', () => {
-  if (chatExportWindow) { chatExportWindow.close(); chatExportWindow = null; }
-});
-
 ipcMain.handle('export-mp4', async (event, { frames, savePath, fps, width, height }) => {
   const tmpDir = path.join(os.tmpdir(), `vt-export-${Date.now()}`);
   fs.mkdirSync(tmpDir, { recursive: true });
@@ -194,66 +220,37 @@ ipcMain.handle('export-mp4', async (event, { frames, savePath, fps, width, heigh
     frameIdx++;
   }
 
-  const dupScript = [];
+  let concatContent = '';
   for (const [idx, info] of dupMap) {
-    if (info.count > 1) {
-      for (let d = 1; d < info.count; d++) {
-        dupScript.push(`file 'f_${String(idx).padStart(6, '0')}.jpg'`);
-      }
+    for (let d = 0; d < info.count; d++) {
+      concatContent += `file 'f_${String(idx).padStart(6, '0')}.jpg'\n`;
     }
   }
 
-  if (dupScript.length > 0) {
-    let concatContent = '';
-    for (const [idx, info] of dupMap) {
-      for (let d = 0; d < info.count; d++) {
-        concatContent += `file 'f_${String(idx).padStart(6, '0')}.jpg'\n`;
-      }
-    }
-    fs.writeFileSync(path.join(tmpDir, 'concat.txt'), concatContent);
+  fs.writeFileSync(path.join(tmpDir, 'concat.txt'), concatContent);
 
-    return new Promise((resolve, reject) => {
-      const args = [
-        '-y', '-f', 'concat', '-safe', '0',
-        '-r', String(fps),
-        '-i', path.join(tmpDir, 'concat.txt'),
-        '-vf', 'crop=trunc(iw/2)*2:trunc(ih/2)*2',
-        '-c:v', 'libx264',
-        '-pix_fmt', 'yuv420p',
-        '-preset', 'fast',
-        '-crf', '18',
-        '-movflags', '+faststart',
-        savePath
-      ];
-      const proc = spawn(ffmpegPath, args);
-      let stderr = '';
-      proc.stderr.on('data', d => stderr += d.toString());
-      proc.on('close', (code) => {
-        fs.rmSync(tmpDir, { recursive: true, force: true });
-        if (code === 0) resolve(savePath);
-        else reject(new Error('ffmpeg exited ' + code + ': ' + stderr));
-      });
+  return new Promise((resolve, reject) => {
+    const args = [
+      '-y', '-f', 'concat', '-safe', '0',
+      '-r', String(fps),
+      '-i', path.join(tmpDir, 'concat.txt'),
+      '-vf', 'crop=trunc(iw/2)*2:trunc(ih/2)*2',
+      '-c:v', 'libx264',
+      '-pix_fmt', 'yuv420p',
+      '-preset', 'fast',
+      '-crf', '18',
+      '-movflags', '+faststart',
+      savePath
+    ];
+    const proc = spawn(ffmpegPath, args);
+    let stderr = '';
+    proc.stderr.on('data', d => stderr += d.toString());
+    proc.on('close', (code) => {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+      if (code === 0) resolve(savePath);
+      else reject(new Error('ffmpeg exited ' + code + ': ' + stderr));
     });
-  } else {
-    return new Promise((resolve, reject) => {
-      const args = [
-        '-y', '-framerate', String(fps),
-        '-i', path.join(tmpDir, 'f_%06d.jpg'),
-        '-vf', 'crop=trunc(iw/2)*2:trunc(ih/2)*2',
-        '-c:v', 'libx264', '-pix_fmt', 'yuv420p',
-        '-preset', 'fast', '-crf', '18',
-        '-movflags', '+faststart', savePath
-      ];
-      const proc = spawn(ffmpegPath, args);
-      let stderr = '';
-      proc.stderr.on('data', d => stderr += d.toString());
-      proc.on('close', (code) => {
-        fs.rmSync(tmpDir, { recursive: true, force: true });
-        if (code === 0) resolve(savePath);
-        else reject(new Error('ffmpeg exited ' + code + ': ' + stderr));
-      });
-    });
-  }
+  });
 });
 
 app.whenReady().then(createWindow);

@@ -2257,13 +2257,19 @@ function initNewspaper() {
     const overrideStyle = overrides.length ? `<style>.so *{${overrides.join(';')}}</style>` : '';
 
     setNewsExporting(true, 'Inicjalizacja...');
-    await ipcRenderer.invoke('export-init', {
+    await ipcRenderer.invoke('bg-init', {
       width: w, height: h,
-      accent: state.colorAccent,
-      vignetteOpacity: state.vignetteOpacity,
-      vignetteSize: state.vignetteSize,
-      vignetteSpread: state.vignetteSpread
+      css: `.keyword-highlight{font-weight:800;padding:2px 6px;border-radius:2px;white-space:nowrap;display:inline}`,
+      body: '<div id="vignette" style="position:absolute;inset:0;pointer-events:none;z-index:10"></div>'
     });
+
+    await ipcRenderer.invoke('bg-eval', `
+      var el = document.createElement('style'); el.id = 'dynAccent'; document.head.appendChild(el);
+      el.textContent = '.keyword-highlight{background:linear-gradient(120deg,${state.colorAccent}ee,${state.colorAccent});color:#000;box-shadow:0 0 20px ${state.colorAccent}66,0 0 60px ${state.colorAccent}26}';
+      var v = document.getElementById('vignette');
+      var o = ${state.vignetteOpacity / 100}, size = ${state.vignetteSize}, spread = ${state.vignetteSpread};
+      if (o > 0) { v.style.background = 'radial-gradient(ellipse '+size+'% '+Math.round(size*0.9)+'% at 50% 50%,transparent 0%,rgba(0,0,0,'+(o*0.08).toFixed(2)+') '+(100-spread)+'%,rgba(0,0,0,'+(o*0.25).toFixed(2)+') '+(100-spread*0.7)+'%,rgba(0,0,0,'+(o*0.5).toFixed(2)+') '+(100-spread*0.4)+'%,rgba(0,0,0,'+o.toFixed(2)+') 100%)'; }
+    `);
 
     buildQueue();
     const slidesData = [];
@@ -2277,34 +2283,48 @@ function initNewspaper() {
 
       const bodyHtml = `<div style="position:absolute;inset:0;background:${bg}">${overrideStyle}<div class="zoom-scroll" style="position:absolute;inset:0;overflow:hidden;"><div class="article-inner so" style="width:100%;height:100%;overflow:hidden;display:flex;flex-direction:column;">${html}</div></div></div>`;
 
-      slidesData.push({
-        bodyHtml, bg,
-        zoom: state.zoomLevel,
-        offX: state.zoomOffsetX,
-        offY: state.zoomOffsetY,
-        duration: framesPerSlide
-      });
+      const zoom = state.zoomLevel;
+      const offX = state.zoomOffsetX;
+      const offY = state.zoomOffsetY;
+
+      slidesData.push({ bodyHtml, zoom, offX, offY, duration: framesPerSlide });
     }
 
     setNewsExporting(true, 'Renderowanie...');
-    const BATCH = 5;
     const frames = [];
 
-    for (let i = 0; i < slidesData.length; i += BATCH) {
-      const batch = slidesData.slice(i, i + BATCH);
-      const batchFrames = await ipcRenderer.invoke('export-slides', { slides: batch });
-      frames.push(...batchFrames);
+    for (let i = 0; i < slidesData.length; i++) {
+      const d = slidesData[i];
+      const js = `
+        (function() {
+          var kw = document.querySelector('.keyword-highlight');
+          var sc = document.querySelector('.zoom-scroll');
+          var inner = document.querySelector('.article-inner');
+          if (kw && sc && inner) {
+            var sR = sc.getBoundingClientRect();
+            var kR = kw.getBoundingClientRect();
+            var kCX = kR.left + kR.width / 2 - sR.left;
+            var kCY = kR.top + kR.height / 2 - sR.top;
+            var ox = (sR.width / 2 - kCX * ${d.zoom}) + ${d.offX} * ${d.zoom};
+            var oy = (sR.height / 2 - kCY * ${d.zoom}) + ${d.offY} * ${d.zoom};
+            inner.style.transform = 'translate('+ox+'px,'+oy+'px) scale(${d.zoom})';
+            inner.style.transformOrigin = '0 0';
+          }
+        })();
+      `;
+      const data = await ipcRenderer.invoke('bg-render-js', { html: d.bodyHtml, js });
+      frames.push({ data, duration: d.duration });
 
-      const pct = Math.round(Math.min(i + BATCH, slidesData.length) / slidesData.length * 100);
+      const pct = Math.round((i + 1) / slidesData.length * 100);
       $('#newsExportBarFill').style.width = pct + '%';
-      $('#newsExportLabel').textContent = `Slajd ${Math.min(i + BATCH, slidesData.length)}/${slidesData.length}`;
+      $('#newsExportLabel').textContent = `Slajd ${i + 1}/${slidesData.length}`;
     }
 
     setNewsExporting(true, 'Koduję MP4...');
     $('#newsExportBarFill').style.width = '100%';
 
     await ipcRenderer.invoke('export-mp4', { frames, savePath, fps, width: w, height: h });
-    await ipcRenderer.invoke('export-cleanup');
+    await ipcRenderer.invoke('bg-cleanup');
     setNewsExporting(false);
   });
 
@@ -2958,7 +2978,10 @@ function initChat() {
     const framesEnd = Math.round(1.5 * fps);
 
     setExporting(true, 'Przygotowuję...');
-    await ipcRenderer.invoke('chat-export-init', { width: w, height: h });
+    await ipcRenderer.invoke('bg-init', {
+      width: w, height: h,
+      css: require('path').join(__dirname, 'styles.css')
+    });
 
     const p = chatState.platform;
     let headerStyle = '', bodyStyle = '', bubbleLStyle = '', bubbleRStyle = '', textStyle = '';
@@ -2989,7 +3012,7 @@ function initChat() {
     };
 
     const capture = async (html) => {
-      return await ipcRenderer.invoke('chat-export-frame', { html });
+      return await ipcRenderer.invoke('bg-render', { html });
     };
 
     const frames = [];
@@ -3020,7 +3043,7 @@ function initChat() {
     $('#chatExportBarFill').style.width = '100%';
 
     await ipcRenderer.invoke('export-mp4', { frames, savePath, fps, width: w, height: h });
-    await ipcRenderer.invoke('chat-export-cleanup');
+    await ipcRenderer.invoke('bg-cleanup');
 
     chatRenderPreview(chatState.animSpeed > 0);
     setExporting(false);
