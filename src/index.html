@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;700;900&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Crimson+Pro:ital,wght@0,400;0,600;0,700;0,900;1,400&family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;0,9..40,900;1,9..40,400&family=EB+Garamond:ital,wght@0,400;0,700;1,400&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;0,9..144,900;1,9..144,400&family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,600;0,700;1,400&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;600;700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Libre+Franklin:wght@400;600;700;900&family=Lora:ital,wght@0,400;0,700;1,400&family=Manrope:wght@300;400;500;600;700;800&family=Merriweather:wght@400;700;900&family=Outfit:wght@400;500;600;700;800&family=Oswald:wght@400;600;700&family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Roboto+Slab:wght@400;700&family=Sora:wght@400;600;700;800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=Space+Grotesk:wght@400;600;700&family=Work+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 </head>
 <body>
   <div class="app">
@@ -30,6 +31,21 @@
         <button class="tool-nav-btn" data-tool="chat" title="Fake Chat">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+          </svg>
+        </button>
+        <button class="tool-nav-btn" data-tool="map" title="Map Travel">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M2 12h20"/>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+          </svg>
+        </button>
+        <button class="tool-nav-btn" data-tool="typing" title="Typing Animation">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="4" width="20" height="14" rx="2"/>
+            <path d="M7 8h.01M11 8h.01M15 8h.01M19 8h.01"/>
+            <path d="M7 12h.01M11 12h.01M15 12h.01M19 12h.01"/>
+            <path d="M9 16h6"/>
           </svg>
         </button>
       </div>
@@ -104,8 +120,8 @@
               <textarea class="control-textarea" id="customLead" rows="2" placeholder="Losowy lorem ipsum"></textarea>
             </div>
             <div class="custom-group">
-              <label class="custom-label">Zoom <span class="control-value" id="zoomVal">1.8x</span></label>
-              <input type="range" class="control-range" id="zoomRange" min="1" max="3" step="0.1" value="1.8" data-default="1.8">
+              <label class="custom-label">Zoom <span class="control-value" id="zoomVal">2.0x</span></label>
+              <input type="range" class="control-range" id="zoomRange" min="2" max="5" step="0.1" value="2.0" data-default="2.0">
             </div>
             <div class="custom-group">
               <label class="custom-label">Offset X <span class="control-value" id="offXVal">0</span></label>
@@ -138,6 +154,26 @@
             <div class="custom-group">
               <label class="custom-label">Przejście <span class="control-value" id="transitionVal">120ms</span></label>
               <input type="range" class="control-range" id="transitionRange" min="0" max="500" step="10" value="120" data-default="120">
+            </div>
+            <div class="custom-group">
+              <label class="custom-label">Animacja <span class="control-value" id="animPresetVal">Brak</span></label>
+              <select class="control-select" id="animPresetSelect">
+                <option value="none">Brak</option>
+                <option value="zoomIn">Zoom In</option>
+                <option value="zoomOut">Zoom Out</option>
+                <option value="panLeft">Pan ◀</option>
+                <option value="panRight">Pan ▶</option>
+                <option value="panUp">Pan ▲</option>
+                <option value="panDown">Pan ▼</option>
+                <option value="kenBurns">Ken Burns</option>
+                <option value="drift">Drift</option>
+                <option value="swing">Swing</option>
+                <option value="breathe">Breathe</option>
+              </select>
+            </div>
+            <div class="custom-group" id="animIntensityGroup" style="display:none">
+              <label class="custom-label">Moc animacji <span class="control-value" id="animIntensityVal">100%</span></label>
+              <input type="range" class="control-range" id="animIntensityRange" min="0" max="300" step="10" value="100" data-default="100">
             </div>
           </div>
         </div>
@@ -254,6 +290,11 @@
           </select>
         </div>
 
+        <div class="control-group">
+          <label class="control-label">Skala wiadomości <span id="chatScaleVal">100%</span></label>
+          <input type="range" class="control-range" id="chatScaleRange" min="50" max="200" step="5" value="100" data-default="100">
+        </div>
+
         <div class="chat-contacts">
           <label class="control-label">Osoby</label>
           <div class="chat-contact-row">
@@ -332,8 +373,259 @@
         </div>
       </aside>
     </div>
+
+    <!-- TOOL: Typing Animation -->
+    <div class="tool-panel" data-tool="typing">
+      <section class="preview-area" id="typingPreviewArea">
+        <div class="preview-wrapper" id="typingPreviewWrapper">
+          <div class="preview-canvas" id="typingPreviewCanvas"></div>
+        </div>
+      </section>
+
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <span class="sidebar-title">Typing Animation</span>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Motyw</label>
+          <div class="control-btn-group" id="typingThemeGroup">
+            <button class="control-btn active" data-theme="editor">Editor</button>
+            <button class="control-btn" data-theme="terminal">Terminal</button>
+            <button class="control-btn" data-theme="email">Email</button>
+            <button class="control-btn" data-theme="sms">SMS</button>
+            <button class="control-btn" data-theme="generic">Generic</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Format</label>
+          <div class="control-btn-group" id="typingFormatGroup">
+            <button class="control-btn active" data-format="16:9">16:9</button>
+            <button class="control-btn" data-format="9:16">9:16</button>
+            <button class="control-btn" data-format="1:1">1:1</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Rozdzielczość</label>
+          <select class="control-select" id="typingResolutionSelect">
+            <option value="720p">720p</option>
+            <option value="1080p" selected>1080p</option>
+            <option value="4K">4K</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Sekwencje</label>
+          <div class="typing-seq-list" id="typingSeqList"></div>
+          <div class="typing-seq-add" id="typingSeqAdd">
+            <button class="typing-seq-add-btn" data-add="type">+ Tekst</button>
+            <button class="typing-seq-add-btn" data-add="delete">+ Usuń</button>
+            <button class="typing-seq-add-btn" data-add="pause">+ Pauza</button>
+            <button class="typing-seq-add-btn" data-add="newline">+ Linia</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Prędkość pisania <span class="control-value" id="typingSpeedVal">80ms</span></label>
+          <input type="range" class="control-range" id="typingSpeed" min="20" max="300" step="5" value="80" data-default="80">
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Prędkość usuwania <span class="control-value" id="typingDelSpeedVal">40ms</span></label>
+          <input type="range" class="control-range" id="typingDelSpeed" min="10" max="200" step="5" value="40" data-default="40">
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Font size <span class="control-value" id="typingFontSizeVal">20px</span></label>
+          <input type="range" class="control-range" id="typingFontSize" min="10" max="40" step="1" value="20" data-default="20">
+        </div>
+
+        <div class="custom-row">
+          <div class="custom-color">
+            <label class="custom-label">Tło</label>
+            <input type="color" class="control-color" id="typingBgColor" value="#1e1e2e">
+          </div>
+          <div class="custom-color">
+            <label class="custom-label">Tekst</label>
+            <input type="color" class="control-color" id="typingTextColor" value="#cdd6f4">
+          </div>
+          <div class="custom-color">
+            <label class="custom-label">Kursor</label>
+            <input type="color" class="control-color" id="typingCursorColor" value="#f5e0dc">
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Start delay <span class="control-value" id="typingStartDelayVal">500ms</span></label>
+          <input type="range" class="control-range" id="typingStartDelay" min="0" max="3000" step="100" value="500" data-default="500">
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">End delay <span class="control-value" id="typingEndDelayVal">1500ms</span></label>
+          <input type="range" class="control-range" id="typingEndDelay" min="0" max="5000" step="100" value="1500" data-default="1500">
+        </div>
+
+        <label class="control-checkbox"><input type="checkbox" id="typingCursorBlink" checked> Migotanie kursora</label>
+
+        <div class="control-actions">
+          <button class="btn btn-primary" id="typingPlayBtn">
+            <svg width="14" height="14" viewBox="0 0 14 14"><polygon points="2,0 14,7 2,14" fill="currentColor"/></svg>
+            <span>Play</span>
+          </button>
+          <button class="btn btn-secondary" id="typingStopBtn">
+            <svg width="14" height="14" viewBox="0 0 14 14"><rect x="1" y="1" width="12" height="12" rx="2" fill="currentColor"/></svg>
+            <span>Stop</span>
+          </button>
+        </div>
+
+        <div class="control-actions">
+          <button class="btn btn-primary" id="typingExportMp4Btn" style="flex:1">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+            <span>Eksportuj MP4</span>
+          </button>
+        </div>
+
+        <div class="chat-export-progress" id="typingExportProgress" style="display:none">
+          <div class="chat-export-bar"><div class="chat-export-bar-fill" id="typingExportBarFill"></div></div>
+          <span class="chat-export-label" id="typingExportLabel">...</span>
+        </div>
+      </aside>
+    </div>
+
+    <!-- TOOL: Map Travel -->
+    <div class="tool-panel" data-tool="map">
+      <section class="preview-area">
+        <div class="preview-wrapper" id="mapPreviewWrapper">
+          <div id="mapContainer"></div>
+        </div>
+      </section>
+
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <span class="sidebar-title">Map Travel</span>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Style mapy</label>
+          <div class="control-btn-group" id="mapStyleGroup">
+            <button class="control-btn active" data-style="dark">Dark</button>
+            <button class="control-btn" data-style="light">Light</button>
+            <button class="control-btn" data-style="topo">Topo</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Transport</label>
+          <div class="control-btn-group" id="mapTransportGroup">
+            <button class="control-btn" data-transport="car">Car</button>
+            <button class="control-btn active" data-transport="plane">Plane</button>
+            <button class="control-btn" data-transport="ship">Ship</button>
+            <button class="control-btn" data-transport="train">Train</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Punkty trasy <span class="control-value" style="font-size:10px;text-transform:none">kliknij mapę by ustawić</span></label>
+          <div class="map-waypoints-list" id="mapWaypointsList"></div>
+          <button class="btn btn-ghost map-add-wp-btn" id="mapAddWaypoint">
+            <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 1v12M1 7h12"/></svg>
+            <span>Dodaj punkt</span>
+          </button>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Trasa</label>
+          <div class="map-route-row">
+            <input type="color" class="control-color map-route-color" id="mapRouteColor" value="#6366f1">
+            <div class="custom-group" style="flex:1">
+              <label class="custom-label">Grubość <span class="control-value" id="mapRouteWidthVal">4</span></label>
+              <input type="range" class="control-range" id="mapRouteWidth" min="1" max="10" step="1" value="4">
+            </div>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Pojazd</label>
+          <div class="map-vehicle-row">
+            <div class="map-vehicle-preview" id="mapVehiclePreview"></div>
+            <label class="btn btn-ghost map-vehicle-upload">
+              Custom PNG
+              <input type="file" id="mapVehicleFile" accept="image/*" style="display:none">
+            </label>
+            <button class="btn btn-ghost" id="mapVehicleClear" style="display:none;padding:6px 8px">✕</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Kamera</label>
+          <div class="control-btn-group" id="mapCameraGroup">
+            <button class="control-btn active" data-camera="follow">Follow</button>
+            <button class="control-btn" data-camera="overview">Overview</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Czas <span class="control-value" id="mapDurationVal">5s</span></label>
+          <input type="range" class="control-range" id="mapDuration" min="1" max="30" step="0.5" value="5">
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Zoom <span class="control-value" id="mapZoomVal">5</span></label>
+          <input type="range" class="control-range" id="mapZoom" min="2" max="18" step="1" value="5">
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Format</label>
+          <div class="control-btn-group" id="mapFormatGroup">
+            <button class="control-btn active" data-format="16:9">16:9</button>
+            <button class="control-btn" data-format="9:16">9:16</button>
+            <button class="control-btn" data-format="1:1">1:1</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Rozdzielczość</label>
+          <select class="control-select" id="mapResolutionSelect">
+            <option value="720p">720p</option>
+            <option value="1080p" selected>1080p</option>
+            <option value="4K">4K</option>
+          </select>
+        </div>
+
+        <div class="control-actions">
+          <button class="btn btn-primary" id="mapPlayBtn">
+            <svg width="14" height="14" viewBox="0 0 14 14"><polygon points="2,0 14,7 2,14" fill="currentColor"/></svg>
+            <span>Podgląd</span>
+          </button>
+          <button class="btn btn-secondary" id="mapStopBtn">
+            <svg width="14" height="14" viewBox="0 0 14 14"><rect x="1" y="1" width="12" height="12" rx="2" fill="currentColor"/></svg>
+            <span>Stop</span>
+          </button>
+        </div>
+
+        <div class="control-actions">
+          <button class="btn btn-primary" id="mapExportBtn" style="flex:1">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+            <span>Eksportuj MP4</span>
+          </button>
+        </div>
+
+        <div class="chat-export-progress" id="mapExportProgress">
+          <div class="chat-export-bar"><div class="chat-export-bar-fill" id="mapExportBarFill"></div></div>
+          <span class="chat-export-label" id="mapExportLabel">...</span>
+        </div>
+
+        <div class="control-group" style="margin-top:auto">
+          <div class="resolution-info" id="mapResolutionInfo">1920 × 1080</div>
+        </div>
+      </aside>
+    </div>
   </div>
 
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="renderer.js"></script>
+  <script src="map-renderer.js"></script>
 </body>
 </html>

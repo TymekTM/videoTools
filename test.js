@@ -173,10 +173,10 @@ test('transform-origin centering puts keyword at canvas center', () => {
   cases.forEach(({ natX, natY }) => {
     const kCX = natX * cw;
     const kCY = natY * ch;
-    const tx = cw / 2 - kCX * ZOOM;
-    const ty = ch / 2 - kCY * ZOOM;
-    const resultX = kCX * ZOOM + tx;
-    const resultY = kCY * ZOOM + ty;
+    const dx = cw / 2 - kCX;
+    const dy = ch / 2 - kCY;
+    const resultX = dx + kCX;
+    const resultY = dy + kCY;
     assert.strictEqual(resultX, cw / 2, `natX=${natX}: expected X=${cw/2}, got ${resultX}`);
     assert.strictEqual(resultY, ch / 2, `natY=${natY}: expected Y=${ch/2}, got ${resultY}`);
   });
@@ -202,6 +202,231 @@ test('Rendered HTML contains expected structure', () => {
   assert.ok(html.includes('<p'), 'Should have paragraph elements');
   assert.ok(html.includes('TESTWORD'), 'Should contain keyword');
   assert.ok(html.includes('keyword-highlight'), 'Should have highlight class');
+});
+
+console.log('\x1b[1mTyping - Timeline:\x1b[0m');
+test('typingBuildTimeline builds states from type sequences', () => {
+  typingState.sequences = [
+    { action: 'type', text: 'ABC' },
+  ];
+  const tl = typingBuildTimeline();
+  assert.strictEqual(tl.finalText, 'ABC', `Expected 'ABC', got '${tl.finalText}'`);
+  assert.strictEqual(tl.states.length, 3, `Expected 3 states, got ${tl.states.length}`);
+  assert.strictEqual(tl.states[0].text, 'A');
+  assert.strictEqual(tl.states[1].text, 'AB');
+  assert.strictEqual(tl.states[2].text, 'ABC');
+});
+
+test('typingBuildTimeline handles delete action', () => {
+  typingState.sequences = [
+    { action: 'type', text: 'Hello' },
+    { action: 'delete', count: 2 },
+  ];
+  const tl = typingBuildTimeline();
+  assert.strictEqual(tl.finalText, 'Hel', `Expected 'Hel', got '${tl.finalText}'`);
+});
+
+test('typingBuildTimeline handles newline action', () => {
+  typingState.sequences = [
+    { action: 'type', text: 'Line1' },
+    { action: 'newline' },
+    { action: 'type', text: 'Line2' },
+  ];
+  const tl = typingBuildTimeline();
+  assert.strictEqual(tl.finalText, 'Line1\nLine2', `Expected 'Line1\\nLine2', got '${JSON.stringify(tl.finalText)}'`);
+});
+
+test('typingBuildTimeline records pauses', () => {
+  typingState.sequences = [
+    { action: 'type', text: 'Hi' },
+    { action: 'pause', duration: 500 },
+    { action: 'type', text: '!' },
+  ];
+  const tl = typingBuildTimeline();
+  assert.strictEqual(tl.pauses.length, 1);
+  assert.strictEqual(tl.pauses[0].end - tl.pauses[0].start, 500);
+});
+
+test('typingBuildTimeline handles deleteAll when empty', () => {
+  typingState.sequences = [
+    { action: 'type', text: 'A' },
+    { action: 'delete', count: 5 },
+  ];
+  const tl = typingBuildTimeline();
+  assert.strictEqual(tl.finalText, '', `Expected empty, got '${tl.finalText}'`);
+});
+
+test('typingBuildTimeline with empty type text produces no states', () => {
+  typingState.sequences = [
+    { action: 'type', text: '' },
+  ];
+  const tl = typingBuildTimeline();
+  assert.strictEqual(tl.states.length, 0);
+  assert.strictEqual(tl.finalText, '');
+});
+
+test('typingBuildTimeline respects custom speed per sequence', () => {
+  typingState.sequences = [
+    { action: 'type', text: 'AB', speed: 50 },
+    { action: 'delete', count: 1, speed: 20 },
+  ];
+  typingState.typeSpeed = 80;
+  typingState.delSpeed = 40;
+  const tl = typingBuildTimeline();
+  assert.strictEqual(tl.states[0].time, 0);
+  assert.strictEqual(tl.states[1].time, 50);
+  assert.strictEqual(tl.states[2].time, 100);
+});
+
+console.log('\x1b[1mTyping - getTextAtTime:\x1b[0m');
+test('typingGetTextAtTime returns correct text during typing', () => {
+  typingState.sequences = [
+    { action: 'type', text: 'ABC' },
+  ];
+  typingState.typeSpeed = 100;
+  const tl = typingBuildTimeline();
+  assert.strictEqual(typingGetTextAtTime(tl, 0), 'A');
+  assert.strictEqual(typingGetTextAtTime(tl, 99), 'A');
+  assert.strictEqual(typingGetTextAtTime(tl, 100), 'AB');
+  assert.strictEqual(typingGetTextAtTime(tl, 200), 'ABC');
+  assert.strictEqual(typingGetTextAtTime(tl, 999), 'ABC');
+});
+
+test('typingGetTextAtTime returns empty for time before any state', () => {
+  typingState.sequences = [
+    { action: 'pause', duration: 200 },
+    { action: 'type', text: 'X' },
+  ];
+  typingState.typeSpeed = 50;
+  const tl = typingBuildTimeline();
+  assert.strictEqual(typingGetTextAtTime(tl, 0), '');
+  assert.strictEqual(typingGetTextAtTime(tl, 199), '');
+  assert.strictEqual(typingGetTextAtTime(tl, 200), 'X');
+});
+
+test('typingGetTextAtTime handles delete timeline', () => {
+  typingState.sequences = [
+    { action: 'type', text: 'ABCD' },
+    { action: 'delete', count: 2 },
+  ];
+  typingState.typeSpeed = 100;
+  typingState.delSpeed = 50;
+  const tl = typingBuildTimeline();
+  assert.strictEqual(typingGetTextAtTime(tl, 300), 'ABCD');
+  assert.strictEqual(typingGetTextAtTime(tl, 350), 'ABCD');
+  assert.strictEqual(typingGetTextAtTime(tl, 400), 'ABC');
+  assert.strictEqual(typingGetTextAtTime(tl, 450), 'AB');
+});
+
+console.log('\x1b[1mTyping - isInPause:\x1b[0m');
+test('typingIsInPause detects pause intervals', () => {
+  const pauses = [
+    { start: 100, end: 300 },
+    { start: 500, end: 700 },
+  ];
+  assert.strictEqual(typingIsInPause(pauses, 0), false);
+  assert.strictEqual(typingIsInPause(pauses, 100), true);
+  assert.strictEqual(typingIsInPause(pauses, 200), true);
+  assert.strictEqual(typingIsInPause(pauses, 299), true);
+  assert.strictEqual(typingIsInPause(pauses, 300), false);
+  assert.strictEqual(typingIsInPause(pauses, 600), true);
+});
+
+test('typingIsInPause returns false for empty pauses', () => {
+  assert.strictEqual(typingIsInPause([], 500), false);
+});
+
+console.log('\x1b[1mTyping - escapeHTML:\x1b[0m');
+test('typingEscapeHTML escapes special characters', () => {
+  assert.strictEqual(typingEscapeHTML('<b>hi</b>'), '&lt;b&gt;hi&lt;/b&gt;');
+  assert.strictEqual(typingEscapeHTML('a&b'), 'a&amp;b');
+  assert.strictEqual(typingEscapeHTML('line1\nline2'), 'line1<br>line2');
+  assert.strictEqual(typingEscapeHTML('hello'), 'hello');
+});
+
+console.log('\x1b[1mTyping - Theme Rendering:\x1b[0m');
+test('typingRenderTheme produces valid HTML for each theme', () => {
+  typingState.bgColor = '#1e1e2e';
+  typingState.textColor = '#cdd6f4';
+  typingState.cursorColor = '#f5e0dc';
+  typingState.fontSize = 16;
+  const themes = ['editor', 'terminal', 'email', 'sms', 'generic'];
+  themes.forEach(theme => {
+    typingState.theme = theme;
+    const html = typingRenderTheme(theme, 'Hello World');
+    assert.ok(html.includes('Hello World'), `${theme}: missing content`);
+    assert.ok(html.includes('#1e1e2e'), `${theme}: missing bg color`);
+    assert.ok(html.includes('width:100%'), `${theme}: missing width:100%`);
+    assert.ok(html.includes('height:100%'), `${theme}: missing height:100%`);
+    assert.ok(html.includes('display:flex'), `${theme}: missing display:flex`);
+  });
+});
+
+test('typing theme renders include inline font-family', () => {
+  const html = typingRenderTheme('editor', 'test');
+  assert.ok(html.includes('JetBrains Mono'), 'Missing font-family');
+});
+
+test('typing theme terminal includes prompt', () => {
+  const html = typingRenderTheme('terminal', 'ls -la');
+  assert.ok(html.includes('user@machine'), 'Missing terminal prompt');
+});
+
+test('typing theme email includes To and Subject fields', () => {
+  const html = typingRenderTheme('email', 'Body text');
+  assert.ok(html.includes('To:'), 'Missing To field');
+  assert.ok(html.includes('Subject:'), 'Missing Subject field');
+});
+
+test('typing theme sms includes bubble with content', () => {
+  const html = typingRenderTheme('sms', 'Msg');
+  assert.ok(html.includes('Msg'), 'Missing SMS content');
+  assert.ok(html.includes('border-radius'), 'Missing bubble border-radius');
+});
+
+console.log('\x1b[1mTyping - State:\x1b[0m');
+test('typingState has required fields', () => {
+  assert.ok(typingState.format);
+  assert.ok(typingState.resolution);
+  assert.ok(typingState.theme);
+  assert.ok(Array.isArray(typingState.sequences));
+  assert.strictEqual(typeof typingState.typeSpeed, 'number');
+  assert.strictEqual(typeof typingState.delSpeed, 'number');
+  assert.strictEqual(typeof typingState.fontSize, 'number');
+  assert.strictEqual(typeof typingState.bgColor, 'string');
+  assert.strictEqual(typeof typingState.textColor, 'string');
+  assert.strictEqual(typeof typingState.cursorColor, 'string');
+  assert.strictEqual(typeof typingState.startDelay, 'number');
+  assert.strictEqual(typeof typingState.endDelay, 'number');
+  assert.strictEqual(typeof typingState.cursorBlink, 'boolean');
+});
+
+test('typingState default sequences are valid', () => {
+  typingState.sequences.forEach((seq, i) => {
+    assert.ok(['type', 'delete', 'pause', 'newline', 'deleteAll'].includes(seq.action), `Seq ${i}: invalid action '${seq.action}'`);
+    if (seq.action === 'type') assert.ok(typeof seq.text === 'string', `Seq ${i}: type missing text`);
+    if (seq.action === 'delete') assert.ok(typeof seq.count === 'number' && seq.count > 0, `Seq ${i}: delete missing count`);
+    if (seq.action === 'pause') assert.ok(typeof seq.duration === 'number' && seq.duration > 0, `Seq ${i}: pause missing duration`);
+  });
+});
+
+test('typingBuildTimeline with default sequences completes without error', () => {
+  typingState.sequences = [
+    { action: 'type', text: 'Cześć!' },
+    { action: 'pause', duration: 600 },
+    { action: 'newline' },
+    { action: 'newline' },
+    { action: 'type', text: 'Jak się masz?' },
+    { action: 'pause', duration: 800 },
+    { action: 'delete', count: 7 },
+    { action: 'pause', duration: 400 },
+    { action: 'type', text: 'świetnie!' },
+  ];
+  const tl = typingBuildTimeline();
+  assert.ok(tl.states.length > 0, 'Should have states');
+  assert.ok(tl.totalDuration > 0, 'Should have positive duration');
+  assert.ok(tl.finalText.length > 0, 'Should have final text');
+  assert.ok(tl.pauses.length >= 2, 'Should have at least 2 pauses');
 });
 
 console.log('\n\x1b[1m' + '='.repeat(40) + '\x1b[0m');
