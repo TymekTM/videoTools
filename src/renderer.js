@@ -2320,53 +2320,21 @@ function initNewspaper() {
     $('#newsExportBarFill').style.width = active ? '0%' : '';
   };
 
-  $('#btnExportMp4').addEventListener('click', async () => {
-    const { ipcRenderer } = require('electron');
-    const savePath = await ipcRenderer.invoke('save-dialog', {
-      defaultName: `news-${Date.now()}.mp4`,
-      filters: [{ name: 'MP4', extensions: ['mp4'] }]
-    });
-    if (!savePath) return;
+  const vignetteOpacity = () => state.vignetteOpacity / 100;
+  const getVignetteHtml = () => {
+    const o = vignetteOpacity();
+    if (o <= 0) return '';
+    const vs = state.vignetteSize, sp = state.vignetteSpread;
+    return `<div style="position:absolute;inset:0;pointer-events:none;z-index:10;background:radial-gradient(ellipse ${vs}% ${Math.round(vs*0.9)}% at 50% 50%,transparent 0%,rgba(0,0,0,${(o*0.08).toFixed(2)}) ${100-sp}%,rgba(0,0,0,${(o*0.25).toFixed(2)}) ${100-sp*0.7}%,rgba(0,0,0,${(o*0.5).toFixed(2)}) ${100-sp*0.4}%,rgba(0,0,0,${o.toFixed(2)}) 100%)"></div>`;
+  };
 
-    const wasPlaying = state.playing;
-    if (wasPlaying) stop();
-
-    const [w, h] = getResolution();
-    const fps = 30;
-    const slideDurationMs = state.speed;
-    const targetDurationSec = parseInt($('#exportDuration').value) || 30;
-    const framesPerSlide = Math.max(1, Math.round((slideDurationMs / 1000) * fps));
-    const totalFrames = targetDurationSec * fps;
-    const totalSlides = Math.ceil(totalFrames / framesPerSlide);
-
-    const overrides = [];
-    if (state.fontSizeScale !== 100) overrides.push(`font-size:${state.fontSizeScale}%!important`);
-    if (state.lineH !== 1.72) overrides.push(`line-height:${state.lineH}!important`);
-    const overrideStyle = overrides.length ? `<style>.so *{${overrides.join(';')}}</style>` : '';
-
-    setNewsExporting(true, 'Inicjalizacja...');
-    await ipcRenderer.invoke('bg-init', {
-      width: w, height: h,
-      css: `.keyword-highlight{font-weight:800;padding:2px 6px;border-radius:2px;white-space:nowrap;display:inline}`
-    });
-
-    await ipcRenderer.invoke('bg-eval', `
-      var el = document.createElement('style'); el.id = 'dynAccent'; document.head.appendChild(el);
-      el.textContent = '.keyword-highlight{background:linear-gradient(120deg,${state.colorAccent}ee,${state.colorAccent});color:#000;box-shadow:0 0 20px ${state.colorAccent}66,0 0 60px ${state.colorAccent}26}';
-    `);
-
-    const vignetteOpacity = state.vignetteOpacity / 100;
-    let vignetteHtml = '';
-    if (vignetteOpacity > 0) {
-      const vs = state.vignetteSize, sp = state.vignetteSpread;
-      vignetteHtml = `<div style="position:absolute;inset:0;pointer-events:none;z-index:10;background:radial-gradient(ellipse ${vs}% ${Math.round(vs*0.9)}% at 50% 50%,transparent 0%,rgba(0,0,0,${(vignetteOpacity*0.08).toFixed(2)}) ${100-sp}%,rgba(0,0,0,${(vignetteOpacity*0.25).toFixed(2)}) ${100-sp*0.7}%,rgba(0,0,0,${(vignetteOpacity*0.5).toFixed(2)}) ${100-sp*0.4}%,rgba(0,0,0,${vignetteOpacity.toFixed(2)}) 100%)"></div>`;
-    }
-
+  const buildSlidesData = (totalSlides, framesPerSlide, overrideStyle) => {
     buildQueue();
-    const slidesData = [];
+    const data = [];
     const animPreset = ANIMATION_PRESETS[state.animationPreset];
     const isAnimated = state.animationPreset !== 'none' && animPreset.resolve;
     const sV = { zoom: state.zoomLevel, offX: state.zoomOffsetX, offY: state.zoomOffsetY, intensity: state.animIntensity / 100 };
+    const vHtml = getVignetteHtml();
 
     for (let s = 0; s < totalSlides; s++) {
       const template = state.queue[s % state.queue.length];
@@ -2375,7 +2343,7 @@ function initNewspaper() {
       const bgMatch = html.match(/background:\s*(#[0-9a-fA-F]{3,8})/);
       const bg = bgMatch ? bgMatch[1] : '#fff';
 
-      const bodyHtml = `<div style="position:absolute;inset:0;background:${bg}">${overrideStyle}<div class="zoom-scroll" style="position:absolute;inset:0;overflow:hidden;"><div class="article-inner so" style="width:100%;height:100%;overflow:hidden;display:flex;flex-direction:column;">${html}</div></div></div>${vignetteHtml}`;
+      const bodyHtml = `<div style="position:absolute;inset:0;background:${bg}">${overrideStyle}<div class="zoom-scroll" style="position:absolute;inset:0;overflow:hidden;"><div class="article-inner so" style="width:100%;height:100%;overflow:hidden;display:flex;flex-direction:column;">${html}</div></div></div>${vHtml}`;
 
       if (isAnimated) {
         const numSteps = Math.max(2, Math.ceil(framesPerSlide / 2));
@@ -2386,14 +2354,30 @@ function initNewspaper() {
           const p = animPreset.easing === 'linear' ? globalP : easeInOut(globalP);
           const vals = animPreset.resolve(p, sV);
           const dur = f === numSteps - 1 ? Math.max(1, framesPerSlide - stepDur * (numSteps - 1)) : stepDur;
-          slidesData.push({ bodyHtml, zoom: vals.zoom, offX: vals.offX, offY: vals.offY, duration: dur, slideIdx: s });
+          data.push({ bodyHtml, zoom: vals.zoom, offX: vals.offX, offY: vals.offY, duration: dur, slideIdx: s });
         }
       } else {
-        slidesData.push({ bodyHtml, zoom: state.zoomLevel, offX: state.zoomOffsetX, offY: state.zoomOffsetY, duration: framesPerSlide, slideIdx: s });
+        data.push({ bodyHtml, zoom: state.zoomLevel, offX: state.zoomOffsetX, offY: state.zoomOffsetY, duration: framesPerSlide, slideIdx: s });
       }
     }
+    return data;
+  };
 
-    setNewsExporting(true, 'Renderowanie...');
+  async function renderNewsToMp4(slidesData, width, height, fps, savePath, formatLabel) {
+    const { ipcRenderer } = require('electron');
+
+    setNewsExporting(true, `${formatLabel} — Inicjalizacja...`);
+    await ipcRenderer.invoke('bg-init', {
+      width, height,
+      css: `.keyword-highlight{font-weight:800;padding:2px 6px;border-radius:2px;white-space:nowrap;display:inline}`
+    });
+
+    await ipcRenderer.invoke('bg-eval', `
+      var el = document.createElement('style'); el.id = 'dynAccent'; document.head.appendChild(el);
+      el.textContent = '.keyword-highlight{background:linear-gradient(120deg,${state.colorAccent}ee,${state.colorAccent});color:#000;box-shadow:0 0 20px ${state.colorAccent}66,0 0 60px ${state.colorAccent}26}';
+    `);
+
+    setNewsExporting(true, `${formatLabel} — Renderowanie...`);
     const frames = [];
     let prevSlideIdx = -1;
 
@@ -2430,14 +2414,73 @@ function initNewspaper() {
 
       const pct = Math.round((i + 1) / slidesData.length * 100);
       $('#newsExportBarFill').style.width = pct + '%';
-      $('#newsExportLabel').textContent = `Renderowanie... ${pct}%`;
+      $('#newsExportLabel').textContent = `${formatLabel} — ${pct}%`;
     }
 
-    setNewsExporting(true, 'Koduję MP4...');
+    setNewsExporting(true, `${formatLabel} — Koduję MP4...`);
     $('#newsExportBarFill').style.width = '100%';
 
-    await ipcRenderer.invoke('export-mp4', { frames, savePath, fps, width: w, height: h });
+    await ipcRenderer.invoke('export-mp4', { frames, savePath, fps, width, height });
     await ipcRenderer.invoke('bg-cleanup');
+  }
+
+  $('#btnExportMp4').addEventListener('click', async () => {
+    const { ipcRenderer } = require('electron');
+    const savePath = await ipcRenderer.invoke('save-dialog', {
+      defaultName: `news-${Date.now()}.mp4`,
+      filters: [{ name: 'MP4', extensions: ['mp4'] }]
+    });
+    if (!savePath) return;
+
+    const wasPlaying = state.playing;
+    if (wasPlaying) stop();
+
+    const fps = 30;
+    const framesPerSlide = Math.max(1, Math.round((state.speed / 1000) * fps));
+    const totalSlides = Math.ceil((parseInt($('#exportDuration').value) || 30) * fps / framesPerSlide);
+
+    const overrides = [];
+    if (state.fontSizeScale !== 100) overrides.push(`font-size:${state.fontSizeScale}%!important`);
+    if (state.lineH !== 1.72) overrides.push(`line-height:${state.lineH}!important`);
+    const overrideStyle = overrides.length ? `<style>.so *{${overrides.join(';')}}</style>` : '';
+
+    const slidesData = buildSlidesData(totalSlides, framesPerSlide, overrideStyle);
+    const [w, h] = getResolution();
+    await renderNewsToMp4(slidesData, w, h, fps, savePath, state.format);
+    setNewsExporting(false);
+  });
+
+  $('#btnBatchExport').addEventListener('click', async () => {
+    const { ipcRenderer } = require('electron');
+    const nodePath = require('path');
+    const savePath = await ipcRenderer.invoke('save-dialog', {
+      defaultName: `news-batch-${Date.now()}.mp4`,
+      filters: [{ name: 'MP4', extensions: ['mp4'] }]
+    });
+    if (!savePath) return;
+
+    const wasPlaying = state.playing;
+    if (wasPlaying) stop();
+
+    const fps = 30;
+    const framesPerSlide = Math.max(1, Math.round((state.speed / 1000) * fps));
+    const totalSlides = Math.ceil((parseInt($('#exportDuration').value) || 30) * fps / framesPerSlide);
+
+    const overrides = [];
+    if (state.fontSizeScale !== 100) overrides.push(`font-size:${state.fontSizeScale}%!important`);
+    if (state.lineH !== 1.72) overrides.push(`line-height:${state.lineH}!important`);
+    const overrideStyle = overrides.length ? `<style>.so *{${overrides.join(';')}}</style>` : '';
+
+    const slidesData = buildSlidesData(totalSlides, framesPerSlide, overrideStyle);
+    const formats = ['16:9', '9:16', '1:1'];
+    const ext = nodePath.extname(savePath);
+    const base = savePath.slice(0, -ext.length);
+
+    for (const fmt of formats) {
+      const [fw, fh] = RESOLUTIONS[fmt][state.resolution];
+      const p = `${base}-${fmt.replace(':', 'x')}${ext}`;
+      await renderNewsToMp4(slidesData, fw, fh, fps, p, fmt);
+    }
     setNewsExporting(false);
   });
 
@@ -2624,7 +2667,7 @@ function chatUpdatePreviewSize() {
   wrapper.style.width = displayW + 'px';
   wrapper.style.height = displayH + 'px';
 
-  const base = Math.min(w, h) / 30 * chatState.fontScale / 100;
+  const base = Math.min(w, h) / 15 * chatState.fontScale / 100;
   const canvas = $('#chatPreviewCanvas');
   canvas.style.width = w + 'px';
   canvas.style.height = h + 'px';
@@ -2660,7 +2703,7 @@ function chatBubbleHTML(msg, i, p, bubbleLStyle, bubbleRStyle, animateBubble) {
   const animCls = animateBubble ? ' chat-bubble-animate' : '';
 
   if (p === 'discord') {
-    const discAvatar = chatAvatarHTML(contact, '1em');
+    const discAvatar = chatAvatarHTML(contact, '2em');
     return `
       <div class="chat-bubble ${isRight ? 'chat-bubble-right' : 'chat-bubble-left'}${animCls}">
         ${discAvatar}
@@ -2736,7 +2779,7 @@ function chatRenderPreview(animate, upTo, showTypingFrom) {
     textStyle = `color:${t.text}`;
   }
 
-  const avatarSize = p === 'discord' ? '1em' : '1.17em';
+  const avatarSize = '1.17em';
   const avatar = chatAvatarHTML(headerContact, avatarSize);
 
   const statuses = {
@@ -2750,7 +2793,7 @@ function chatRenderPreview(animate, upTo, showTypingFrom) {
   const headerHTML = `
     <div class="chat-render-header" ${headerStyle ? `style="${headerStyle}"` : ''}>
       <div class="chat-render-back">
-        <svg width="${p === 'discord' ? '0.44em' : '0.56em'}" height="${p === 'discord' ? '0.44em' : '0.56em'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        <svg width="${p === 'discord' ? '0.72em' : '0.56em'}" height="${p === 'discord' ? '0.72em' : '0.56em'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
       </div>
       ${avatar}
       <div class="chat-render-info">
@@ -2989,11 +3032,11 @@ function initChat() {
       bubbleRStyle = `background:${t.bubbleR};color:#fff`;
       textStyle = `color:${t.text}`;
     }
-    const avatarSize = p === 'discord' ? '1em' : '1.17em';
+    const avatarSize = '1.17em';
     const headerContact = chatState.contacts[1];
     const avatar = chatAvatarHTML(headerContact, avatarSize);
     const statuses = { imessage:'iMessage', whatsapp:'online', discord:`${chatState.messages.length} wiadomości`, messenger:'Active now', custom:'online' };
-    const headerHTML = `<div class="chat-render-header" ${headerStyle?`style="${headerStyle}"`:''}><div class="chat-render-back"><svg width="${p==='discord'?'0.44em':'0.56em'}" height="${p==='discord'?'0.44em':'0.56em'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></div>${avatar}<div class="chat-render-info"><div class="chat-render-name">${headerContact.name}</div><div class="chat-render-status">${statuses[p]||''}</div></div></div>`;
+    const headerHTML = `<div class="chat-render-header" ${headerStyle?`style="${headerStyle}"`:''}><div class="chat-render-back"><svg width="${p==='discord'?'0.72em':'0.56em'}" height="${p==='discord'?'0.72em':'0.56em'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></div>${avatar}<div class="chat-render-info"><div class="chat-render-name">${headerContact.name}</div><div class="chat-render-status">${statuses[p]||''}</div></div></div>`;
 
     const canvas = $('#chatPreviewCanvas');
     canvas.innerHTML = `<div class="chat-render chat-platform-${p} chat-animate" ${textStyle?`style="${textStyle}"`:''}>${headerHTML}<div class="chat-render-body" ${bodyStyle?`style="${bodyStyle}"`:''}></div></div>`;
@@ -3147,11 +3190,11 @@ function initChat() {
       bubbleRStyle = `background:${t.bubbleR};color:#fff`;
       textStyle = `color:${t.text}`;
     }
-    const avatarSize = p === 'discord' ? '1em' : '1.17em';
+    const avatarSize = '1.17em';
     const headerContact = chatState.contacts[1];
     const avatar = chatAvatarHTML(headerContact, avatarSize);
     const statuses = { imessage:'iMessage', whatsapp:'online', discord:`${chatState.messages.length} wiadomości`, messenger:'Active now', custom:'online' };
-    const headerHTML = `<div class="chat-render-header" ${headerStyle?`style="${headerStyle}"`:''}><div class="chat-render-back"><svg width="${p==='discord'?'0.44em':'0.56em'}" height="${p==='discord'?'0.44em':'0.56em'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></div>${avatar}<div class="chat-render-info"><div class="chat-render-name">${headerContact.name}</div><div class="chat-render-status">${statuses[p]||''}</div></div></div>`;
+    const headerHTML = `<div class="chat-render-header" ${headerStyle?`style="${headerStyle}"`:''}><div class="chat-render-back"><svg width="${p==='discord'?'0.72em':'0.56em'}" height="${p==='discord'?'0.72em':'0.56em'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></div>${avatar}<div class="chat-render-info"><div class="chat-render-name">${headerContact.name}</div><div class="chat-render-status">${statuses[p]||''}</div></div></div>`;
 
     const buildFrame = (limit, showTypingFrom, animateLast) => {
       let msgHTML = '';
@@ -3164,7 +3207,7 @@ function initChat() {
         typingHTML = chatTypingHTML(chatState.messages[showTypingFrom].sender);
       }
       const animClass = animateLast ? ' chat-animate' : '';
-      return `<div style="font-size:${Math.min(w,h)/30*chatState.fontScale/100}px;width:100%;height:100%"><div class="chat-render chat-platform-${p}${animClass}" ${textStyle?`style="${textStyle}"`:''}>${headerHTML}<div class="chat-render-body" ${bodyStyle?`style="${bodyStyle}"`:''}>${msgHTML}${typingHTML}</div></div></div>`;
+      return `<div style="font-size:${Math.min(w,h)/15*chatState.fontScale/100}px;width:100%;height:100%"><div class="chat-render chat-platform-${p}${animClass}" ${textStyle?`style="${textStyle}"`:''}>${headerHTML}<div class="chat-render-body" ${bodyStyle?`style="${bodyStyle}"`:''}>${msgHTML}${typingHTML}</div></div></div>`;
     };
 
     const capture = async (html, delay) => {
@@ -3235,6 +3278,13 @@ const typingState = {
   endDelay: 1500,
   cursorBlink: true,
   playing: false,
+  themeFields: {
+    editor: { title: 'untitled.txt' },
+    terminal: { title: 'Terminal', prompt: 'user@machine:~$' },
+    email: { title: 'New Message', to: 'jan@example.com', subject: 'Ważna wiadomość' },
+    sms: { avatar: 'J', contactName: 'Jan', status: 'online', bubbleColor: '#6366f1', timestamp: '14:32' },
+    generic: {},
+  },
 };
 
 let typingAnimId = null;
