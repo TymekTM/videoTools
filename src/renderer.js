@@ -2249,6 +2249,8 @@ function switchTool(toolId) {
     typingRefreshPreview();
   } else if (toolId === 'map') {
     if (window.mapActivate) window.mapActivate();
+  } else if (toolId === 'chart') {
+    if (window.chartActivate) window.chartActivate();
   }
 }
 
@@ -2703,7 +2705,7 @@ function chatBubbleHTML(msg, i, p, bubbleLStyle, bubbleRStyle, animateBubble) {
   const animCls = animateBubble ? ' chat-bubble-animate' : '';
 
   if (p === 'discord') {
-    const discAvatar = chatAvatarHTML(contact, '2.5em');
+    const discAvatar = chatAvatarHTML(contact, '1.6em');
     return `
       <div class="chat-bubble ${isRight ? 'chat-bubble-right' : 'chat-bubble-left'}${animCls}">
         ${discAvatar}
@@ -3851,17 +3853,17 @@ function initThemeToggle() {
   const saved = localStorage.getItem('app-theme');
   if (saved === 'light') document.documentElement.setAttribute('data-theme', 'light');
 
-  const btn = document.getElementById('themeToggleBtn');
-  if (!btn) return;
-  btn.addEventListener('click', () => {
-    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-    if (isLight) {
-      document.documentElement.removeAttribute('data-theme');
-      localStorage.setItem('app-theme', 'dark');
-    } else {
-      document.documentElement.setAttribute('data-theme', 'light');
-      localStorage.setItem('app-theme', 'light');
-    }
+  document.querySelectorAll('.theme-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+      if (isLight) {
+        document.documentElement.removeAttribute('data-theme');
+        localStorage.setItem('app-theme', 'dark');
+      } else {
+        document.documentElement.setAttribute('data-theme', 'light');
+        localStorage.setItem('app-theme', 'light');
+      }
+    });
   });
 }
 
@@ -3876,6 +3878,7 @@ function init() {
   initChat();
   initTyping();
   if (window.initMapTool) window.initMapTool();
+  if (window.initChartTool) window.initChartTool();
 }
 
 document.addEventListener('DOMContentLoaded', init);
