@@ -60,12 +60,12 @@ const ANIMATION_PRESETS = {
   zoomIn: { name: 'Zoom In', easing: 'ease-in-out', resolve: (p, s) => {
     const i = s.intensity;
     const z0 = s.zoom - (s.zoom - 1) * i;
-    return { zoom: lerp(z0, s.zoom, p), offX: lerp(-s.offX * i, s.offX, p), offY: lerp(-s.offY * i, s.offY, p) };
+    return { zoom: lerp(z0, s.zoom, p), offX: lerp(s.offX * (1 - i), s.offX, p), offY: lerp(s.offY * (1 - i), s.offY, p) };
   }},
   zoomOut: { name: 'Zoom Out', easing: 'ease-in-out', resolve: (p, s) => {
     const i = s.intensity;
     const z1 = s.zoom - (s.zoom - 1) * i;
-    return { zoom: lerp(s.zoom, z1, p), offX: lerp(s.offX, -s.offX * i, p), offY: lerp(s.offY, -s.offY * i, p) };
+    return { zoom: lerp(s.zoom, z1, p), offX: lerp(s.offX, s.offX * (1 - i), p), offY: lerp(s.offY, s.offY * (1 - i), p) };
   }},
   panLeft: { name: 'Pan ◀', easing: 'ease-in-out', resolve: (p, s) => ({
     zoom: s.zoom, offX: lerp(200 * s.intensity, -200 * s.intensity, p) + s.offX, offY: s.offY
@@ -3404,55 +3404,67 @@ function typingRenderTheme(theme, contentHTML) {
   const bg = typingState.bgColor;
   const fg = typingState.textColor;
   const fs = typingState.fontSize;
+  const f = typingState.themeFields[theme] || {};
   switch (theme) {
-    case 'editor': return typingThemeEditor(contentHTML, bg, fg, fs);
-    case 'terminal': return typingThemeTerminal(contentHTML, bg, fg, fs);
-    case 'email': return typingThemeEmail(contentHTML, bg, fg, fs);
-    case 'sms': return typingThemeSMS(contentHTML, bg, fg, fs);
+    case 'editor': return typingThemeEditor(contentHTML, bg, fg, fs, f);
+    case 'terminal': return typingThemeTerminal(contentHTML, bg, fg, fs, f);
+    case 'email': return typingThemeEmail(contentHTML, bg, fg, fs, f);
+    case 'sms': return typingThemeSMS(contentHTML, bg, fg, fs, f);
     default: return typingThemeGeneric(contentHTML, bg, fg, fs);
   }
 }
 
-function typingThemeEditor(html, bg, fg, fs) {
+function typingThemeEditor(html, bg, fg, fs, f) {
+  const title = typingEscapeHTML(f.title || '');
   return `<div class="typing-render" style="width:100%;height:100%;display:flex;flex-direction:column;background:${bg};color:${fg};font-size:${fs}px;font-family:'JetBrains Mono','Courier New',monospace">
     <div style="flex-shrink:0;display:flex;align-items:center;gap:8px;background:${bg};border-bottom:1px solid rgba(255,255,255,0.08);padding:clamp(8px,1.2vw,14px) clamp(12px,2vw,20px)">
       <div style="display:flex;gap:6px"><div style="width:12px;height:12px;border-radius:50%;background:#f38ba8"></div><div style="width:12px;height:12px;border-radius:50%;background:#f9e2af"></div><div style="width:12px;height:12px;border-radius:50%;background:#a6e3a1"></div></div>
-      <div style="flex:1;text-align:center;font-size:clamp(10px,1.1vw,13px);opacity:0.4">untitled.txt</div>
+      <div style="flex:1;text-align:center;font-size:clamp(10px,1.1vw,13px);opacity:0.4">${title}</div>
     </div>
     <div style="flex:1;overflow:hidden;padding:clamp(16px,3vw,40px)"><div class="typing-text">${html}</div></div>
   </div>`;
 }
 
-function typingThemeTerminal(html, bg, fg, fs) {
+function typingThemeTerminal(html, bg, fg, fs, f) {
+  const title = typingEscapeHTML(f.title || '');
+  const prompt = typingEscapeHTML(f.prompt || '');
   return `<div class="typing-render" style="width:100%;height:100%;display:flex;flex-direction:column;background:${bg};color:${fg};font-size:${fs}px;font-family:'JetBrains Mono','Courier New',monospace">
     <div style="flex-shrink:0;display:flex;align-items:center;gap:8px;background:${bg};border-bottom:1px solid rgba(255,255,255,0.08);padding:clamp(8px,1.2vw,14px) clamp(12px,2vw,20px)">
       <div style="display:flex;gap:6px"><div style="width:12px;height:12px;border-radius:50%;background:#f38ba8"></div><div style="width:12px;height:12px;border-radius:50%;background:#f9e2af"></div><div style="width:12px;height:12px;border-radius:50%;background:#a6e3a1"></div></div>
-      <div style="flex:1;text-align:center;font-size:clamp(10px,1.1vw,13px);opacity:0.4">Terminal</div>
+      <div style="flex:1;text-align:center;font-size:clamp(10px,1.1vw,13px);opacity:0.4">${title}</div>
     </div>
-    <div style="flex:1;overflow:hidden;padding:clamp(16px,3vw,40px)"><div class="typing-text"><span style="color:#a6e3a1;font-weight:600">user@machine:~$&nbsp;</span>${html}</div></div>
+    <div style="flex:1;overflow:hidden;padding:clamp(16px,3vw,40px)"><div class="typing-text"><span style="color:#a6e3a1;font-weight:600">${prompt}&nbsp;</span>${html}</div></div>
   </div>`;
 }
 
-function typingThemeEmail(html, bg, fg, fs) {
+function typingThemeEmail(html, bg, fg, fs, f) {
+  const title = typingEscapeHTML(f.title || '');
+  const to = typingEscapeHTML(f.to || '');
+  const subject = typingEscapeHTML(f.subject || '');
   return `<div class="typing-render" style="width:100%;height:100%;display:flex;flex-direction:column;background:${bg};color:${fg};font-size:${fs}px;font-family:'JetBrains Mono','Courier New',monospace">
     <div style="flex-shrink:0;display:flex;flex-direction:column;gap:clamp(4px,0.6vw,8px);background:${bg};border-bottom:1px solid rgba(255,255,255,0.08);padding:clamp(10px,1.5vw,18px) clamp(14px,2vw,28px)">
-      <div style="font-weight:700;font-size:clamp(13px,1.5vw,18px)">New Message</div>
-      <div style="display:flex;gap:8px;font-size:clamp(10px,1.1vw,13px)"><span style="opacity:0.4;min-width:50px">To:</span><span style="opacity:0.6">jan@example.com</span></div>
-      <div style="display:flex;gap:8px;font-size:clamp(10px,1.1vw,13px)"><span style="opacity:0.4;min-width:50px">Subject:</span><span style="opacity:0.6">Ważna wiadomość</span></div>
+      <div style="font-weight:700;font-size:clamp(13px,1.5vw,18px)">${title}</div>
+      <div style="display:flex;gap:8px;font-size:clamp(10px,1.1vw,13px)"><span style="opacity:0.4;min-width:50px">To:</span><span style="opacity:0.6">${to}</span></div>
+      <div style="display:flex;gap:8px;font-size:clamp(10px,1.1vw,13px)"><span style="opacity:0.4;min-width:50px">Subject:</span><span style="opacity:0.6">${subject}</span></div>
     </div>
     <div style="flex:1;overflow:hidden;padding:clamp(16px,3vw,40px)"><div class="typing-text">${html}</div></div>
   </div>`;
 }
 
-function typingThemeSMS(html, bg, fg, fs) {
+function typingThemeSMS(html, bg, fg, fs, f) {
+  const avatar = typingEscapeHTML(f.avatar || '');
+  const contactName = typingEscapeHTML(f.contactName || '');
+  const status = typingEscapeHTML(f.status || '');
+  const bubbleColor = f.bubbleColor || '#6366f1';
+  const timestamp = typingEscapeHTML(f.timestamp || '');
   return `<div class="typing-render" style="width:100%;height:100%;display:flex;flex-direction:column;background:${bg};color:${fg};font-size:${fs}px;font-family:'JetBrains Mono','Courier New',monospace">
     <div style="flex-shrink:0;display:flex;align-items:center;gap:clamp(8px,1vw,14px);background:${bg};border-bottom:1px solid rgba(255,255,255,0.08);padding:clamp(10px,1.5vw,18px) clamp(14px,2vw,28px)">
-      <div style="width:clamp(28px,3vw,36px);height:clamp(28px,3vw,36px);border-radius:50%;background:#6366f1;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:clamp(11px,1.2vw,14px);color:#fff;flex-shrink:0">J</div>
-      <div><div style="font-weight:700;font-size:clamp(12px,1.4vw,16px)">Jan</div><div style="font-size:clamp(8px,0.8vw,11px);opacity:0.4">online</div></div>
+      <div style="width:clamp(28px,3vw,36px);height:clamp(28px,3vw,36px);border-radius:50%;background:${bubbleColor};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:clamp(11px,1.2vw,14px);color:#fff;flex-shrink:0">${avatar}</div>
+      <div><div style="font-weight:700;font-size:clamp(12px,1.4vw,16px)">${contactName}</div><div style="font-size:clamp(8px,0.8vw,11px);opacity:0.4">${status}</div></div>
     </div>
     <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;padding:clamp(12px,2vw,24px)">
-      <div style="max-width:80%;align-self:flex-end;background:#6366f1;color:#fff;padding:clamp(10px,1.3vw,16px) clamp(12px,1.5vw,20px);border-radius:clamp(16px,2vw,24px);border-bottom-right-radius:clamp(4px,0.5vw,8px);line-height:1.5;font-size:clamp(12px,1.4vw,16px);white-space:pre-wrap;word-break:break-all">${html}</div>
-      <div style="font-size:clamp(8px,0.8vw,11px);opacity:0.3;margin-top:6px;text-align:right">14:32</div>
+      <div style="max-width:80%;align-self:flex-end;background:${bubbleColor};color:#fff;padding:clamp(10px,1.3vw,16px) clamp(12px,1.5vw,20px);border-radius:clamp(16px,2vw,24px);border-bottom-right-radius:clamp(4px,0.5vw,8px);line-height:1.5;font-size:clamp(12px,1.4vw,16px);white-space:pre-wrap;word-break:break-all">${html}</div>
+      <div style="font-size:clamp(8px,0.8vw,11px);opacity:0.3;margin-top:6px;text-align:right">${timestamp}</div>
     </div>
   </div>`;
 }
@@ -3601,16 +3613,84 @@ function typingRenderSeqList() {
   });
 }
 
+const TYPING_THEME_FIELD_DEFS = {
+  editor: [
+    { key: 'title', label: 'Tytuł', type: 'text' },
+  ],
+  terminal: [
+    { key: 'title', label: 'Tytuł', type: 'text' },
+    { key: 'prompt', label: 'Prompt', type: 'text' },
+  ],
+  email: [
+    { key: 'title', label: 'Tytuł', type: 'text' },
+    { key: 'to', label: 'Do', type: 'text' },
+    { key: 'subject', label: 'Temat', type: 'text' },
+  ],
+  sms: [
+    { key: 'avatar', label: 'Awatar', type: 'text' },
+    { key: 'contactName', label: 'Kontakt', type: 'text' },
+    { key: 'status', label: 'Status', type: 'text' },
+    { key: 'bubbleColor', label: 'Kolor bąbla', type: 'color' },
+    { key: 'timestamp', label: 'Godzina', type: 'text' },
+  ],
+  generic: [],
+};
+
+function typingRenderThemeFields() {
+  const container = $('#typingThemeFields');
+  const inner = $('#typingThemeFieldsInner');
+  if (!container || !inner) return;
+
+  const defs = TYPING_THEME_FIELD_DEFS[typingState.theme] || [];
+  if (defs.length === 0) {
+    container.style.display = 'none';
+    return;
+  }
+
+  container.style.display = '';
+  const fields = typingState.themeFields[typingState.theme] || {};
+
+  inner.innerHTML = defs.map(def => {
+    const val = fields[def.key] || '';
+    if (def.type === 'color') {
+      return `<div class="typing-field-row">
+        <span class="typing-field-label">${def.label}</span>
+        <input type="color" class="typing-field-color" data-key="${def.key}" value="${val}">
+      </div>`;
+    }
+    return `<div class="typing-field-row">
+      <span class="typing-field-label">${def.label}</span>
+      <input type="text" class="typing-field-input" data-key="${def.key}" value="${val}" placeholder="${def.label}">
+    </div>`;
+  }).join('');
+
+  inner.querySelectorAll('.typing-field-input').forEach(input => {
+    input.addEventListener('input', () => {
+      typingState.themeFields[typingState.theme][input.dataset.key] = input.value;
+      typingRefreshPreview();
+    });
+  });
+
+  inner.querySelectorAll('.typing-field-color').forEach(input => {
+    input.addEventListener('input', () => {
+      typingState.themeFields[typingState.theme][input.dataset.key] = input.value;
+      typingRefreshPreview();
+    });
+  });
+}
+
 function initTyping() {
   typingRefreshPreview();
   typingUpdatePreviewSize();
   typingRenderSeqList();
+  typingRenderThemeFields();
 
   $$('#typingThemeGroup .control-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       $$('#typingThemeGroup .control-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       typingState.theme = btn.dataset.theme;
+      typingRenderThemeFields();
       typingRefreshPreview();
     });
   });
