@@ -120,6 +120,22 @@ html, body {
 .tool-nav-bottom {
   margin-top: auto;
   -webkit-app-region: no-drag;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.theme-toggle-nav .icon-moon {
+  display: none;
+}
+
+[data-theme="light"] .theme-toggle-nav .icon-sun {
+  display: none;
+}
+
+[data-theme="light"] .theme-toggle-nav .icon-moon {
+  display: block;
 }
 
 .tool-nav-res {
@@ -1336,11 +1352,11 @@ html, body {
   background: rgba(0,0,0,0.06);
 }
 .chat-platform-discord .chat-render-avatar {
-  width: 1.6em;
-  height: 1.6em;
+  width: 2.25em;
+  height: 2.25em;
   font-size: 0.5em;
   flex-shrink: 0;
-  margin-top: 2px;
+  margin-top: 0.17em;
 }
 
 .chat-platform-discord .chat-bubble-content {

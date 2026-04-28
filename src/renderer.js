@@ -2705,7 +2705,7 @@ function chatBubbleHTML(msg, i, p, bubbleLStyle, bubbleRStyle, animateBubble) {
   const animCls = animateBubble ? ' chat-bubble-animate' : '';
 
   if (p === 'discord') {
-    const discAvatar = chatAvatarHTML(contact, '1.6em');
+    const discAvatar = chatAvatarHTML(contact, '2.25em');
     return `
       <div class="chat-bubble ${isRight ? 'chat-bubble-right' : 'chat-bubble-left'}${animCls}">
         ${discAvatar}
@@ -3853,17 +3853,19 @@ function initThemeToggle() {
   const saved = localStorage.getItem('app-theme');
   if (saved === 'light') document.documentElement.setAttribute('data-theme', 'light');
 
-  document.querySelectorAll('.theme-toggle').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-      if (isLight) {
-        document.documentElement.removeAttribute('data-theme');
-        localStorage.setItem('app-theme', 'dark');
-      } else {
-        document.documentElement.setAttribute('data-theme', 'light');
-        localStorage.setItem('app-theme', 'light');
-      }
-    });
+  const toggle = () => {
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    if (isLight) {
+      document.documentElement.removeAttribute('data-theme');
+      localStorage.setItem('app-theme', 'dark');
+    } else {
+      document.documentElement.setAttribute('data-theme', 'light');
+      localStorage.setItem('app-theme', 'light');
+    }
+  };
+
+  document.querySelectorAll('.theme-toggle, .theme-toggle-nav').forEach(btn => {
+    btn.addEventListener('click', toggle);
   });
 }
 
