@@ -1165,7 +1165,7 @@ html, body {
 }
 
 .chat-render-header {
-  padding: 0.39em 0.56em;
+  padding: 0.22em 0.56em;
   display: flex;
   align-items: center;
   gap: 0.33em;
@@ -1318,7 +1318,7 @@ html, body {
 .chat-platform-discord .chat-render-header {
   background: #2b2d31;
   border-bottom: 1px solid #1e1f22;
-  padding: 0.56em 0.83em;
+  padding: 0.17em 0.83em;
 }
 .chat-platform-discord .chat-render-back { color: #b5bac1; }
 .chat-platform-discord .chat-render-name { color: #f2f3f5; font-size: 0.83em; }
