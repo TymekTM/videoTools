@@ -2703,7 +2703,7 @@ function chatBubbleHTML(msg, i, p, bubbleLStyle, bubbleRStyle, animateBubble) {
   const animCls = animateBubble ? ' chat-bubble-animate' : '';
 
   if (p === 'discord') {
-    const discAvatar = chatAvatarHTML(contact, '2em');
+    const discAvatar = chatAvatarHTML(contact, '2.5em');
     return `
       <div class="chat-bubble ${isRight ? 'chat-bubble-right' : 'chat-bubble-left'}${animCls}">
         ${discAvatar}
@@ -2849,20 +2849,19 @@ function chatRunAnimation(from, p, bubbleLStyle, bubbleRStyle, bodyStyle, textSt
     const canvas = $('#chatPreviewCanvas');
     const body = canvas.querySelector('.chat-render-body');
 
+    const temp = document.createElement('div');
+    temp.innerHTML = nextBubble.trim();
+    const bubble = temp.firstChild;
+
     const typingEl = body.querySelector('.chat-typing-indicator');
     if (typingEl) {
       typingEl.classList.add('chat-typing-hide');
+      typingEl.insertAdjacentElement('beforebegin', bubble);
       setTimeout(() => { if (!stale()) typingEl.remove(); }, 200);
-    }
-
-    setTimeout(() => {
-      if (stale()) return;
-      const temp = document.createElement('div');
-      temp.innerHTML = nextBubble.trim();
-      const bubble = temp.firstChild;
+    } else {
       body.appendChild(bubble);
-      if (cb) cb();
-    }, 150);
+    }
+    if (cb) cb();
   };
 
   const showTyping = (i, cb) => {
@@ -3845,10 +3844,33 @@ function initTyping() {
 }
 
 /* ═══════════════════════════════════════
+   THEME TOGGLE
+   ═══════════════════════════════════════ */
+
+function initThemeToggle() {
+  const saved = localStorage.getItem('app-theme');
+  if (saved === 'light') document.documentElement.setAttribute('data-theme', 'light');
+
+  const btn = document.getElementById('themeToggleBtn');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    if (isLight) {
+      document.documentElement.removeAttribute('data-theme');
+      localStorage.setItem('app-theme', 'dark');
+    } else {
+      document.documentElement.setAttribute('data-theme', 'light');
+      localStorage.setItem('app-theme', 'light');
+    }
+  });
+}
+
+/* ═══════════════════════════════════════
    INIT
    ═══════════════════════════════════════ */
 
 function init() {
+  initThemeToggle();
   initToolNav();
   initNewspaper();
   initChat();

@@ -17,8 +17,31 @@
   --accent-hover: #818cf8;
   --danger: #ef4444;
   --success: #22c55e;
+  --on-accent: #fff;
+  --preview-bg: #0a0a0d;
+  --preview-wrapper-bg: #000;
+  --preview-shadow: 0 0 0 1px rgba(255,255,255,0.04), 0 20px 60px rgba(0,0,0,0.5);
   --sidebar-width: 340px;
   --tool-nav-width: 52px;
+}
+
+[data-theme="light"] {
+  --bg: #f5f5f7;
+  --bg-elevated: #ffffff;
+  --bg-surface: #ededf0;
+  --border: #d4d4d8;
+  --border-hover: #c4c4ca;
+  --text: #18181b;
+  --text-muted: #71717a;
+  --text-dim: #a1a1aa;
+  --accent: #6366f1;
+  --accent-hover: #4f46e5;
+  --danger: #ef4444;
+  --success: #22c55e;
+  --on-accent: #fff;
+  --preview-bg: #e8e8ec;
+  --preview-wrapper-bg: #fff;
+  --preview-shadow: 0 0 0 1px rgba(0,0,0,0.06), 0 20px 60px rgba(0,0,0,0.12);
 }
 
 html, body {
@@ -90,13 +113,29 @@ html, body {
 
 .tool-nav-btn.active {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border-color: var(--accent);
 }
 
 .tool-nav-bottom {
   margin-top: auto;
   -webkit-app-region: no-drag;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+#themeToggleBtn .theme-icon-light {
+  display: none;
+}
+
+[data-theme="light"] #themeToggleBtn .theme-icon-dark {
+  display: none;
+}
+
+[data-theme="light"] #themeToggleBtn .theme-icon-light {
+  display: block;
 }
 
 .tool-nav-res {
@@ -128,15 +167,14 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #0a0a0d;
-  position: relative;
+  background: var(--preview-bg);
   overflow: hidden;
 }
 
 .preview-wrapper {
   position: relative;
-  background: #000;
-  box-shadow: 0 0 0 1px rgba(255,255,255,0.04), 0 20px 60px rgba(0,0,0,0.5);
+  background: var(--preview-wrapper-bg);
+  box-shadow: var(--preview-shadow);
   overflow: hidden;
   transition: width 0.3s ease, height 0.3s ease;
 }
@@ -293,7 +331,7 @@ html, body {
 
 .control-btn.active {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .control-select {
@@ -498,7 +536,7 @@ html, body {
 
 .btn-primary {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .btn-primary:hover {
@@ -1016,12 +1054,12 @@ html, body {
 
 .chat-platform-discord .chat-discord-typing {
   background: transparent;
-  padding: 0.28em 0.5em;
+  padding: 0.17em 0.5em;
   border-radius: 0;
   gap: 0.28em;
   max-width: 100%;
   align-self: flex-start;
-  font-size: 0.83em;
+  font-size: 0.42em;
   line-height: 1.3;
 }
 .chat-platform-discord .chat-discord-typing .chat-bubble-content {
@@ -1274,9 +1312,9 @@ html, body {
   background: rgba(0,0,0,0.06);
 }
 .chat-platform-discord .chat-render-avatar {
-  width: 2em;
-  height: 2em;
-  font-size: 0.44em;
+  width: 2.5em;
+  height: 2.5em;
+  font-size: 0.36em;
   flex-shrink: 0;
   margin-top: 2px;
 }
@@ -1290,26 +1328,28 @@ html, body {
 
 .chat-platform-discord .chat-bubble-author {
   font-weight: 600;
-  font-size: 0.83em;
+  font-size: 1.2em;
 }
 .chat-platform-discord .chat-bubble-text {
-  font-size: 0.83em;
+  font-size: 0.42em;
   line-height: 1.45;
   color: #dbdee1;
 }
 .chat-platform-discord .chat-bubble-time {
   color: #949ba4;
-  font-size: 0.5em;
+  font-size: 0.35em;
 }
 .chat-platform-discord .chat-bubble-meta {
-  font-size: 0.5em;
   color: #949ba4;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 0.14em;
 }
 .chat-platform-discord .chat-bubble-meta .chat-bubble-author {
-  font-size: 0.83em;
+  font-size: 1.2em;
+}
+.chat-platform-discord .chat-bubble-meta .chat-bubble-time {
+  font-size: 0.4em;
 }
 
 /* ─── Messenger ─── */
@@ -1386,11 +1426,11 @@ html, body {
 #mapContainer {
   width: 100%;
   height: 100%;
-  background: #0a0a0d;
+  background: var(--preview-bg);
 }
 
 .leaflet-container {
-  background: #0a0a0d;
+  background: var(--preview-bg);
   font-family: inherit;
 }
 
@@ -1418,7 +1458,7 @@ html, body {
   height: 28px;
   border-radius: 50%;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1426,7 +1466,7 @@ html, body {
   font-weight: 700;
   font-family: 'Manrope', sans-serif;
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.3), 0 2px 8px rgba(0,0,0,0.4);
-  border: 2px solid #fff;
+  border: 2px solid var(--on-accent);
 }
 
 .map-waypoints-list {
@@ -1449,7 +1489,7 @@ html, body {
   height: 20px;
   border-radius: 50%;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1592,16 +1632,12 @@ html, body {
 }
 
 .map-city-label {
-  background: rgba(0,0,0,0.75);
   color: #fff;
-  padding: 3px 10px;
-  border-radius: 4px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   font-family: 'Manrope', system-ui, sans-serif;
   white-space: nowrap;
-  border: 1px solid var(--lc, #6366f1);
-  box-shadow: 0 0 12px var(--lc, #6366f1);
+  text-shadow: 0 0 8px var(--lc, #6366f1), 0 0 20px var(--lc, #6366f1), 0 1px 3px rgba(0,0,0,0.8);
   pointer-events: none;
 }
 
