@@ -2255,7 +2255,7 @@ function switchTool(toolId) {
 }
 
 function initToolNav() {
-  $$('.tool-nav-btn').forEach(btn => {
+  $$('.tool-nav-btn[data-tool]').forEach(btn => {
     btn.addEventListener('click', () => switchTool(btn.dataset.tool));
   });
 }
@@ -2781,7 +2781,7 @@ function chatRenderPreview(animate, upTo, showTypingFrom) {
     textStyle = `color:${t.text}`;
   }
 
-  const avatarSize = '1.17em';
+  const avatarSize = '1.7em';
   const avatar = chatAvatarHTML(headerContact, avatarSize);
 
   const statuses = {
@@ -3033,7 +3033,7 @@ function initChat() {
       bubbleRStyle = `background:${t.bubbleR};color:#fff`;
       textStyle = `color:${t.text}`;
     }
-    const avatarSize = '1.17em';
+    const avatarSize = '1.7em';
     const headerContact = chatState.contacts[1];
     const avatar = chatAvatarHTML(headerContact, avatarSize);
     const statuses = { imessage:'iMessage', whatsapp:'online', discord:`${chatState.messages.length} wiadomości`, messenger:'Active now', custom:'online' };
@@ -3191,7 +3191,7 @@ function initChat() {
       bubbleRStyle = `background:${t.bubbleR};color:#fff`;
       textStyle = `color:${t.text}`;
     }
-    const avatarSize = '1.17em';
+    const avatarSize = '1.7em';
     const headerContact = chatState.contacts[1];
     const avatar = chatAvatarHTML(headerContact, avatarSize);
     const statuses = { imessage:'iMessage', whatsapp:'online', discord:`${chatState.messages.length} wiadomości`, messenger:'Active now', custom:'online' };
@@ -3866,7 +3866,7 @@ function initThemeToggle() {
     }
   };
 
-  document.querySelectorAll('.theme-toggle, .theme-toggle-nav').forEach(btn => {
+  document.querySelectorAll('.theme-toggle-nav').forEach(btn => {
     btn.addEventListener('click', toggle);
   });
 }
