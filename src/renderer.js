@@ -3853,7 +3853,9 @@ function initThemeToggle() {
   const saved = localStorage.getItem('app-theme');
   if (saved === 'light') document.documentElement.setAttribute('data-theme', 'light');
 
-  const toggle = () => {
+  const toggle = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
     const isLight = document.documentElement.getAttribute('data-theme') === 'light';
     if (isLight) {
       document.documentElement.removeAttribute('data-theme');
