@@ -168,6 +168,7 @@ html, body {
   align-items: center;
   justify-content: center;
   background: var(--preview-bg);
+  position: relative;
   overflow: hidden;
 }
 
@@ -1312,8 +1313,8 @@ html, body {
   background: rgba(0,0,0,0.06);
 }
 .chat-platform-discord .chat-render-avatar {
-  width: 2.5em;
-  height: 2.5em;
+  width: 3.25em;
+  height: 3.25em;
   font-size: 0.36em;
   flex-shrink: 0;
   margin-top: 2px;
@@ -1328,7 +1329,7 @@ html, body {
 
 .chat-platform-discord .chat-bubble-author {
   font-weight: 600;
-  font-size: 1.2em;
+  font-size: 0.39em;
 }
 .chat-platform-discord .chat-bubble-text {
   font-size: 0.42em;
@@ -1346,7 +1347,7 @@ html, body {
   gap: 0.14em;
 }
 .chat-platform-discord .chat-bubble-meta .chat-bubble-author {
-  font-size: 1.2em;
+  font-size: 0.39em;
 }
 .chat-platform-discord .chat-bubble-meta .chat-bubble-time {
   font-size: 0.4em;
