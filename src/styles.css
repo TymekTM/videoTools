@@ -983,9 +983,9 @@ html, body {
 .chat-typing-indicator {
   display: inline-flex;
   align-items: center;
-  gap: 0.16em;
-  padding: 0.5em 0.69em;
-  border-radius: 0.69em;
+  gap: 0.11em;
+  padding: 0.33em 0.44em;
+  border-radius: 0.5em;
   max-width: 70%;
   align-self: flex-start;
   animation: typingAppear 0.25s ease-out forwards;
@@ -996,8 +996,8 @@ html, body {
 }
 
 .chat-typing-dot {
-  width: 0.28em;
-  height: 0.28em;
+  width: 0.19em;
+  height: 0.19em;
   border-radius: 50%;
   animation: typingDot 1.4s ease-in-out infinite;
 }
@@ -1016,24 +1016,24 @@ html, body {
 
 .chat-platform-discord .chat-discord-typing {
   background: transparent;
-  padding: 0.19em 0.5em;
+  padding: 0.17em 0.33em;
   border-radius: 0;
-  gap: 0.31em;
+  gap: 0.22em;
   max-width: 100%;
   align-self: flex-start;
-  font-size: 0.47em;
+  font-size: 0.39em;
   line-height: 1.3;
 }
 .chat-platform-discord .chat-discord-typing .chat-bubble-content {
   display: flex;
   align-items: baseline;
-  gap: 0.19em;
+  gap: 0.11em;
   min-width: 0;
 }
 .chat-platform-discord .chat-discord-typing-name { font-weight: 600; white-space: nowrap; }
 .chat-platform-discord .chat-discord-typing-text { color: #8696a0; }
 .chat-platform-discord .chat-discord-typing-dots { display: inline-flex; align-items: center; gap: 2px; }
-.chat-platform-discord .chat-discord-typing .chat-typing-dot { background: #8696a0; width: 0.19em; height: 0.19em; }
+.chat-platform-discord .chat-discord-typing .chat-typing-dot { background: #8696a0; width: 0.14em; height: 0.14em; }
 
 .chat-platform-custom .chat-typing-indicator {}
 .chat-platform-custom .chat-typing-dot {}
@@ -1087,23 +1087,23 @@ html, body {
 }
 
 .chat-render-header {
-  padding: 0.56em 0.75em;
+  padding: 0.39em 0.56em;
   display: flex;
   align-items: center;
-  gap: 0.5em;
+  gap: 0.33em;
   flex-shrink: 0;
 }
 
 .chat-render-avatar {
-  width: 1.375em;
-  height: 1.375em;
+  width: 1.17em;
+  height: 1.17em;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
   color: #fff;
-  font-size: 0.56em;
+  font-size: 0.44em;
   flex-shrink: 0;
   overflow: hidden;
   position: relative;
@@ -1118,7 +1118,7 @@ html, body {
 }
 
 .chat-render-back {
-  font-size: 0.75em;
+  font-size: 0.56em;
   color: inherit;
   opacity: 0.5;
   flex-shrink: 0;
@@ -1133,33 +1133,33 @@ html, body {
 
 .chat-render-name {
   font-weight: 700;
-  font-size: 0.5em;
+  font-size: 0.42em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .chat-render-status {
-  font-size: 0.375em;
+  font-size: 0.33em;
   opacity: 0.5;
   margin-top: 1px;
 }
 
 .chat-render-body {
   flex: 1;
-  padding: 0.75em 1em;
+  padding: 0.44em 0.56em;
   display: flex;
   flex-direction: column;
-  gap: 0.375em;
+  gap: 0.28em;
   overflow: hidden;
   justify-content: flex-end;
 }
 
 .chat-bubble {
   max-width: 70%;
-  padding: 0.44em 0.56em;
-  border-radius: 0.69em;
-  font-size: 0.5em;
+  padding: 0.28em 0.39em;
+  border-radius: 0.5em;
+  font-size: 0.42em;
   line-height: 1.5;
   position: relative;
   word-wrap: break-word;
@@ -1167,18 +1167,18 @@ html, body {
 
 .chat-bubble-left {
   align-self: flex-start;
-  border-bottom-left-radius: 0.25em;
+  border-bottom-left-radius: 0.11em;
 }
 
 .chat-bubble-right {
   align-self: flex-end;
-  border-bottom-right-radius: 0.25em;
+  border-bottom-right-radius: 0.11em;
 }
 
 .chat-bubble-time {
-  font-size: 0.62em;
+  font-size: 0.31em;
   opacity: 0.4;
-  margin-top: 0.19em;
+  margin-top: 0.11em;
 }
 
 .chat-bubble-right .chat-bubble-time {
@@ -1219,7 +1219,7 @@ html, body {
   background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.015'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
 }
 .chat-platform-whatsapp .chat-bubble {
-  border-radius: 0.31em;
+  border-radius: 0.22em;
 }
 .chat-platform-whatsapp .chat-bubble-left {
   background: #202c33;
@@ -1240,15 +1240,33 @@ html, body {
 .chat-platform-discord .chat-render-header {
   background: #2b2d31;
   border-bottom: 1px solid #1e1f22;
-  padding: 0.44em 0.75em;
+  padding: 0.33em 0.56em;
 }
 .chat-platform-discord .chat-render-back { color: #b5bac1; }
 .chat-platform-discord .chat-render-name { color: #f2f3f5; }
 .chat-platform-discord .chat-render-status { color: #949ba4; }
 .chat-platform-discord .chat-render-body {
   background: #313338;
-  padding: 0.5em 0.875em;
-  gap: 0.25em;
+  padding: 0.33em 0.67em;
+  gap: 0.17em;
+}
+
+.chat-platform-discord .chat-bubble {
+  max-width: 90%;
+  border-radius: 0;
+  padding: 0.11em 0;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.chat-platform-discord .chat-bubble-left,
+.chat-platform-discord .chat-bubble-right {
+  align-self: stretch;
+  border-radius: 0;
+  display: flex;
+  gap: 0.33em;
+  align-items: flex-start;
+  padding: 0.11em 0;
 }
 .chat-platform-discord .chat-bubble {
   max-width: 90%;
@@ -1271,11 +1289,42 @@ html, body {
   background: rgba(0,0,0,0.06);
 }
 .chat-platform-discord .chat-render-avatar {
-  width: 1.19em;
-  height: 1.19em;
-  font-size: 0.5em;
+  width: 1em;
+  height: 1em;
+  font-size: 0.39em;
   flex-shrink: 0;
   margin-top: 2px;
+}
+
+.chat-platform-discord .chat-bubble-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.08em;
+  flex: 1;
+}
+
+.chat-platform-discord .chat-bubble-author {
+  font-weight: 600;
+  font-size: 0.39em;
+}
+.chat-platform-discord .chat-bubble-text {
+  font-size: 0.39em;
+  line-height: 1.45;
+  color: #dbdee1;
+}
+.chat-platform-discord .chat-bubble-time {
+  color: #949ba4;
+  font-size: 0.31em;
+}
+.chat-platform-discord .chat-bubble-meta {
+  font-size: 0.31em;
+  color: #949ba4;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.chat-platform-discord .chat-bubble-meta .chat-bubble-author {
+  font-size: 0.39em;
 }
 .chat-platform-discord .chat-bubble-content {
   display: flex;
@@ -1311,7 +1360,7 @@ html, body {
 .chat-platform-messenger .chat-render-header {
   background: #fff;
   border-bottom: 1px solid #e6e6e6;
-  padding: 0.5em 0.69em;
+  padding: 0.33em 0.44em;
 }
 .chat-platform-messenger .chat-render-back { color: #0084ff; opacity: 1; }
 .chat-platform-messenger .chat-render-avatar {
@@ -1324,44 +1373,44 @@ html, body {
 }
 .chat-platform-messenger .chat-bubble {
   max-width: 68%;
-  padding: 0.44em 0.56em;
-  font-size: 0.5em;
+  padding: 0.28em 0.39em;
+  font-size: 0.42em;
   position: relative;
 }
 .chat-platform-messenger .chat-bubble-left {
   background: #fff;
   color: #000;
-  border-radius: 0.81em;
-  border-bottom-left-radius: 0.19em;
+  border-radius: 0.56em;
+  border-bottom-left-radius: 0.11em;
   box-shadow: 0 1px 1px rgba(0,0,0,0.06);
 }
 .chat-platform-messenger .chat-bubble-left::before {
   content: '';
   position: absolute;
   bottom: 0;
-  left: -0.25em;
+  left: -0.17em;
   width: 0;
   height: 0;
   border-style: solid;
-  border-width: 0 0 0.38em 0.38em;
+  border-width: 0 0 0.28em 0.28em;
   border-color: transparent transparent #fff transparent;
 }
 .chat-platform-messenger .chat-bubble-right {
   background: #0084ff;
   color: #fff;
-  border-radius: 0.81em;
-  border-bottom-right-radius: 0.19em;
+  border-radius: 0.56em;
+  border-bottom-right-radius: 0.11em;
   box-shadow: 0 1px 2px rgba(0,132,255,0.2);
 }
 .chat-platform-messenger .chat-bubble-right::before {
   content: '';
   position: absolute;
   bottom: 0;
-  right: -0.25em;
+  right: -0.17em;
   width: 0;
   height: 0;
   border-style: solid;
-  border-width: 0 0.38em 0.38em 0;
+  border-width: 0 0.28em 0.28em 0;
   border-color: transparent #0084ff transparent transparent;
 }
 .chat-platform-messenger .chat-bubble-time { color: #b0b0b0; }

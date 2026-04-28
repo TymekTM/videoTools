@@ -2347,17 +2347,20 @@ function initNewspaper() {
     setNewsExporting(true, 'Inicjalizacja...');
     await ipcRenderer.invoke('bg-init', {
       width: w, height: h,
-      css: `.keyword-highlight{font-weight:800;padding:2px 6px;border-radius:2px;white-space:nowrap;display:inline}`,
-      body: '<div id="vignette" style="position:absolute;inset:0;pointer-events:none;z-index:10"></div>'
+      css: `.keyword-highlight{font-weight:800;padding:2px 6px;border-radius:2px;white-space:nowrap;display:inline}`
     });
 
     await ipcRenderer.invoke('bg-eval', `
       var el = document.createElement('style'); el.id = 'dynAccent'; document.head.appendChild(el);
       el.textContent = '.keyword-highlight{background:linear-gradient(120deg,${state.colorAccent}ee,${state.colorAccent});color:#000;box-shadow:0 0 20px ${state.colorAccent}66,0 0 60px ${state.colorAccent}26}';
-      var v = document.getElementById('vignette');
-      var o = ${state.vignetteOpacity / 100}, size = ${state.vignetteSize}, spread = ${state.vignetteSpread};
-      if (o > 0) { v.style.background = 'radial-gradient(ellipse '+size+'% '+Math.round(size*0.9)+'% at 50% 50%,transparent 0%,rgba(0,0,0,'+(o*0.08).toFixed(2)+') '+(100-spread)+'%,rgba(0,0,0,'+(o*0.25).toFixed(2)+') '+(100-spread*0.7)+'%,rgba(0,0,0,'+(o*0.5).toFixed(2)+') '+(100-spread*0.4)+'%,rgba(0,0,0,'+o.toFixed(2)+') 100%)'; }
     `);
+
+    const vignetteOpacity = state.vignetteOpacity / 100;
+    let vignetteHtml = '';
+    if (vignetteOpacity > 0) {
+      const vs = state.vignetteSize, sp = state.vignetteSpread;
+      vignetteHtml = `<div style="position:absolute;inset:0;pointer-events:none;z-index:10;background:radial-gradient(ellipse ${vs}% ${Math.round(vs*0.9)}% at 50% 50%,transparent 0%,rgba(0,0,0,${(vignetteOpacity*0.08).toFixed(2)}) ${100-sp}%,rgba(0,0,0,${(vignetteOpacity*0.25).toFixed(2)}) ${100-sp*0.7}%,rgba(0,0,0,${(vignetteOpacity*0.5).toFixed(2)}) ${100-sp*0.4}%,rgba(0,0,0,${vignetteOpacity.toFixed(2)}) 100%)"></div>`;
+    }
 
     buildQueue();
     const slidesData = [];
@@ -2372,7 +2375,7 @@ function initNewspaper() {
       const bgMatch = html.match(/background:\s*(#[0-9a-fA-F]{3,8})/);
       const bg = bgMatch ? bgMatch[1] : '#fff';
 
-      const bodyHtml = `<div style="position:absolute;inset:0;background:${bg}">${overrideStyle}<div class="zoom-scroll" style="position:absolute;inset:0;overflow:hidden;"><div class="article-inner so" style="width:100%;height:100%;overflow:hidden;display:flex;flex-direction:column;">${html}</div></div></div>`;
+      const bodyHtml = `<div style="position:absolute;inset:0;background:${bg}">${overrideStyle}<div class="zoom-scroll" style="position:absolute;inset:0;overflow:hidden;"><div class="article-inner so" style="width:100%;height:100%;overflow:hidden;display:flex;flex-direction:column;">${html}</div></div></div>${vignetteHtml}`;
 
       if (isAnimated) {
         const numSteps = Math.max(2, Math.ceil(framesPerSlide / 2));
@@ -2621,10 +2624,11 @@ function chatUpdatePreviewSize() {
   wrapper.style.width = displayW + 'px';
   wrapper.style.height = displayH + 'px';
 
+  const base = Math.min(w, h) / 30 * chatState.fontScale / 100;
   const canvas = $('#chatPreviewCanvas');
   canvas.style.width = w + 'px';
   canvas.style.height = h + 'px';
-  canvas.style.fontSize = (w / 40 * chatState.fontScale / 100) + 'px';
+  canvas.style.fontSize = base + 'px';
   canvas.style.transform = `scale(${scale})`;
   canvas.style.transformOrigin = '0 0';
   canvas.style.zoom = '';
@@ -2656,7 +2660,7 @@ function chatBubbleHTML(msg, i, p, bubbleLStyle, bubbleRStyle, animateBubble) {
   const animCls = animateBubble ? ' chat-bubble-animate' : '';
 
   if (p === 'discord') {
-    const discAvatar = chatAvatarHTML(contact, '1.19em');
+    const discAvatar = chatAvatarHTML(contact, '1em');
     return `
       <div class="chat-bubble ${isRight ? 'chat-bubble-right' : 'chat-bubble-left'}${animCls}">
         ${discAvatar}
@@ -2732,7 +2736,7 @@ function chatRenderPreview(animate, upTo, showTypingFrom) {
     textStyle = `color:${t.text}`;
   }
 
-  const avatarSize = p === 'discord' ? '1.19em' : '1.375em';
+  const avatarSize = p === 'discord' ? '1em' : '1.17em';
   const avatar = chatAvatarHTML(headerContact, avatarSize);
 
   const statuses = {
@@ -2746,7 +2750,7 @@ function chatRenderPreview(animate, upTo, showTypingFrom) {
   const headerHTML = `
     <div class="chat-render-header" ${headerStyle ? `style="${headerStyle}"` : ''}>
       <div class="chat-render-back">
-        <svg width="${p === 'discord' ? '0.5em' : '0.625em'}" height="${p === 'discord' ? '0.5em' : '0.625em'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        <svg width="${p === 'discord' ? '0.44em' : '0.56em'}" height="${p === 'discord' ? '0.44em' : '0.56em'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
       </div>
       ${avatar}
       <div class="chat-render-info">
@@ -2985,11 +2989,11 @@ function initChat() {
       bubbleRStyle = `background:${t.bubbleR};color:#fff`;
       textStyle = `color:${t.text}`;
     }
-    const avatarSize = p === 'discord' ? '1.19em' : '1.375em';
+    const avatarSize = p === 'discord' ? '1em' : '1.17em';
     const headerContact = chatState.contacts[1];
     const avatar = chatAvatarHTML(headerContact, avatarSize);
     const statuses = { imessage:'iMessage', whatsapp:'online', discord:`${chatState.messages.length} wiadomości`, messenger:'Active now', custom:'online' };
-    const headerHTML = `<div class="chat-render-header" ${headerStyle?`style="${headerStyle}"`:''}><div class="chat-render-back"><svg width="${p==='discord'?'0.5em':'0.625em'}" height="${p==='discord'?'0.5em':'0.625em'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></div>${avatar}<div class="chat-render-info"><div class="chat-render-name">${headerContact.name}</div><div class="chat-render-status">${statuses[p]||''}</div></div></div>`;
+    const headerHTML = `<div class="chat-render-header" ${headerStyle?`style="${headerStyle}"`:''}><div class="chat-render-back"><svg width="${p==='discord'?'0.44em':'0.56em'}" height="${p==='discord'?'0.44em':'0.56em'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></div>${avatar}<div class="chat-render-info"><div class="chat-render-name">${headerContact.name}</div><div class="chat-render-status">${statuses[p]||''}</div></div></div>`;
 
     const canvas = $('#chatPreviewCanvas');
     canvas.innerHTML = `<div class="chat-render chat-platform-${p} chat-animate" ${textStyle?`style="${textStyle}"`:''}>${headerHTML}<div class="chat-render-body" ${bodyStyle?`style="${bodyStyle}"`:''}></div></div>`;
@@ -3143,11 +3147,11 @@ function initChat() {
       bubbleRStyle = `background:${t.bubbleR};color:#fff`;
       textStyle = `color:${t.text}`;
     }
-    const avatarSize = p === 'discord' ? '1.19em' : '1.375em';
+    const avatarSize = p === 'discord' ? '1em' : '1.17em';
     const headerContact = chatState.contacts[1];
     const avatar = chatAvatarHTML(headerContact, avatarSize);
     const statuses = { imessage:'iMessage', whatsapp:'online', discord:`${chatState.messages.length} wiadomości`, messenger:'Active now', custom:'online' };
-    const headerHTML = `<div class="chat-render-header" ${headerStyle?`style="${headerStyle}"`:''}><div class="chat-render-back"><svg width="${p==='discord'?'0.5em':'0.625em'}" height="${p==='discord'?'0.5em':'0.625em'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></div>${avatar}<div class="chat-render-info"><div class="chat-render-name">${headerContact.name}</div><div class="chat-render-status">${statuses[p]||''}</div></div></div>`;
+    const headerHTML = `<div class="chat-render-header" ${headerStyle?`style="${headerStyle}"`:''}><div class="chat-render-back"><svg width="${p==='discord'?'0.44em':'0.56em'}" height="${p==='discord'?'0.44em':'0.56em'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></div>${avatar}<div class="chat-render-info"><div class="chat-render-name">${headerContact.name}</div><div class="chat-render-status">${statuses[p]||''}</div></div></div>`;
 
     const buildFrame = (limit, showTypingFrom, animateLast) => {
       let msgHTML = '';
@@ -3160,7 +3164,7 @@ function initChat() {
         typingHTML = chatTypingHTML(chatState.messages[showTypingFrom].sender);
       }
       const animClass = animateLast ? ' chat-animate' : '';
-      return `<div style="font-size:${w/40*chatState.fontScale/100}px;width:100%;height:100%"><div class="chat-render chat-platform-${p}${animClass}" ${textStyle?`style="${textStyle}"`:''}>${headerHTML}<div class="chat-render-body" ${bodyStyle?`style="${bodyStyle}"`:''}>${msgHTML}${typingHTML}</div></div></div>`;
+      return `<div style="font-size:${Math.min(w,h)/30*chatState.fontScale/100}px;width:100%;height:100%"><div class="chat-render chat-platform-${p}${animClass}" ${textStyle?`style="${textStyle}"`:''}>${headerHTML}<div class="chat-render-body" ${bodyStyle?`style="${bodyStyle}"`:''}>${msgHTML}${typingHTML}</div></div></div>`;
     };
 
     const capture = async (html, delay) => {

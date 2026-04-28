@@ -126,6 +126,7 @@ window._bgSetBody = function(html) {
   bgWindow = new BrowserWindow({
     width, height,
     show: false,
+    frame: false,
     webPreferences: { offscreen: true }
   });
   await bgWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
@@ -166,9 +167,46 @@ ipcMain.handle('bg-render-js', async (event, { html, js }) => {
   return image.toJPEG(92).toString('base64');
 });
 
+ipcMain.handle('bg-apply-capture', async (event, { js }) => {
+  if (!bgWindow) return null;
+  const wc = bgWindow.webContents;
+  if (js) {
+    await wc.executeJavaScript(js);
+    await wc.executeJavaScript(
+      'new Promise(function(r){requestAnimationFrame(function(){requestAnimationFrame(r);});});'
+    );
+  }
+  const image = await wc.capturePage();
+  return image.toJPEG(92).toString('base64');
+});
+
 ipcMain.handle('bg-eval', async (event, code) => {
   if (!bgWindow) return null;
   return await bgWindow.webContents.executeJavaScript(code);
+});
+
+ipcMain.handle('bg-load-html', async (event, { html, width, height }) => {
+  if (bgWindow) { bgWindow.close(); bgWindow = null; }
+  bgWindow = new BrowserWindow({
+    width: width || 1920,
+    height: height || 1080,
+    show: false,
+    webPreferences: { offscreen: true }
+  });
+  await bgWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
+  return true;
+});
+
+ipcMain.handle('bg-eval-capture', async (event, { js, delay }) => {
+  if (!bgWindow) return null;
+  const wc = bgWindow.webContents;
+  if (js) await wc.executeJavaScript(js);
+  await wc.executeJavaScript('new Promise(function(r){requestAnimationFrame(function(){requestAnimationFrame(r);});});');
+  if (delay) {
+    await wc.executeJavaScript('new Promise(function(r){setTimeout(r,' + delay + ');});');
+  }
+  const image = await wc.capturePage();
+  return image.toJPEG(92).toString('base64');
 });
 
 ipcMain.handle('bg-cleanup', () => {
