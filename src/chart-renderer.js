@@ -81,6 +81,11 @@
   var $ = function (s) { return document.querySelector(s); };
   var $$ = function (s) { return document.querySelectorAll(s); };
 
+  function listen(sel, evt, fn) {
+    var el = $(sel);
+    if (el) el.addEventListener(evt, fn);
+  }
+
   function getResolution() {
     return CHART_RES[st.format][st.resolution];
   }
@@ -226,6 +231,8 @@
     var maxVal = Math.max.apply(null, data.map(function (d) { return d.value; }));
     if (maxVal <= 0) maxVal = 1;
 
+    ctx.save();
+
     if (st.showGrid) {
       var gridLines = 5;
       for (var g = 0; g <= gridLines; g++) {
@@ -248,69 +255,49 @@
       }
     }
 
+    var baseline = pad.top + chartH;
+    var ep = ease(progress);
+
     var points = data.map(function (d, i) {
       var x = pad.left + (i / (data.length - 1 || 1)) * chartW;
-      var y = pad.top + chartH - (d.value / maxVal) * chartH;
-      return { x: x, y: y, d: d, i: i };
+      var targetY = baseline - (d.value / maxVal) * chartH;
+      var y = baseline + (targetY - baseline) * ep;
+      return { x: x, y: y, targetY: targetY, d: d, i: i };
     });
 
-    var totalPts = points.length;
-    var drawCount = Math.max(1, Math.ceil(progress * totalPts));
-
-    if (drawCount < 2) return;
-
-    var pts = points.slice(0, drawCount);
-    var lastPt = pts[pts.length - 1];
-    var lastP = staggerProgress(progress, drawCount - 1, totalPts);
-    if (drawCount > 1 && lastP < 1) {
-      var prevPt = pts[pts.length - 2];
-      lastPt = {
-        x: prevPt.x + (lastPt.x - prevPt.x) * lastP,
-        y: prevPt.y + (lastPt.y - prevPt.y) * lastP,
-        d: lastPt.d, i: lastPt.i
-      };
-      pts[pts.length - 1] = lastPt;
-    }
+    if (points.length < 2) { ctx.restore(); return; }
 
     var color = getColor(0);
     var rgb = hexToRgb(color);
 
-    var fillGrad = ctx.createLinearGradient(0, pad.top, 0, pad.top + chartH);
+    var fillGrad = ctx.createLinearGradient(0, pad.top, 0, baseline);
     fillGrad.addColorStop(0, 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',0.25)');
     fillGrad.addColorStop(1, 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',0.02)');
 
     ctx.beginPath();
-    ctx.moveTo(pts[0].x, pad.top + chartH);
-    ctx.lineTo(pts[0].x, pts[0].y);
-
-    for (var i = 1; i < pts.length; i++) {
-      if (st.lineSmooth && i < pts.length) {
-        var cp1x = (pts[i - 1].x + pts[i].x) / 2;
-        var cp1y = pts[i - 1].y;
-        var cp2x = (pts[i - 1].x + pts[i].x) / 2;
-        var cp2y = pts[i].y;
-        ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, pts[i].x, pts[i].y);
+    ctx.moveTo(points[0].x, baseline);
+    ctx.lineTo(points[0].x, points[0].y);
+    for (var fi = 1; fi < points.length; fi++) {
+      if (st.lineSmooth) {
+        var fmx = (points[fi - 1].x + points[fi].x) / 2;
+        ctx.bezierCurveTo(fmx, points[fi - 1].y, fmx, points[fi].y, points[fi].x, points[fi].y);
       } else {
-        ctx.lineTo(pts[i].x, pts[i].y);
+        ctx.lineTo(points[fi].x, points[fi].y);
       }
     }
-
-    ctx.lineTo(pts[pts.length - 1].x, pad.top + chartH);
+    ctx.lineTo(points[points.length - 1].x, baseline);
     ctx.closePath();
     ctx.fillStyle = fillGrad;
     ctx.fill();
 
     ctx.beginPath();
-    ctx.moveTo(pts[0].x, pts[0].y);
-    for (var j = 1; j < pts.length; j++) {
+    ctx.moveTo(points[0].x, points[0].y);
+    for (var ci = 1; ci < points.length; ci++) {
       if (st.lineSmooth) {
-        var cx1 = (pts[j - 1].x + pts[j].x) / 2;
-        var cy1 = pts[j - 1].y;
-        var cx2 = (pts[j - 1].x + pts[j].x) / 2;
-        var cy2 = pts[j].y;
-        ctx.bezierCurveTo(cx1, cy1, cx2, cy2, pts[j].x, pts[j].y);
+        var cmx = (points[ci - 1].x + points[ci].x) / 2;
+        ctx.bezierCurveTo(cmx, points[ci - 1].y, cmx, points[ci].y, points[ci].x, points[ci].y);
       } else {
-        ctx.lineTo(pts[j].x, pts[j].y);
+        ctx.lineTo(points[ci].x, points[ci].y);
       }
     }
     ctx.strokeStyle = color;
@@ -319,10 +306,11 @@
     ctx.lineCap = 'round';
     ctx.stroke();
 
-    points.forEach(function (pt, idx) {
-      if (idx >= drawCount) return;
-      var pp = idx < drawCount - 1 ? 1 : lastP;
+    points.forEach(function (pt) {
+      var pp = ep;
+      if (pp < 0.05) return;
 
+      ctx.globalAlpha = Math.min(1, pp * 1.5);
       ctx.beginPath();
       ctx.arc(pt.x, pt.y, Math.max(4, st.lineWidth * 1.5), 0, Math.PI * 2);
       ctx.fillStyle = st.bgColor;
@@ -330,6 +318,7 @@
       ctx.strokeStyle = color;
       ctx.lineWidth = st.lineWidth;
       ctx.stroke();
+      ctx.globalAlpha = 1;
 
       if (st.showValues && pp > 0.3) {
         ctx.fillStyle = st.textColor;
@@ -347,10 +336,12 @@
         ctx.font = '500 ' + Math.max(st.fontSize * 0.7, 9) + 'px "Manrope", system-ui, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
-        ctx.fillText(pt.d.label, pt.x, pad.top + chartH + 8);
+        ctx.fillText(pt.d.label, pt.x, baseline + 8);
         ctx.globalAlpha = 1;
       }
     });
+
+    ctx.restore();
   }
 
   function drawPie(ctx, w, h, progress) {
@@ -591,15 +582,49 @@
 
   function startAnimation() {
     if (st.animating) stopAnimation();
+
+    var res = getResolution();
+    var rw = res[0], rh = res[1];
+
+    if (st.canvas.width !== rw || st.canvas.height !== rh) {
+      st.canvas.width = rw;
+      st.canvas.height = rh;
+    }
+    st.ctx = st.canvas.getContext('2d');
+
+    var area = $('[data-tool="chart"] .preview-area');
+    if (area) {
+      var aw = area.clientWidth;
+      var ah = area.clientHeight;
+      if (aw > 0 && ah > 0) {
+        var scale = Math.min(aw / rw, ah / rh, 1);
+        var pw = Math.round(rw * scale);
+        var ph = Math.round(rh * scale);
+        st.canvas.style.width = pw + 'px';
+        st.canvas.style.height = ph + 'px';
+        var wrapper = $('#chartPreviewWrapper');
+        if (wrapper) {
+          wrapper.style.width = pw + 'px';
+          wrapper.style.height = ph + 'px';
+        }
+      }
+    }
+
     st.animating = true;
     var start = performance.now();
     var dur = st.animDuration * 1000;
 
     function frame(now) {
+      if (!st.animating) return;
       var elapsed = now - start;
       var t = Math.min(elapsed / dur, 1);
-      var res = getResolution();
-      drawChart(st.ctx, res[0], res[1], t);
+      try {
+        drawChart(st.ctx, rw, rh, t);
+      } catch (e) {
+        console.error('chart frame error:', e);
+        st.animating = false;
+        return;
+      }
       if (t < 1) {
         st.animRaf = requestAnimationFrame(frame);
       } else {
@@ -870,154 +895,161 @@
       });
     });
 
-    $('#chartResolutionSelect').addEventListener('change', function (e) {
+    listen('#chartResolutionSelect', 'change', function (e) {
       st.resolution = e.target.value;
       renderPreview();
     });
 
-    $('#chartAddDataBtn').addEventListener('click', function () {
+    listen('#chartAddDataBtn', 'click', function () {
       st.data.push({ label: 'Nowy', value: Math.round(Math.random() * 1000) });
       renderDataTable();
       renderPreview();
     });
 
-    $('#chartBgColor').addEventListener('input', function (e) {
+    listen('#chartBgColor', 'input', function (e) {
       st.bgColor = e.target.value;
       renderPreview();
     });
 
-    $('#chartTextColor').addEventListener('input', function (e) {
+    listen('#chartTextColor', 'input', function (e) {
       st.textColor = e.target.value;
       renderPreview();
     });
 
-    $('#chartTitle').addEventListener('input', function (e) {
+    listen('#chartTitle', 'input', function (e) {
       st.title = e.target.value;
       renderPreview();
     });
 
-    $('#chartSubtitle').addEventListener('input', function (e) {
+    listen('#chartSubtitle', 'input', function (e) {
       st.subtitle = e.target.value;
       renderPreview();
     });
 
-    $('#chartAnimDuration').addEventListener('input', function (e) {
+    listen('#chartAnimDuration', 'input', function (e) {
       st.animDuration = parseFloat(e.target.value);
-      $('#chartAnimDurationVal').textContent = st.animDuration + 's';
+      var el = $('#chartAnimDurationVal');
+      if (el) el.textContent = st.animDuration + 's';
     });
 
-    $('#chartStagger').addEventListener('input', function (e) {
+    listen('#chartStagger', 'input', function (e) {
       st.stagger = parseFloat(e.target.value);
-      $('#chartStaggerVal').textContent = (st.stagger * 100).toFixed(0) + '%';
+      var el = $('#chartStaggerVal');
+      if (el) el.textContent = (st.stagger * 100).toFixed(0) + '%';
       renderPreview();
     });
 
-    $('#chartEasingSelect').addEventListener('change', function (e) {
+    listen('#chartEasingSelect', 'change', function (e) {
       st.easing = e.target.value;
       renderPreview();
     });
 
-    $('#chartFontSize').addEventListener('input', function (e) {
+    listen('#chartFontSize', 'input', function (e) {
       st.fontSize = parseInt(e.target.value);
-      $('#chartFontSizeVal').textContent = st.fontSize + 'px';
+      var el = $('#chartFontSizeVal');
+      if (el) el.textContent = st.fontSize + 'px';
       renderPreview();
     });
 
-    $('#chartBarRadius').addEventListener('input', function (e) {
+    listen('#chartBarRadius', 'input', function (e) {
       st.barRadius = parseInt(e.target.value);
-      $('#chartBarRadiusVal').textContent = st.barRadius;
+      var el = $('#chartBarRadiusVal');
+      if (el) el.textContent = st.barRadius;
       renderPreview();
     });
 
-    $('#chartLineWidth').addEventListener('input', function (e) {
+    listen('#chartLineWidth', 'input', function (e) {
       st.lineWidth = parseInt(e.target.value);
-      $('#chartLineWidthVal').textContent = st.lineWidth;
+      var el = $('#chartLineWidthVal');
+      if (el) el.textContent = st.lineWidth;
       renderPreview();
     });
 
-    $('#chartDonutHole').addEventListener('input', function (e) {
+    listen('#chartDonutHole', 'input', function (e) {
       st.donutHole = parseFloat(e.target.value);
-      $('#chartDonutHoleVal').textContent = (st.donutHole * 100).toFixed(0) + '%';
+      var el = $('#chartDonutHoleVal');
+      if (el) el.textContent = (st.donutHole * 100).toFixed(0) + '%';
       renderPreview();
     });
 
-    $('#chartLabelsToggle').addEventListener('change', function (e) {
+    listen('#chartLabelsToggle', 'change', function (e) {
       st.showLabels = e.target.checked;
       renderPreview();
     });
 
-    $('#chartValuesToggle').addEventListener('change', function (e) {
+    listen('#chartValuesToggle', 'change', function (e) {
       st.showValues = e.target.checked;
       renderPreview();
     });
 
-    $('#chartGridToggle').addEventListener('change', function (e) {
+    listen('#chartGridToggle', 'change', function (e) {
       st.showGrid = e.target.checked;
       renderPreview();
     });
 
-    $('#chartLegendToggle').addEventListener('change', function (e) {
+    listen('#chartLegendToggle', 'change', function (e) {
       st.showLegend = e.target.checked;
       renderPreview();
     });
 
-    $('#chartSmoothToggle').addEventListener('change', function (e) {
+    listen('#chartSmoothToggle', 'change', function (e) {
       st.lineSmooth = e.target.checked;
       renderPreview();
     });
 
-    $('#chartCustomColorsToggle').addEventListener('change', function (e) {
+    listen('#chartCustomColorsToggle', 'change', function (e) {
       st.useCustomColors = e.target.checked;
       renderDataTable();
       renderPreview();
     });
 
-    $('#chartCounterFrom').addEventListener('input', function (e) {
+    listen('#chartCounterFrom', 'input', function (e) {
       st.counterFrom = parseFloat(e.target.value) || 0;
       renderPreview();
     });
 
-    $('#chartCounterTo').addEventListener('input', function (e) {
+    listen('#chartCounterTo', 'input', function (e) {
       st.counterTo = parseFloat(e.target.value) || 0;
       renderPreview();
     });
 
-    $('#chartCounterPrefix').addEventListener('input', function (e) {
+    listen('#chartCounterPrefix', 'input', function (e) {
       st.counterPrefix = e.target.value;
       renderPreview();
     });
 
-    $('#chartCounterSuffix').addEventListener('input', function (e) {
+    listen('#chartCounterSuffix', 'input', function (e) {
       st.counterSuffix = e.target.value;
       renderPreview();
     });
 
-    $('#chartCounterDecimals').addEventListener('input', function (e) {
+    listen('#chartCounterDecimals', 'input', function (e) {
       st.counterDecimals = parseInt(e.target.value) || 0;
       renderPreview();
     });
 
-    $('#chartGaugeValue').addEventListener('input', function (e) {
+    listen('#chartGaugeValue', 'input', function (e) {
       st.gaugeValue = parseFloat(e.target.value) || 0;
-      $('#chartGaugeValueVal').textContent = st.gaugeValue + '%';
+      var el = $('#chartGaugeValueVal');
+      if (el) el.textContent = st.gaugeValue + '%';
       renderPreview();
     });
 
-    $('#chartGaugeLabel').addEventListener('input', function (e) {
+    listen('#chartGaugeLabel', 'input', function (e) {
       st.gaugeLabel = e.target.value;
       renderPreview();
     });
 
-    $('#chartPlayBtn').addEventListener('click', function () {
+    listen('#chartPlayBtn', 'click', function () {
       if (st.animating) stopAnimation();
       else startAnimation();
     });
 
-    $('#chartStopBtn').addEventListener('click', function () {
+    listen('#chartStopBtn', 'click', function () {
       stopAnimation();
     });
 
-    $('#chartExportBtn').addEventListener('click', function () {
+    listen('#chartExportBtn', 'click', function () {
       exportMp4();
     });
   }
@@ -1025,8 +1057,9 @@
   function updateChartTypeVisibility() {
     var types = ['bar', 'line', 'pie', 'counter', 'gauge'];
     types.forEach(function (t) {
-      var el = $('[data-chart-options="' + t + '"]');
-      if (el) el.style.display = st.chartType === t ? '' : 'none';
+      $$('[data-chart-options="' + t + '"]').forEach(function (el) {
+        el.style.display = st.chartType === t ? 'block' : 'none';
+      });
     });
 
     var commonData = $('[data-chart-options="data"]');
@@ -1043,13 +1076,12 @@
     bindControls();
     renderDataTable();
     updateChartTypeVisibility();
-    renderPreview();
   };
 
   window.chartActivate = function () {
     setTimeout(function () {
       renderPreview();
-    }, 100);
+    }, 150);
   };
 
   window.chartUpdatePreviewSize = function () {

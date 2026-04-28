@@ -2787,7 +2787,7 @@ function chatRenderPreview(animate, upTo, showTypingFrom) {
   const statuses = {
     imessage: 'iMessage',
     whatsapp: 'online',
-    discord: `${chatState.messages.length} wiadomości`,
+    discord: '',
     messenger: 'Active now',
     custom: 'online'
   };
@@ -3036,7 +3036,7 @@ function initChat() {
     const avatarSize = '1.7em';
     const headerContact = chatState.contacts[1];
     const avatar = chatAvatarHTML(headerContact, avatarSize);
-    const statuses = { imessage:'iMessage', whatsapp:'online', discord:`${chatState.messages.length} wiadomości`, messenger:'Active now', custom:'online' };
+    const statuses = { imessage:'iMessage', whatsapp:'online', discord:'', messenger:'Active now', custom:'online' };
     const headerHTML = `<div class="chat-render-header" ${headerStyle?`style="${headerStyle}"`:''}><div class="chat-render-back"><svg width="${p==='discord'?'0.72em':'0.56em'}" height="${p==='discord'?'0.72em':'0.56em'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></div>${avatar}<div class="chat-render-info"><div class="chat-render-name">${headerContact.name}</div><div class="chat-render-status">${statuses[p]||''}</div></div></div>`;
 
     const canvas = $('#chatPreviewCanvas');
@@ -3194,7 +3194,7 @@ function initChat() {
     const avatarSize = '1.7em';
     const headerContact = chatState.contacts[1];
     const avatar = chatAvatarHTML(headerContact, avatarSize);
-    const statuses = { imessage:'iMessage', whatsapp:'online', discord:`${chatState.messages.length} wiadomości`, messenger:'Active now', custom:'online' };
+    const statuses = { imessage:'iMessage', whatsapp:'online', discord:'', messenger:'Active now', custom:'online' };
     const headerHTML = `<div class="chat-render-header" ${headerStyle?`style="${headerStyle}"`:''}><div class="chat-render-back"><svg width="${p==='discord'?'0.72em':'0.56em'}" height="${p==='discord'?'0.72em':'0.56em'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></div>${avatar}<div class="chat-render-info"><div class="chat-render-name">${headerContact.name}</div><div class="chat-render-status">${statuses[p]||''}</div></div></div>`;
 
     const buildFrame = (limit, showTypingFrom, animateLast) => {
@@ -3208,7 +3208,8 @@ function initChat() {
         typingHTML = chatTypingHTML(chatState.messages[showTypingFrom].sender);
       }
       const animClass = animateLast ? ' chat-animate' : '';
-      return `<div style="font-size:${Math.min(w,h)/15*chatState.fontScale/100}px;width:100%;height:100%"><div class="chat-render chat-platform-${p}${animClass}" ${textStyle?`style="${textStyle}"`:''}>${headerHTML}<div class="chat-render-body" ${bodyStyle?`style="${bodyStyle}"`:''}>${msgHTML}${typingHTML}</div></div></div>`;
+      const bodyStyleFull = (bodyStyle ? bodyStyle + ';' : '') + 'overflow:visible';
+      return `<div style="font-size:${Math.min(w,h)/15*chatState.fontScale/100}px;width:100%;height:100%"><div class="chat-render chat-platform-${p}${animClass}" ${textStyle?`style="${textStyle}"`:''}>${headerHTML}<div class="chat-render-body" style="${bodyStyleFull}">${msgHTML}${typingHTML}</div></div></div>`;
     };
 
     const capture = async (html, delay) => {
@@ -3224,8 +3225,11 @@ function initChat() {
     let done = 0;
 
     for (let i = 0; i < msgCount; i++) {
-      const typingData = await capture(buildFrame(i, i));
-      frames.push({ data: typingData, duration: framesPerTyping });
+      const typingStep = Math.max(1, Math.round(typingMs / framesPerTyping));
+      for (let t = 0; t < framesPerTyping; t++) {
+        const typingData = await capture(buildFrame(i, i), (t + 1) * typingStep);
+        frames.push({ data: typingData, duration: 1 });
+      }
       done += framesPerTyping;
 
       const bubbleData = await capture(buildFrame(i + 1, undefined, true), 450);

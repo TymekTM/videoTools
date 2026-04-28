@@ -22,7 +22,7 @@
     var cd = 'rgba(0,0,0,0.35)';
     var svgs = {
       plane: '<svg viewBox="0 0 64 64" width="44" height="44">' +
-        '<ellipse cx="32" cy="30" rx="4" ry="22" fill="' + c + '" transform="rotate(0 32 30)"/>' +
+        '<ellipse cx="32" cy="30" rx="4" ry="22" fill="' + c + '"/>' +
         '<path d="M10 28L32 20 54 28 32 32Z" fill="' + c + '"/>' +
         '<path d="M10 28L32 24 54 28 32 30Z" fill="rgba(255,255,255,0.1)"/>' +
         '<path d="M24 48L32 52 40 48 36 42 32 44 28 42Z" fill="' + c + '"/>' +
@@ -31,16 +31,19 @@
         '</svg>',
 
       car: '<svg viewBox="0 0 64 64" width="44" height="44">' +
-        '<rect x="16" y="12" width="32" height="40" rx="10" fill="' + c + '"/>' +
-        '<rect x="20" y="10" width="24" height="14" rx="7" fill="' + c + '"/>' +
-        '<rect x="22" y="14" width="20" height="8" rx="3" fill="' + cm + '"/>' +
-        '<rect x="20" y="38" width="24" height="8" rx="2" fill="rgba(0,0,0,0.15)"/>' +
-        '<circle cx="20" cy="50" r="5" fill="#222" stroke="' + c + '" stroke-width="2"/>' +
-        '<circle cx="44" cy="50" r="5" fill="#222" stroke="' + c + '" stroke-width="2"/>' +
-        '<circle cx="20" cy="50" r="2" fill="' + cw + '" opacity="0.4"/>' +
-        '<circle cx="44" cy="50" r="2" fill="' + cw + '" opacity="0.4"/>' +
-        '<rect x="14" y="26" width="6" height="3" rx="1.5" fill="' + cw + '" opacity="0.5"/>' +
-        '<rect x="44" y="26" width="6" height="3" rx="1.5" fill="' + cw + '" opacity="0.5"/>' +
+        '<path d="M26 54L26 46 24 42 24 22 26 18 26 14 30 10 34 10 38 14 38 18 40 22 40 42 38 46 38 54Z" fill="' + c + '"/>' +
+        '<path d="M26 18L30 14 34 14 38 18 38 26 26 26Z" fill="' + cm + '"/>' +
+        '<rect x="26" y="28" width="12" height="10" rx="2" fill="rgba(0,0,0,0.1)"/>' +
+        '<rect x="28" y="42" width="3" height="8" rx="1.5" fill="#222"/>' +
+        '<rect x="33" y="42" width="3" height="8" rx="1.5" fill="#222"/>' +
+        '<rect x="28" y="10" width="3" height="8" rx="1.5" fill="#222"/>' +
+        '<rect x="33" y="10" width="3" height="8" rx="1.5" fill="#222"/>' +
+        '<rect x="22" y="18" width="4" height="8" rx="2" fill="' + c + '"/>' +
+        '<rect x="38" y="18" width="4" height="8" rx="2" fill="' + c + '"/>' +
+        '<circle cx="29.5" cy="46" r="1.5" fill="' + cw + '" opacity="0.3"/>' +
+        '<circle cx="34.5" cy="46" r="1.5" fill="' + cw + '" opacity="0.3"/>' +
+        '<circle cx="29.5" cy="12" r="1.5" fill="' + cw + '" opacity="0.4"/>' +
+        '<circle cx="34.5" cy="12" r="1.5" fill="' + cw + '" opacity="0.4"/>' +
         '</svg>',
 
       ship: '<svg viewBox="0 0 64 64" width="44" height="44">' +
@@ -123,6 +126,11 @@
     return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
   }
 
+  function lerpAngle(from, to, t) {
+    var diff = ((to - from + 540) % 360) - 180;
+    return (from + diff * t + 360) % 360;
+  }
+
   function bearing(from, to) {
     var dLng = d2r(to.lng - from.lng);
     var y = Math.sin(dLng) * Math.cos(d2r(to.lat));
@@ -171,11 +179,17 @@
       if (dists[j] >= target) {
         var seg = dists[j] - dists[j - 1];
         var f = seg > 0 ? (target - dists[j - 1]) / seg : 0;
-        return {
-          lat: points[j - 1].lat + (points[j].lat - points[j - 1].lat) * f,
-          lng: points[j - 1].lng + (points[j].lng - points[j - 1].lng) * f,
-          heading: bearing(points[j - 1], points[Math.min(j, points.length - 1)])
-        };
+        var lat = points[j - 1].lat + (points[j].lat - points[j - 1].lat) * f;
+        var lng = points[j - 1].lng + (points[j].lng - points[j - 1].lng) * f;
+        var look = Math.max(1, Math.round(points.length * 0.03));
+        var iBack = Math.max(0, j - look);
+        var iFwd = Math.min(points.length - 1, j + look);
+        while (iBack < iFwd && haversine(points[iBack], points[iFwd]) < 50) {
+          look++;
+          iBack = Math.max(0, j - look);
+          iFwd = Math.min(points.length - 1, j + look);
+        }
+        return { lat: lat, lng: lng, heading: bearing(points[iBack], points[iFwd]) };
       }
     }
     var l = points[points.length - 1];
@@ -654,40 +668,49 @@
       return 1;
     }
 
-    function frame(now) {
-      var elapsed = now - st.animStartTime;
-      var rawT = Math.min(elapsed / totalDurationMs, 1);
-      var t = getT(Math.min(elapsed, totalDurationMs));
-      t = Math.max(0, Math.min(1, t));
-      var pos = interpolatePath(coords, t);
+      var smoothCam = { lat: coords[0].lat, lng: coords[0].lng, heading: 0 };
 
-      if (st.vehicleMarker) {
-        st.vehicleMarker.setLatLng([pos.lat, pos.lng]);
-        var el = st.vehicleMarker.getElement();
-        if (el) {
-          var inner = el.querySelector('.vehicle-rot');
-          if (inner) inner.style.transform = 'rotate(' + pos.heading + 'deg)';
+      function frame(now) {
+        var elapsed = now - st.animStartTime;
+        var rawT = Math.min(elapsed / totalDurationMs, 1);
+        var t = getT(Math.min(elapsed, totalDurationMs));
+        t = Math.max(0, Math.min(1, t));
+        var pos = interpolatePath(coords, t);
+
+        smoothCam.heading = lerpAngle(smoothCam.heading, pos.heading, 0.15);
+
+        if (st.vehicleMarker) {
+          st.vehicleMarker.setLatLng([pos.lat, pos.lng]);
+          var el = st.vehicleMarker.getElement();
+          if (el) {
+            var inner = el.querySelector('.vehicle-rot');
+            if (inner) {
+              var noRotate = st.transportType === 'plane' || st.transportType === 'train';
+              inner.style.transform = 'rotate(' + (noRotate ? 0 : smoothCam.heading) + 'deg)';
+            }
+          }
         }
-      }
 
-      var steps = 60;
-      trailLines.forEach(function (tl, si) {
-        var segStart = legTStart[si] || 0;
-        var segEnd = legTEnd[si] != null ? legTEnd[si] : 1;
-        var effEnd = Math.min(t, segEnd);
-        if (effEnd <= segStart) { tl.setLatLngs([]); return; }
-        var pts = [];
-        for (var k = 0; k <= steps; k++) {
-          var tt = segStart + (k / steps) * (effEnd - segStart);
-          var p = interpolatePath(coords, tt);
-          pts.push([p.lat, p.lng]);
+        var steps = 60;
+        trailLines.forEach(function (tl, si) {
+          var segStart = legTStart[si] || 0;
+          var segEnd = legTEnd[si] != null ? legTEnd[si] : 1;
+          var effEnd = Math.min(t, segEnd);
+          if (effEnd <= segStart) { tl.setLatLngs([]); return; }
+          var pts = [];
+          for (var k = 0; k <= steps; k++) {
+            var tt = segStart + (k / steps) * (effEnd - segStart);
+            var p = interpolatePath(coords, tt);
+            pts.push([p.lat, p.lng]);
+          }
+          tl.setLatLngs(pts);
+        });
+
+        if (st.cameraMode === 'follow' && st.map) {
+          smoothCam.lat += (pos.lat - smoothCam.lat) * 0.12;
+          smoothCam.lng += (pos.lng - smoothCam.lng) * 0.12;
+          st.map.setView([smoothCam.lat, smoothCam.lng], st.zoom, { animate: false });
         }
-        tl.setLatLngs(pts);
-      });
-
-      if (st.cameraMode === 'follow' && st.map) {
-        st.map.setView([pos.lat, pos.lng], st.zoom, { animate: false });
-      }
 
       if (rawT < 1) {
         st.animRaf = requestAnimationFrame(frame);
@@ -762,7 +785,10 @@
       'var tot=ds[ds.length-1];if(tot===0)return{lat:pts[0].lat,lng:pts[0].lng,heading:0};',
       'var tgt=t*tot;',
       'for(var j=1;j<ds.length;j++){if(ds[j]>=tgt){var s=ds[j]-ds[j-1],f=s>0?(tgt-ds[j-1])/s:0;',
-      'return{lat:pts[j-1].lat+(pts[j].lat-pts[j-1].lat)*f,lng:pts[j-1].lng+(pts[j].lng-pts[j-1].lng)*f,heading:_brg(pts[j-1],pts[Math.min(j,pts.length-1)])}}}',
+      'var _lat=pts[j-1].lat+(pts[j].lat-pts[j-1].lat)*f,_lng=pts[j-1].lng+(pts[j].lng-pts[j-1].lng)*f;',
+      'var _lk=Math.max(1,Math.round(pts.length*0.03)),_ib=Math.max(0,j-_lk),_if=Math.min(pts.length-1,j+_lk);',
+      'while(_ib<_if&&_hav(pts[_ib],pts[_if])<50){_lk++;_ib=Math.max(0,j-_lk);_if=Math.min(pts.length-1,j+_lk)}',
+      'return{lat:_lat,lng:_lng,heading:_brg(pts[_ib],pts[_if])}}}',
       'return{lat:pts[pts.length-1].lat,lng:pts[pts.length-1].lng,heading:_brg(pts[pts.length-2],pts[pts.length-1])}};',
       'var _ease=function(t){return t<0.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2};'
     ].join('\n');
@@ -801,18 +827,23 @@
     var legS = JSON.stringify(legFracs.starts);
     var legE = JSON.stringify(legFracs.ends);
 
+    var noRotate = opts.transportType === 'plane' || opts.transportType === 'train';
     var updateFrameCode = 'var _legS=' + legS + ',_legE=' + legE + ';' +
+      'var _cam={lat:_rc[0].lat,lng:_rc[0].lng};' +
+      'var _noRot=' + JSON.stringify(noRotate) + ';' +
       'window._updateFrame=function(t,cm,z){' +
       'var p=_interp(_rc,t);' +
       '_vm.setLatLng([p.lat,p.lng]);' +
       'var el=_vm.getElement();' +
-      'if(el){var inn=el.querySelector(".vehicle-rot");if(inn)inn.style.transform="rotate("+p.heading+"deg)"}' +
+      'if(el){var inn=el.querySelector(".vehicle-rot");if(inn)inn.style.transform="rotate("+(_noRot?0:p.heading)+"deg)"}' +
       '_tlines.forEach(function(tl,si){' +
       'var s0=_legS[si]||0,s1=_legE[si]!=null?_legE[si]:1;' +
       'var eEnd=Math.min(t,s1);if(eEnd<=s0){tl.setLatLngs([]);return}' +
       'var pts=[];for(var k=0;k<=60;k++){var tt=s0+(k/60)*(eEnd-s0);var q=_interp(_rc,tt);pts.push([q.lat,q.lng])}' +
       'tl.setLatLngs(pts)});' +
-      'if(cm==="follow")_map.setView([p.lat,p.lng],z,{animate:false})};';
+      'if(cm==="follow"){_cam.lat+=(p.lat-_cam.lat)*0.1;_cam.lng+=(p.lng-_cam.lng)*0.1;' +
+      '_map.setView([_cam.lat,_cam.lng],z,{animate:false})}' +
+      'else if(cm==="overview"){_map.fitBounds(_rbounds,{padding:[50,50],maxZoom:z,animate:false})}};';
 
     var labelsCode = '';
     if (opts.labels && opts.labels.length) {
@@ -915,7 +946,8 @@
       vehicleHtml: iconHtml,
       vehicleSize: st.vehicleSize,
       segments: st.routeSegments,
-      labels: labels
+      labels: labels,
+      transportType: st.transportType
     });
 
     await ipcRenderer.invoke('bg-load-html', { html: html, width: w, height: h });
