@@ -156,6 +156,7 @@ html, body {
   min-height: 0;
   min-width: 0;
   height: 100%;
+  overflow: hidden;
 }
 
 .tool-panel.active {
@@ -199,7 +200,7 @@ html, body {
 
 .sidebar {
   width: var(--sidebar-width);
-  height: calc(100vh);
+  height: 100%;
   background: var(--bg-elevated);
   border-left: 1px solid var(--border);
   display: flex;
@@ -208,6 +209,10 @@ html, body {
   gap: 12px;
   overflow-y: auto;
   overflow-x: hidden;
+  flex-shrink: 0;
+}
+
+.sidebar > * {
   flex-shrink: 0;
 }
 
