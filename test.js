@@ -2793,6 +2793,646 @@ test('formatNumber handles very large numbers', () => {
   assert.strictEqual(str, '999 999 999');
 });
 
+function stripIife(code) {
+  const start = code.indexOf('{') + 1;
+  const end = code.lastIndexOf('}');
+  return code.substring(start, end);
+}
+
+function loadNotificationRenderer() {
+  const vm = require('vm');
+  const code = fs.readFileSync(path.join(__dirname, 'src', 'notification-renderer.js'), 'utf8');
+  let inner = stripIife(code);
+  inner = inner.replace(/var\s*\{\s*ipcRenderer\s*\}\s*=\s*require\([^)]*\);/, '');
+  const script = new vm.Script(inner, { filename: 'notification-renderer.js' });
+  const ctx = vm.createContext(global);
+  script.runInContext(ctx);
+}
+
+function loadMapRenderer() {
+  const vm = require('vm');
+  const code = fs.readFileSync(path.join(__dirname, 'src', 'map-renderer.js'), 'utf8');
+  let inner = stripIife(code);
+  inner = inner.replace(/const\s*\{\s*ipcRenderer\s*\}\s*=\s*require\([^)]*\);/, '');
+  inner = inner.replace(/^\s*const /gm, 'var ');
+  const script = new vm.Script(inner, { filename: 'map-renderer.js' });
+  const ctx = vm.createContext(global);
+  script.runInContext(ctx);
+}
+
+loadNotificationRenderer();
+
+const _notifSt = st;
+const _notifGetNotifWidth = getNotifWidth;
+const _notifEaseOutBack = easeOutBack;
+const _notifGetAppIcon = getAppIcon;
+const _notifBuildNotifHtml = buildNotifHtml;
+const _notifMoveNotification = moveNotification;
+const _notifRemoveNotification = removeNotification;
+const _notifPRESETS = PRESETS;
+const _notifNOTIF_RES = NOTIF_RES;
+const _notifAPP_ICONS = APP_ICONS;
+
+console.log('\x1b[1mNotification - NOTIF_RES:\x1b[0m');
+test('NOTIF_RES has 3 formats', () => {
+  assert.ok(_notifNOTIF_RES['16:9']);
+  assert.ok(_notifNOTIF_RES['9:16']);
+  assert.ok(_notifNOTIF_RES['1:1']);
+});
+test('NOTIF_RES has 3 quality levels per format', () => {
+  ['16:9', '9:16', '1:1'].forEach(fmt => {
+    assert.ok(_notifNOTIF_RES[fmt]['720p']);
+    assert.ok(_notifNOTIF_RES[fmt]['1080p']);
+    assert.ok(_notifNOTIF_RES[fmt]['4K']);
+  });
+});
+test('NOTIF_RES 16:9 1080p is 1920x1080', () => {
+  assert.strictEqual(_notifNOTIF_RES['16:9']['1080p'][0], 1920);
+  assert.strictEqual(_notifNOTIF_RES['16:9']['1080p'][1], 1080);
+});
+test('NOTIF_RES 9:16 1080p is 1080x1920', () => {
+  assert.strictEqual(_notifNOTIF_RES['9:16']['1080p'][0], 1080);
+  assert.strictEqual(_notifNOTIF_RES['9:16']['1080p'][1], 1920);
+});
+test('NOTIF_RES 1:1 1080p is 1080x1080', () => {
+  assert.strictEqual(_notifNOTIF_RES['1:1']['1080p'][0], 1080);
+  assert.strictEqual(_notifNOTIF_RES['1:1']['1080p'][1], 1080);
+});
+
+console.log('\x1b[1mNotification - APP_ICONS:\x1b[0m');
+test('APP_ICONS has all 11 entries', () => {
+  const expected = ['Instagram', 'X', 'TikTok', 'Wiadomo\u015Bci', 'WhatsApp', 'Mail', 'Snapchat', 'Telegram', 'YouTube', 'LinkedIn', 'App'];
+  expected.forEach(name => {
+    assert.ok(_notifAPP_ICONS[name], `Missing APP_ICONS entry: ${name}`);
+  });
+  assert.strictEqual(Object.keys(_notifAPP_ICONS).length, 11);
+});
+test('APP_ICONS entries contain SVG markup', () => {
+  Object.entries(_notifAPP_ICONS).forEach(([name, svg]) => {
+    assert.ok(svg.includes('<svg'), `${name} should contain <svg`);
+    assert.ok(svg.includes('</svg>'), `${name} should contain closing </svg>`);
+  });
+});
+
+console.log('\x1b[1mNotification - PRESETS:\x1b[0m');
+test('PRESETS has 15 entries', () => {
+  assert.strictEqual(Object.keys(_notifPRESETS).length, 15);
+});
+test('Each preset has required fields', () => {
+  Object.entries(_notifPRESETS).forEach(([key, p]) => {
+    assert.ok(p.type, `${key}: missing type`);
+    assert.ok(p.appName, `${key}: missing appName`);
+    assert.ok(p.title, `${key}: missing title`);
+    assert.ok(p.message, `${key}: missing message`);
+    assert.ok(p.accentColor, `${key}: missing accentColor`);
+  });
+});
+test('Each preset has valid accentColor hex format', () => {
+  Object.entries(_notifPRESETS).forEach(([key, p]) => {
+    assert.ok(/^#[0-9a-fA-F]{6}$/.test(p.accentColor), `${key}: invalid accentColor ${p.accentColor}`);
+  });
+});
+test('Each preset appName maps to APP_ICONS', () => {
+  Object.entries(_notifPRESETS).forEach(([key, p]) => {
+    assert.ok(_notifAPP_ICONS[p.appName], `${key}: appName "${p.appName}" not in APP_ICONS`);
+  });
+});
+test('PRESETS types are push, sms, or email', () => {
+  Object.entries(_notifPRESETS).forEach(([key, p]) => {
+    assert.ok(['push', 'sms', 'email'].includes(p.type), `${key}: unexpected type "${p.type}"`);
+  });
+});
+
+console.log('\x1b[1mNotification - st defaults:\x1b[0m');
+test('notification st has correct defaults', () => {
+  assert.strictEqual(_notifSt.notifications.length, 0);
+  assert.strictEqual(_notifSt.theme, 'ios');
+  assert.strictEqual(_notifSt.slideDirection, 'top');
+  assert.strictEqual(_notifSt.stackPosition, 'right');
+  assert.strictEqual(_notifSt.animSpeed, 800);
+  assert.strictEqual(_notifSt.slideDuration, 400);
+  assert.strictEqual(_notifSt.fadeOut, true);
+  assert.strictEqual(_notifSt.maxVisible, 5);
+  assert.strictEqual(_notifSt.format, '16:9');
+  assert.strictEqual(_notifSt.resolution, '1080p');
+  assert.strictEqual(_notifSt.animating, false);
+  assert.strictEqual(_notifSt.scale, 1);
+  assert.strictEqual(_notifSt.customBg, '#f2f2f2');
+  assert.strictEqual(_notifSt.customBorder, '#e5e5e5');
+  assert.strictEqual(_notifSt.customTitle, '#000');
+  assert.strictEqual(_notifSt.customText, '#666');
+  assert.strictEqual(_notifSt.customRadius, 16);
+});
+
+console.log('\x1b[1mNotification - getNotifWidth:\x1b[0m');
+test('getNotifWidth for portrait (ratio < 0.7) uses w*0.88 capped at 480', () => {
+  assert.strictEqual(_notifGetNotifWidth(720, 1280), 480);
+});
+test('getNotifWidth for landscape (ratio ~1.78) uses w*0.42 capped at 420', () => {
+  assert.strictEqual(_notifGetNotifWidth(1920, 1080), 420);
+});
+test('getNotifWidth for square (ratio 1.0, < 1.1) uses w*0.7 capped at 460', () => {
+  assert.strictEqual(_notifGetNotifWidth(1080, 1080), 460);
+});
+test('getNotifWidth at boundary ratio 0.7 falls into middle branch', () => {
+  assert.strictEqual(_notifGetNotifWidth(700, 1000), Math.min(700 * 0.7, 460));
+});
+test('getNotifWidth at boundary ratio 1.1 falls into last branch', () => {
+  assert.strictEqual(_notifGetNotifWidth(1100, 1000), Math.min(1100 * 0.42, 420));
+});
+test('getNotifWidth for small landscape uncapped', () => {
+  assert.strictEqual(_notifGetNotifWidth(720, 480), Math.min(720 * 0.42, 420));
+});
+test('getNotifWidth for small portrait uncapped', () => {
+  assert.strictEqual(_notifGetNotifWidth(360, 640), Math.min(360 * 0.88, 480));
+});
+
+console.log('\x1b[1mNotification - easeOutBack:\x1b[0m');
+test('easeOutBack(0) = 0', () => {
+  assert.ok(Math.abs(_notifEaseOutBack(0)) < 1e-10);
+});
+test('easeOutBack(1) = 1', () => {
+  assert.ok(Math.abs(_notifEaseOutBack(1) - 1) < 1e-10);
+});
+test('easeOutBack overshoots at midpoint (value > 1)', () => {
+  assert.ok(_notifEaseOutBack(0.5) > 1);
+});
+test('easeOutBack exact formula at t=0.5', () => {
+  const c1 = 1.70158;
+  const c3 = c1 + 1;
+  const expected = 1 + c3 * Math.pow(-0.5, 3) + c1 * Math.pow(-0.5, 2);
+  assert.ok(Math.abs(_notifEaseOutBack(0.5) - expected) < 1e-10);
+});
+test('easeOutBack at t=0.25 is positive', () => {
+  assert.ok(_notifEaseOutBack(0.25) > 0);
+});
+test('easeOutBack at t=0.75 is still above 1', () => {
+  assert.ok(_notifEaseOutBack(0.75) > 1);
+});
+
+console.log('\x1b[1mNotification - getAppIcon:\x1b[0m');
+test('getAppIcon returns matching icon for known app', () => {
+  assert.strictEqual(_notifGetAppIcon('Instagram'), _notifAPP_ICONS['Instagram']);
+});
+test('getAppIcon returns App fallback for unknown name', () => {
+  const svg = _notifGetAppIcon('UnknownApp');
+  assert.strictEqual(svg, _notifAPP_ICONS['App']);
+  assert.ok(svg.includes('<svg'));
+});
+
+console.log('\x1b[1mNotification - buildNotifHtml:\x1b[0m');
+test('buildNotifHtml ios theme uses backdrop-filter blur', () => {
+  const n = _notifPRESETS['ig-follow'];
+  const html = _notifBuildNotifHtml(n, 'ios', 1920, 1080);
+  assert.ok(html.includes('backdrop-filter:blur(24px)'));
+  assert.ok(html.includes('rgba(255,255,255,0.92)'));
+  assert.ok(html.includes('border-radius:16px'));
+});
+test('buildNotifHtml android theme uses 24px radius', () => {
+  const n = _notifPRESETS['ig-follow'];
+  const html = _notifBuildNotifHtml(n, 'android', 1920, 1080);
+  assert.ok(html.includes('border-radius:24px'));
+  assert.ok(html.includes('#f8f9fa'));
+  assert.ok(!html.includes('backdrop-filter'));
+});
+test('buildNotifHtml custom theme uses st.custom* values', () => {
+  const n = _notifPRESETS['ig-follow'];
+  _notifSt.customBg = '#222222';
+  _notifSt.customBorder = '#444444';
+  _notifSt.customTitle = '#ffffff';
+  _notifSt.customText = '#aaaaaa';
+  _notifSt.customRadius = 12;
+  const html = _notifBuildNotifHtml(n, 'custom', 1920, 1080);
+  assert.ok(html.includes('#222222'));
+  assert.ok(html.includes('#444444'));
+  assert.ok(html.includes('border-radius:12px'));
+  _notifSt.customBg = '#f2f2f2';
+  _notifSt.customBorder = '#e5e5e5';
+  _notifSt.customTitle = '#000';
+  _notifSt.customText = '#666';
+  _notifSt.customRadius = 16;
+});
+test('buildNotifHtml contains app name, title, message, time', () => {
+  const n = Object.assign({}, _notifPRESETS['sms']);
+  n.time = '5 min temu';
+  const html = _notifBuildNotifHtml(n, 'ios', 1920, 1080);
+  assert.ok(html.includes('Wiadomo\u015Bci'));
+  assert.ok(html.includes('Mama'));
+  assert.ok(html.includes('Kiedy przychodzisz na obiad?'));
+  assert.ok(html.includes('5 min temu'));
+});
+test('buildNotifHtml uses accentColor', () => {
+  const n = _notifPRESETS['ig-follow'];
+  const html = _notifBuildNotifHtml(n, 'ios', 1920, 1080);
+  assert.ok(html.includes('#E1306C'));
+});
+test('buildNotifHtml uses correct notifW', () => {
+  const n = _notifPRESETS['ig-follow'];
+  const html = _notifBuildNotifHtml(n, 'ios', 1920, 1080);
+  assert.ok(html.includes('width:420px'));
+});
+test('buildNotifHtml has correct width', () => {
+  const n = Object.assign({}, _notifPRESETS['ig-follow']);
+  n.time = 'teraz';
+  const html = _notifBuildNotifHtml(n, 'ios', 1920, 1080);
+  assert.ok(html.includes('width:420px'));
+});
+
+console.log('\x1b[1mNotification - moveNotification:\x1b[0m');
+test('moveNotification swaps items', () => {
+  _notifSt.notifications = [{ title: 'A' }, { title: 'B' }, { title: 'C' }];
+  _notifMoveNotification(0, 1);
+  assert.strictEqual(_notifSt.notifications[0].title, 'B');
+  assert.strictEqual(_notifSt.notifications[1].title, 'A');
+  _notifSt.notifications = [];
+});
+test('moveNotification ignores invalid direction', () => {
+  _notifSt.notifications = [{ title: 'A' }, { title: 'B' }];
+  _notifMoveNotification(0, -1);
+  assert.strictEqual(_notifSt.notifications[0].title, 'A');
+  _notifMoveNotification(1, 1);
+  assert.strictEqual(_notifSt.notifications[1].title, 'B');
+  _notifSt.notifications = [];
+});
+test('removeNotification removes by index', () => {
+  _notifSt.notifications = [{ title: 'A' }, { title: 'B' }, { title: 'C' }];
+  _notifRemoveNotification(1);
+  assert.strictEqual(_notifSt.notifications.length, 2);
+  assert.strictEqual(_notifSt.notifications[0].title, 'A');
+  assert.strictEqual(_notifSt.notifications[1].title, 'C');
+  _notifSt.notifications = [];
+});
+
+loadMapRenderer();
+
+const _mapSt = st;
+const _mapD2r = d2r;
+const _mapR2d = r2d;
+const _mapHaversine = haversine;
+const _mapBearing = bearing;
+const _mapLerpAngle = lerpAngle;
+const _mapGreatCirclePoints = greatCirclePoints;
+const _mapInterpolatePath = interpolatePath;
+const _mapBuildCumulativeDists = buildCumulativeDists;
+const _mapEaseInOut = easeInOut;
+const _mapHexToRgb = hexToRgb;
+const _mapGetSegmentColor = getSegmentColor;
+const _mapVehicleSvg = vehicleSvg;
+const _mapBuildFallbackRoute = buildFallbackRoute;
+const _mapBuildSegmentBounds = buildSegmentBounds;
+const _mapComputeLegFractions = computeLegFractions;
+
+console.log('\x1b[1mMap - MAP_RES:\x1b[0m');
+test('MAP_RES has 3 formats x 3 qualities', () => {
+  ['16:9', '9:16', '1:1'].forEach(fmt => {
+    ['720p', '1080p', '4K'].forEach(q => {
+      assert.ok(MAP_RES[fmt][q], `Missing MAP_RES[${fmt}][${q}]`);
+    });
+  });
+});
+test('MAP_RES 16:9 values match RESOLUTIONS', () => {
+  assert.strictEqual(MAP_RES['16:9']['1080p'][0], 1920);
+  assert.strictEqual(MAP_RES['16:9']['1080p'][1], 1080);
+  assert.strictEqual(MAP_RES['16:9']['4K'][0], 3840);
+  assert.strictEqual(MAP_RES['16:9']['4K'][1], 2160);
+});
+
+console.log('\x1b[1mMap - MAP_TILES:\x1b[0m');
+test('MAP_TILES has dark, light, topo', () => {
+  assert.ok(MAP_TILES.dark);
+  assert.ok(MAP_TILES.light);
+  assert.ok(MAP_TILES.topo);
+  assert.strictEqual(Object.keys(MAP_TILES).length, 3);
+});
+test('MAP_TILES URLs contain tile server patterns', () => {
+  assert.ok(MAP_TILES.dark.includes('cartocdn'));
+  assert.ok(MAP_TILES.light.includes('cartocdn'));
+  assert.ok(MAP_TILES.topo.includes('opentopomap'));
+});
+
+console.log('\x1b[1mMap - st defaults:\x1b[0m');
+test('map st has correct defaults', () => {
+  assert.strictEqual(_mapSt.transportType, 'plane');
+  assert.strictEqual(_mapSt.mapStyle, 'dark');
+  assert.strictEqual(_mapSt.cameraMode, 'follow');
+  assert.strictEqual(_mapSt.routeColor, '#6366f1');
+  assert.strictEqual(_mapSt.routeWidth, 4);
+  assert.strictEqual(_mapSt.animDuration, 5);
+  assert.strictEqual(_mapSt.zoom, 5);
+  assert.strictEqual(_mapSt.format, '16:9');
+  assert.strictEqual(_mapSt.resolution, '1080p');
+  assert.strictEqual(_mapSt.vehicleSize, 40);
+  assert.strictEqual(_mapSt.animating, false);
+  assert.strictEqual(_mapSt.easing, true);
+  assert.strictEqual(_mapSt.showLabels, true);
+  assert.ok(Array.isArray(_mapSt.segmentColors));
+  assert.strictEqual(_mapSt.segmentColors.length, 8);
+});
+
+console.log('\x1b[1mMap - d2r / r2d:\x1b[0m');
+test('d2r converts degrees to radians', () => {
+  assert.ok(Math.abs(_mapD2r(0) - 0) < 1e-10);
+  assert.ok(Math.abs(_mapD2r(90) - Math.PI / 2) < 1e-10);
+  assert.ok(Math.abs(_mapD2r(180) - Math.PI) < 1e-10);
+});
+test('r2d converts radians to degrees', () => {
+  assert.ok(Math.abs(_mapR2d(0) - 0) < 1e-10);
+  assert.ok(Math.abs(_mapR2d(Math.PI) - 180) < 1e-10);
+});
+test('d2r and r2d are inverses', () => {
+  for (let d = 0; d <= 360; d += 45) {
+    assert.ok(Math.abs(_mapR2d(_mapD2r(d)) - d) < 1e-10, `Roundtrip failed at ${d}`);
+  }
+});
+
+console.log('\x1b[1mMap - haversine:\x1b[0m');
+test('haversine of identical points is 0', () => {
+  assert.strictEqual(_mapHaversine({ lat: 52.2297, lng: 21.0122 }, { lat: 52.2297, lng: 21.0122 }), 0);
+});
+test('haversine Warsaw-Paris is approximately 1315km', () => {
+  const d = _mapHaversine({ lat: 52.2297, lng: 21.0122 }, { lat: 48.8566, lng: 2.3522 });
+  assert.ok(d > 1300000 && d < 1400000, `Expected ~1315km, got ${(d/1000).toFixed(0)}km`);
+});
+test('haversine equator 1 degree longitude is ~111km', () => {
+  const d = _mapHaversine({ lat: 0, lng: 0 }, { lat: 0, lng: 1 });
+  assert.ok(Math.abs(d - 111195) < 1000);
+});
+test('haversine is symmetric', () => {
+  const a = { lat: 52.2297, lng: 21.0122 };
+  const b = { lat: 48.8566, lng: 2.3522 };
+  assert.strictEqual(_mapHaversine(a, b), _mapHaversine(b, a));
+});
+
+console.log('\x1b[1mMap - bearing:\x1b[0m');
+test('bearing due east is 90', () => {
+  assert.ok(Math.abs(_mapBearing({ lat: 0, lng: 0 }, { lat: 0, lng: 1 }) - 90) < 0.1);
+});
+test('bearing due north is 0', () => {
+  assert.ok(Math.abs(_mapBearing({ lat: 0, lng: 0 }, { lat: 1, lng: 0 }) - 0) < 0.1);
+});
+test('bearing due south is 180', () => {
+  assert.ok(Math.abs(_mapBearing({ lat: 1, lng: 0 }, { lat: 0, lng: 0 }) - 180) < 0.1);
+});
+test('bearing due west is 270', () => {
+  assert.ok(Math.abs(_mapBearing({ lat: 0, lng: 1 }, { lat: 0, lng: 0 }) - 270) < 0.1);
+});
+test('bearing result is in [0, 360)', () => {
+  const b1 = _mapBearing({ lat: -30, lng: 20 }, { lat: 50, lng: -10 });
+  assert.ok(b1 >= 0 && b1 < 360);
+});
+
+console.log('\x1b[1mMap - lerpAngle:\x1b[0m');
+test('lerpAngle at t=0 returns from', () => {
+  assert.strictEqual(_mapLerpAngle(90, 180, 0), 90);
+});
+test('lerpAngle at t=1 returns to', () => {
+  assert.ok(Math.abs(_mapLerpAngle(90, 180, 1) - 180) < 1e-10);
+});
+test('lerpAngle at t=0.5 returns midpoint', () => {
+  assert.ok(Math.abs(_mapLerpAngle(0, 90, 0.5) - 45) < 1e-10);
+});
+test('lerpAngle crosses 0/360 boundary shortest path', () => {
+  assert.ok(Math.abs(_mapLerpAngle(350, 10, 0.5) - 0) < 1e-10);
+});
+test('lerpAngle wraps from 350 to 10 at t=1', () => {
+  assert.ok(Math.abs(_mapLerpAngle(350, 10, 1) - 10) < 1e-10);
+});
+test('lerpAngle wraps backwards from 10 to 350', () => {
+  assert.ok(Math.abs(_mapLerpAngle(10, 350, 0.5) - 0) < 1e-10);
+});
+test('lerpAngle result is always in [0, 360)', () => {
+  for (let t = 0; t <= 1; t += 0.1) {
+    const r = _mapLerpAngle(350, 10, t);
+    assert.ok(r >= 0 && r < 360, `t=${t}: ${r} out of range`);
+  }
+});
+
+console.log('\x1b[1mMap - greatCirclePoints:\x1b[0m');
+test('greatCirclePoints with identical points returns single point', () => {
+  const pts = _mapGreatCirclePoints({ lat: 52, lng: 21 }, { lat: 52, lng: 21 }, 10);
+  assert.strictEqual(pts.length, 1);
+  assert.strictEqual(pts[0].lat, 52);
+  assert.strictEqual(pts[0].lng, 21);
+});
+test('greatCirclePoints returns n+1 points', () => {
+  assert.strictEqual(_mapGreatCirclePoints({ lat: 52, lng: 21 }, { lat: 48, lng: 2 }, 50).length, 51);
+});
+test('greatCirclePoints starts and ends at given coords', () => {
+  const start = { lat: 52.2297, lng: 21.0122 };
+  const end = { lat: 48.8566, lng: 2.3522 };
+  const pts = _mapGreatCirclePoints(start, end, 100);
+  assert.ok(Math.abs(pts[0].lat - start.lat) < 0.001);
+  assert.ok(Math.abs(pts[0].lng - start.lng) < 0.001);
+  assert.ok(Math.abs(pts[100].lat - end.lat) < 0.001);
+  assert.ok(Math.abs(pts[100].lng - end.lng) < 0.001);
+});
+test('greatCirclePoints default n is 100', () => {
+  assert.strictEqual(_mapGreatCirclePoints({ lat: 0, lng: 0 }, { lat: 10, lng: 10 }).length, 101);
+});
+
+console.log('\x1b[1mMap - interpolatePath:\x1b[0m');
+test('interpolatePath with empty array returns zeros', () => {
+  const r = _mapInterpolatePath([], 0.5);
+  assert.strictEqual(r.lat, 0);
+  assert.strictEqual(r.lng, 0);
+  assert.strictEqual(r.heading, 0);
+});
+test('interpolatePath with single point returns that point', () => {
+  const r = _mapInterpolatePath([{ lat: 10, lng: 20 }], 0.5);
+  assert.strictEqual(r.lat, 10);
+  assert.strictEqual(r.lng, 20);
+});
+test('interpolatePath at t=0 returns first point', () => {
+  const r = _mapInterpolatePath([{ lat: 52, lng: 21 }, { lat: 48, lng: 2 }], 0);
+  assert.strictEqual(r.lat, 52);
+  assert.strictEqual(r.lng, 21);
+});
+test('interpolatePath at t=1 returns last point', () => {
+  const r = _mapInterpolatePath([{ lat: 52, lng: 21 }, { lat: 48, lng: 2 }], 1);
+  assert.strictEqual(r.lat, 48);
+  assert.strictEqual(r.lng, 2);
+});
+test('interpolatePath at t=0.5 returns midpoint', () => {
+  const r = _mapInterpolatePath([{ lat: 0, lng: 0 }, { lat: 10, lng: 10 }], 0.5);
+  assert.ok(Math.abs(r.lat - 5) < 0.01);
+  assert.ok(Math.abs(r.lng - 5) < 0.01);
+});
+test('interpolatePath returns heading', () => {
+  const r = _mapInterpolatePath([{ lat: 0, lng: 0 }, { lat: 0, lng: 1 }], 0.5);
+  assert.strictEqual(r.heading, 90);
+});
+test('interpolatePath with t<0 returns first point', () => {
+  const r = _mapInterpolatePath([{ lat: 52, lng: 21 }, { lat: 48, lng: 2 }], -0.5);
+  assert.strictEqual(r.lat, 52);
+  assert.strictEqual(r.lng, 21);
+});
+test('interpolatePath with t>1 returns last point', () => {
+  const r = _mapInterpolatePath([{ lat: 52, lng: 21 }, { lat: 48, lng: 2 }], 1.5);
+  assert.strictEqual(r.lat, 48);
+  assert.strictEqual(r.lng, 2);
+});
+test('interpolatePath with zero distance returns first point', () => {
+  const r = _mapInterpolatePath([{ lat: 52, lng: 21 }, { lat: 52, lng: 21 }], 0.5);
+  assert.strictEqual(r.lat, 52);
+  assert.strictEqual(r.lng, 21);
+  assert.strictEqual(r.heading, 0);
+});
+test('interpolatePath accepts cached distances', () => {
+  const pts = [{ lat: 0, lng: 0 }, { lat: 0, lng: 1 }, { lat: 1, lng: 1 }];
+  const cached = _mapBuildCumulativeDists(pts);
+  const r1 = _mapInterpolatePath(pts, 0.5);
+  const r2 = _mapInterpolatePath(pts, 0.5, cached);
+  assert.strictEqual(r1.lat, r2.lat);
+  assert.strictEqual(r1.lng, r2.lng);
+});
+
+console.log('\x1b[1mMap - map easeInOut (cubic):\x1b[0m');
+test('map easeInOut(0) = 0 and easeInOut(1) = 1', () => {
+  assert.strictEqual(_mapEaseInOut(0), 0);
+  assert.strictEqual(_mapEaseInOut(1), 1);
+});
+test('map easeInOut(0.5) = 0.5', () => {
+  assert.strictEqual(_mapEaseInOut(0.5), 0.5);
+});
+test('map easeInOut uses cubic formula (4t^3)', () => {
+  assert.strictEqual(_mapEaseInOut(0.25), 4 * 0.25 * 0.25 * 0.25);
+});
+test('map easeInOut is different from renderer quadratic', () => {
+  const t = 0.25;
+  assert.notStrictEqual(_mapEaseInOut(t), 2 * t * t);
+});
+
+console.log('\x1b[1mMap - hexToRgb:\x1b[0m');
+test('map hexToRgb parses #6366f1', () => {
+  const c = _mapHexToRgb('#6366f1');
+  assert.strictEqual(c.r, 99);
+  assert.strictEqual(c.g, 102);
+  assert.strictEqual(c.b, 241);
+});
+test('map hexToRgb parses #ffffff', () => {
+  const c = _mapHexToRgb('#ffffff');
+  assert.strictEqual(c.r, 255);
+  assert.strictEqual(c.g, 255);
+  assert.strictEqual(c.b, 255);
+});
+test('map hexToRgb parses #000000', () => {
+  const c = _mapHexToRgb('#000000');
+  assert.strictEqual(c.r, 0);
+  assert.strictEqual(c.g, 0);
+  assert.strictEqual(c.b, 0);
+});
+test('map hexToRgb parses #ff0000', () => {
+  const c = _mapHexToRgb('#ff0000');
+  assert.strictEqual(c.r, 255);
+  assert.strictEqual(c.g, 0);
+  assert.strictEqual(c.b, 0);
+});
+
+console.log('\x1b[1mMap - getSegmentColor:\x1b[0m');
+test('getSegmentColor cycles through segmentColors', () => {
+  assert.strictEqual(_mapGetSegmentColor(0), '#6366f1');
+  assert.strictEqual(_mapGetSegmentColor(1), '#f43f5e');
+  assert.strictEqual(_mapGetSegmentColor(7), '#14b8a6');
+  assert.strictEqual(_mapGetSegmentColor(8), '#6366f1');
+});
+
+console.log('\x1b[1mMap - vehicleSvg:\x1b[0m');
+test('vehicleSvg returns SVG for known types', () => {
+  ['plane', 'car', 'ship', 'train'].forEach(type => {
+    const svg = _mapVehicleSvg(type, '#6366f1');
+    assert.ok(svg.includes('<svg'), `${type} should return SVG`);
+    assert.ok(svg.includes('#6366f1'), `${type} should use color`);
+  });
+});
+test('vehicleSvg defaults to plane for unknown type', () => {
+  assert.strictEqual(_mapVehicleSvg('unknown', '#ff0000'), _mapVehicleSvg('plane', '#ff0000'));
+});
+test('vehicleSvg uses default color #6366f1 when none provided', () => {
+  assert.ok(_mapVehicleSvg('plane').includes('#6366f1'));
+});
+
+console.log('\x1b[1mMap - buildFallbackRoute:\x1b[0m');
+test('buildFallbackRoute returns coords and segments', () => {
+  const result = _mapBuildFallbackRoute([{ lat: 52, lng: 21 }, { lat: 48, lng: 2 }]);
+  assert.ok(result.coords.length > 0);
+  assert.strictEqual(result.segments.length, 1);
+  assert.strictEqual(result.segments[0].start, 0);
+  assert.strictEqual(result.segments[0].end, result.coords.length - 1);
+});
+test('buildFallbackRoute with 3 waypoints creates 2 segments', () => {
+  const result = _mapBuildFallbackRoute([{ lat: 52, lng: 21 }, { lat: 50, lng: 14 }, { lat: 48, lng: 2 }]);
+  assert.strictEqual(result.segments.length, 2);
+});
+test('buildFallbackRoute endpoints match waypoints', () => {
+  const wps = [{ lat: 52.2297, lng: 21.0122 }, { lat: 48.8566, lng: 2.3522 }];
+  const result = _mapBuildFallbackRoute(wps);
+  assert.ok(Math.abs(result.coords[0].lat - 52.2297) < 0.001);
+  const last = result.coords[result.coords.length - 1];
+  assert.ok(Math.abs(last.lat - 48.8566) < 0.001);
+});
+
+console.log('\x1b[1mMap - buildSegmentBounds:\x1b[0m');
+test('buildSegmentBounds maps waypoints to nearest route coords', () => {
+  const segs = _mapBuildSegmentBounds(
+    [{ lat: 0, lng: 0 }, { lat: 5, lng: 5 }, { lat: 10, lng: 10 }],
+    [{ lat: 0, lng: 0 }, { lat: 10, lng: 10 }]
+  );
+  assert.strictEqual(segs.length, 1);
+  assert.strictEqual(segs[0].start, 0);
+  assert.strictEqual(segs[0].end, 2);
+});
+test('buildSegmentBounds with < 2 waypoints returns empty', () => {
+  const segs = _mapBuildSegmentBounds([{ lat: 0, lng: 0 }], [{ lat: 0, lng: 0 }]);
+  assert.strictEqual(segs.length, 0);
+});
+
+console.log('\x1b[1mMap - computeLegFractions:\x1b[0m');
+test('computeLegFractions with equal segments', () => {
+  const f = _mapComputeLegFractions(
+    [{ lat: 0, lng: 0 }, { lat: 1, lng: 0 }, { lat: 2, lng: 0 }],
+    [{ start: 0, end: 1, color: '#fff' }, { start: 1, end: 2, color: '#fff' }],
+    2
+  );
+  assert.strictEqual(f.starts[0], 0);
+  assert.strictEqual(f.ends[1], 1);
+});
+test('computeLegFractions with more legs than segments returns single leg', () => {
+  const f = _mapComputeLegFractions(
+    [{ lat: 0, lng: 0 }, { lat: 1, lng: 0 }],
+    [{ start: 0, end: 1, color: '#fff' }],
+    3
+  );
+  assert.strictEqual(f.starts.length, 1);
+  assert.strictEqual(f.starts[0], 0);
+  assert.strictEqual(f.ends[0], 1);
+});
+test('computeLegFractions ends are non-decreasing', () => {
+  const coords = [{ lat: 0, lng: 0 }, { lat: 1, lng: 0 }, { lat: 2, lng: 0 }, { lat: 3, lng: 0 }];
+  const segs = [{ start: 0, end: 1 }, { start: 1, end: 2 }, { start: 2, end: 3 }];
+  const f = _mapComputeLegFractions(coords, segs, 3);
+  for (let i = 1; i < f.starts.length; i++) {
+    assert.ok(f.starts[i] >= f.starts[i - 1]);
+    assert.ok(f.ends[i] >= f.ends[i - 1]);
+  }
+});
+
+console.log('\x1b[1mMap - buildCumulativeDists:\x1b[0m');
+test('buildCumulativeDists starts at 0', () => {
+  const d = _mapBuildCumulativeDists([{ lat: 0, lng: 0 }, { lat: 1, lng: 0 }]);
+  assert.strictEqual(d[0], 0);
+  assert.ok(d[1] > 0);
+});
+test('buildCumulativeDists is monotonically increasing', () => {
+  const d = _mapBuildCumulativeDists([{ lat: 0, lng: 0 }, { lat: 1, lng: 0 }, { lat: 2, lng: 0 }, { lat: 3, lng: 0 }]);
+  for (let i = 1; i < d.length; i++) {
+    assert.ok(d[i] >= d[i - 1]);
+  }
+});
+test('buildCumulativeDists with identical points is all zeros', () => {
+  const d = _mapBuildCumulativeDists([{ lat: 5, lng: 5 }, { lat: 5, lng: 5 }, { lat: 5, lng: 5 }]);
+  d.forEach((v, i) => assert.strictEqual(v, 0));
+});
+
 console.log('\n\x1b[1m' + '='.repeat(40) + '\x1b[0m');
 console.log(`\x1b[32m${passCount} passed\x1b[0m, \x1b[31m${failCount} failed\x1b[0m\n`);
 

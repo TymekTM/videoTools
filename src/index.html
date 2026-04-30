@@ -55,6 +55,21 @@
             <path d="M6 20v-6"/>
           </svg>
         </button>
+        <button class="tool-nav-btn" data-tool="notification" title="Notification Stack">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+        </button>
+        <button class="tool-nav-btn" data-tool="corridorkey" title="CorridorKey - Green Screen Keying">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2"/>
+            <path d="M12 17v4"/>
+            <path d="M8 21h8"/>
+            <path d="M7 8l3 3-3 3"/>
+            <line x1="13" y1="14" x2="17" y2="14"/>
+          </svg>
+        </button>
       </div>
       <div class="tool-nav-bottom">
         <button class="tool-nav-btn theme-toggle-nav" id="themeToggleNav" title="Zmień motyw">
@@ -845,11 +860,405 @@
         </div>
       </aside>
     </div>
+    <!-- TOOL: Notification Stack -->
+    <div class="tool-panel" data-tool="notification">
+      <section class="preview-area">
+        <div class="preview-wrapper" id="notifPreviewWrapper">
+          <div class="preview-canvas" id="notifPreviewCanvas"></div>
+        </div>
+      </section>
+
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <span class="sidebar-title">Notification Stack</span>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Motyw</label>
+          <div class="control-btn-group" id="notifThemeGroup">
+            <button class="control-btn active" data-theme="ios">iOS</button>
+            <button class="control-btn" data-theme="android">Android</button>
+            <button class="control-btn" data-theme="custom">Custom</button>
+          </div>
+        </div>
+
+        <div class="control-group" id="notifCustomThemeGroup" style="display:none">
+          <label class="control-label">Custom motyw</label>
+          <div class="notif-custom-controls">
+            <label class="notif-custom-row"><span>T&#x142;o</span><input type="color" class="control-color" id="notifCustomBg" value="#f2f2f2"></label>
+            <label class="notif-custom-row"><span>Obramowanie</span><input type="color" class="control-color" id="notifCustomBorder" value="#e5e5e5"></label>
+            <label class="notif-custom-row"><span>Tytu&#x142;</span><input type="color" class="control-color" id="notifCustomTitle" value="#000000"></label>
+            <label class="notif-custom-row"><span>Tekst</span><input type="color" class="control-color" id="notifCustomText" value="#666666"></label>
+            <label class="notif-custom-row"><span>Radius <span class="control-value" id="notifCustomRadiusVal">16</span></span><input type="range" class="control-range" id="notifCustomRadius" min="0" max="32" step="1" value="16"></label>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Kierunek</label>
+          <div class="control-btn-group" id="notifDirectionGroup">
+            <button class="control-btn active" data-dir="top">&#x25BC; Z g&#xF3;ry</button>
+            <button class="control-btn" data-dir="bottom">&#x25B2; Z do&#x142;u</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Pozycja</label>
+          <div class="control-btn-group" id="notifPositionGroup">
+            <button class="control-btn" data-pos="left">Lewo</button>
+            <button class="control-btn active" data-pos="right">Prawo</button>
+            <button class="control-btn" data-pos="center">&#x15A;rodek</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Szybkie dodawanie</label>
+          <div class="notif-presets">
+            <button class="notif-preset-btn" data-preset="ig-follow">IG Follow</button>
+            <button class="notif-preset-btn" data-preset="ig-like">IG Like</button>
+            <button class="notif-preset-btn" data-preset="ig-comment">IG Comment</button>
+            <button class="notif-preset-btn" data-preset="ig-dm">IG DM</button>
+            <button class="notif-preset-btn" data-preset="x-rt">X Retweet</button>
+            <button class="notif-preset-btn" data-preset="x-like">X Like</button>
+            <button class="notif-preset-btn" data-preset="x-mention">X Mention</button>
+            <button class="notif-preset-btn" data-preset="tt-follow">TikTok</button>
+            <button class="notif-preset-btn" data-preset="sms">SMS</button>
+            <button class="notif-preset-btn" data-preset="whatsapp">WhatsApp</button>
+            <button class="notif-preset-btn" data-preset="email">Email</button>
+            <button class="notif-preset-btn" data-preset="snapchat">Snapchat</button>
+            <button class="notif-preset-btn" data-preset="telegram">Telegram</button>
+            <button class="notif-preset-btn" data-preset="youtube">YouTube</button>
+            <button class="notif-preset-btn" data-preset="linkedin">LinkedIn</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Lista powiadomie\u0144</label>
+          <div class="notif-list" id="notifList"></div>
+          <div id="notifEditFields"></div>
+          <button class="btn btn-ghost notif-add-btn" id="notifAddCustom">
+            <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 1v12M1 7h12"/></svg>
+            <span>+ Custom</span>
+          </button>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Odst\u0119p <span class="control-value" id="notifAnimSpeedVal">800ms</span></label>
+          <input type="range" class="control-range" id="notifAnimSpeed" min="200" max="2000" step="50" value="800">
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Max widocznych <span class="control-value" id="notifMaxVisibleVal">6</span></label>
+          <input type="range" class="control-range" id="notifMaxVisible" min="2" max="12" step="1" value="6">
+        </div>
+
+        <label class="control-checkbox"><input type="checkbox" id="notifFadeOut" checked> Fade-out starych</label>
+
+        <div class="control-group">
+          <label class="control-label">Format</label>
+          <div class="control-btn-group" id="notifFormatGroup">
+            <button class="control-btn active" data-format="16:9">16:9</button>
+            <button class="control-btn" data-format="9:16">9:16</button>
+            <button class="control-btn" data-format="1:1">1:1</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Rozdzielczość</label>
+          <select class="control-select" id="notifResolutionSelect">
+            <option value="720p">720p</option>
+            <option value="1080p" selected>1080p</option>
+            <option value="4K">4K</option>
+          </select>
+        </div>
+
+        <div class="control-actions">
+          <button class="btn btn-primary" id="notifPlayBtn">
+            <svg width="14" height="14" viewBox="0 0 14 14"><polygon points="2,0 14,7 2,14" fill="currentColor"/></svg>
+            <span>Play</span>
+          </button>
+          <button class="btn btn-secondary" id="notifStopBtn">
+            <svg width="14" height="14" viewBox="0 0 14 14"><rect x="1" y="1" width="12" height="12" rx="2" fill="currentColor"/></svg>
+            <span>Stop</span>
+          </button>
+        </div>
+
+        <div class="control-actions">
+          <button class="btn btn-primary" id="notifExportMov" style="flex:1">
+            <span>MOV ProRes</span>
+          </button>
+          <button class="btn btn-secondary" id="notifExportWebm" style="flex:1">
+            <span>WebM</span>
+          </button>
+          <button class="btn btn-ghost" id="notifExportMp4" style="flex:1">
+            <span>MP4</span>
+          </button>
+        </div>
+
+        <div class="chat-export-progress" id="notifExportProgress">
+          <div class="chat-export-bar"><div class="chat-export-bar-fill" id="notifExportBarFill"></div></div>
+          <span class="chat-export-label" id="notifExportLabel">...</span>
+        </div>
+
+        <div class="control-actions" style="margin-top:auto">
+          <button class="btn btn-ghost" id="notifClearBtn" style="flex:1">
+            <span>Wyczyść</span>
+          </button>
+        </div>
+      </aside>
+    </div>
+
+    <!-- TOOL: CorridorKey -->
+    <div class="tool-panel" data-tool="corridorkey">
+      <section class="preview-area" id="ckPreviewArea">
+        <div class="ck-preview-container">
+          <div class="ck-preview-placeholder" id="ckPreviewPlaceholder">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.3">
+              <rect x="2" y="3" width="20" height="14" rx="2"/>
+              <path d="M12 17v4"/><path d="M8 21h8"/>
+              <path d="M7 8l3 3-3 3"/><line x1="13" y1="14" x2="17" y2="14"/>
+            </svg>
+            <div class="ck-preview-placeholder-text">CorridorKey</div>
+            <div class="ck-preview-placeholder-sub">Neural network green screen keying</div>
+          </div>
+          <div class="ck-preview-log" id="ckPreviewLog" style="display:none">
+            <div class="ck-log-header">
+              <span class="ck-log-title">Console Output</span>
+              <button class="ck-log-clear" id="ckLogClear">Clear</button>
+            </div>
+            <div class="ck-log-body" id="ckLogBody"></div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <span class="sidebar-title">CorridorKey</span>
+          <span class="ck-badge" id="ckStatusBadge">...</span>
+        </div>
+
+        <div class="ck-license-banner" id="ckLicenseBanner">
+          <div class="ck-license-icon">!</div>
+          <div class="ck-license-text">
+            <strong>Licencja CC BY-NC-SA 4.0</strong> &mdash; Narzędzie CorridorKey autorstwa <strong>Corridor Digital</strong>.
+            Integracja ta jest <strong>wrapperem UI</strong> wywołującym oryginalne CLI.
+            <span class="ck-license-ok">Zgodne z licencją:</span> osobiste użycie, przetwarzanie obrazów w projektach komercyjnych.
+            <span class="ck-license-warn">Ograniczenia:</span> zakaz sprzedaży, zakaz płatnego API, forks muszą zachować nazwę CorridorKey.
+            <a href="#" class="ck-license-link" id="ckLicenseToggle">Pełna licencja</a>
+          </div>
+        </div>
+
+        <div class="ck-license-full" id="ckLicenseFull" style="display:none">
+          <div class="ck-license-full-content">
+            <p><strong>Corridor Key Licence v1.0</strong> &mdash; CC BY-NC-SA 4.0 + dodatkowe warunki:</p>
+            <ul>
+              <li><span class="ck-tag ck-tag-yes">DOZWOLONE</span> Użycie do przetwarzania obrazów (nawet w projektach komercyjnych)</li>
+              <li><span class="ck-tag ck-tag-yes">DOZWOLONE</span> Forki i modyfikacje (pod warunkiem zachowania licencji i nazwy CorridorKey)</li>
+              <li><span class="ck-tag ck-tag-no">ZABRONIONE</span> Repakowanie i sprzedaż jako samodzielny produkt</li>
+              <li><span class="ck-tag ck-tag-no">ZABRONIONE</span> Oferowanie inference jako płatny serwis API</li>
+              <li><span class="ck-tag ck-tag-warn">WYMAGANE</span> Komercyjna integracja wymaga osobnej pisemnej umowy z Corridor Digital</li>
+              <li><span class="ck-tag ck-tag-warn">WYMAGANE</span> Atrybucja &mdash; zachowanie nazwy "CorridorKey" w forkach</li>
+            </ul>
+            <p>Repozytorium: <a href="#">github.com/nikopueringer/CorridorKey</a></p>
+            <p>Kontakt licencyjny: contact@corridordigital.com</p>
+          </div>
+        </div>
+
+        <div class="ck-section">
+          <div class="ck-section-header" id="ckSystemToggle">
+            <span class="ck-section-arrow">&#9660;</span>
+            <span>Detekcja systemu</span>
+          </div>
+          <div class="ck-section-body" id="ckSystemBody">
+            <div class="ck-sys-grid" id="ckSysGrid">
+              <div class="ck-sys-item" data-sys="platform">
+                <span class="ck-sys-label">Platform</span>
+                <span class="ck-sys-value" id="ckSysPlatform">&mdash;</span>
+              </div>
+              <div class="ck-sys-item" data-sys="python">
+                <span class="ck-sys-label">Python</span>
+                <span class="ck-sys-value" id="ckSysPython">&mdash;</span>
+              </div>
+              <div class="ck-sys-item" data-sys="uv">
+                <span class="ck-sys-label">uv (pkg mgr)</span>
+                <span class="ck-sys-value" id="ckSysUv">&mdash;</span>
+              </div>
+              <div class="ck-sys-item" data-sys="cuda">
+                <span class="ck-sys-label">CUDA</span>
+                <span class="ck-sys-value" id="ckSysCuda">&mdash;</span>
+              </div>
+              <div class="ck-sys-item" data-sys="gpu">
+                <span class="ck-sys-label">GPU</span>
+                <span class="ck-sys-value" id="ckSysGpu">&mdash;</span>
+              </div>
+              <div class="ck-sys-item" data-sys="vram">
+                <span class="ck-sys-label">VRAM</span>
+                <span class="ck-sys-value" id="ckSysVram">&mdash;</span>
+              </div>
+              <div class="ck-sys-item" data-sys="repo">
+                <span class="ck-sys-label">CorridorKey Repo</span>
+                <span class="ck-sys-value" id="ckSysRepo">&mdash;</span>
+              </div>
+              <div class="ck-sys-item" data-sys="models">
+                <span class="ck-sys-label">Modele</span>
+                <span class="ck-sys-value" id="ckSysModels">&mdash;</span>
+              </div>
+            </div>
+            <div class="ck-compatibility" id="ckCompatibility" style="display:none"></div>
+            <button class="btn btn-ghost ck-btn-scan" id="ckScanBtn" style="margin-top:6px">
+              <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 1v12M1 7h12"/></svg>
+              <span>Skanuj ponownie</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="ck-section">
+          <div class="ck-section-header" id="ckSetupToggle">
+            <span class="ck-section-arrow">&#9660;</span>
+            <span>Konfiguracja repozytorium</span>
+          </div>
+          <div class="ck-section-body" id="ckSetupBody">
+            <div class="control-group">
+              <label class="control-label">Ścieżka repozytorium CorridorKey</label>
+              <div class="ck-path-row">
+                <input type="text" class="control-input" id="ckRepoPath" placeholder="np. C:\Users\...\CorridorKey" readonly>
+                <button class="btn btn-ghost ck-btn-browse" id="ckBrowseRepo">...</button>
+              </div>
+            </div>
+            <div class="ck-setup-actions">
+              <button class="btn btn-secondary" id="ckAutoDetect" style="flex:1">Auto-wykryj</button>
+              <button class="btn btn-primary" id="ckInstallDeps" style="flex:1" disabled>Instaluj deps</button>
+            </div>
+            <div class="ck-setup-note" id="ckSetupNote" style="display:none"></div>
+          </div>
+        </div>
+
+        <div class="ck-section">
+          <div class="ck-section-header" id="ckInputToggle">
+            <span class="ck-section-arrow">&#9660;</span>
+            <span>Materiał wejściowy</span>
+          </div>
+          <div class="ck-section-body" id="ckInputBody">
+            <div class="control-group">
+              <label class="control-label">Folder / plik wejściowy</label>
+              <div class="ck-path-row">
+                <input type="text" class="control-input" id="ckInputPath" placeholder="Folder z sekwencją lub plik wideo" readonly>
+                <button class="btn btn-ghost ck-btn-browse" id="ckBrowseInput">...</button>
+              </div>
+            </div>
+            <div class="control-group">
+              <label class="control-label">Alpha Hint (opcjonalnie)</label>
+              <div class="ck-path-row">
+                <input type="text" class="control-input" id="ckAlphaHintPath" placeholder="Folder AlphaHint" readonly>
+                <button class="btn btn-ghost ck-btn-browse" id="ckBrowseAlpha">...</button>
+              </div>
+            </div>
+            <div class="ck-input-info" id="ckInputInfo" style="display:none"></div>
+          </div>
+        </div>
+
+        <div class="ck-section">
+          <div class="ck-section-header" id="ckParamsToggle">
+            <span class="ck-section-arrow">&#9660;</span>
+            <span>Parametry inferencji</span>
+          </div>
+          <div class="ck-section-body" id="ckParamsBody">
+            <div class="control-group">
+              <label class="control-label">Gamma Space</label>
+              <div class="control-btn-group" id="ckGammaGroup">
+                <button class="control-btn active" data-gamma="srgb">sRGB</button>
+                <button class="control-btn" data-gamma="linear">Linear</button>
+              </div>
+            </div>
+            <div class="control-group">
+              <label class="control-label">Despill Strength <span class="control-value" id="ckDespillVal">0</span></label>
+              <input type="range" class="control-range" id="ckDespillRange" min="0" max="10" step="1" value="0">
+            </div>
+            <div class="control-group">
+              <label class="control-label">Device</label>
+              <div class="control-btn-group" id="ckDeviceGroup">
+                <button class="control-btn active" data-device="auto">Auto</button>
+                <button class="control-btn" data-device="cuda">CUDA</button>
+                <button class="control-btn" data-device="cpu">CPU</button>
+              </div>
+            </div>
+            <label class="control-checkbox">
+              <input type="checkbox" id="ckAutoDespeckle" checked>
+              Auto-Despeckle
+            </label>
+            <div class="control-group">
+              <label class="control-label">Despeckle threshold <span class="control-value" id="ckDespeckleVal">100</span></label>
+              <input type="range" class="control-range" id="ckDespeckleRange" min="10" max="500" step="10" value="100">
+            </div>
+            <div class="control-group">
+              <label class="control-label">Refiner Strength <span class="control-value" id="ckRefinerVal">1.0</span></label>
+              <input type="range" class="control-range" id="ckRefinerRange" min="0.1" max="2.0" step="0.1" value="1.0">
+            </div>
+          </div>
+        </div>
+
+        <div class="ck-section">
+          <div class="ck-section-header" id="ckAlphaGenToggle">
+            <span class="ck-section-arrow">&#9660;</span>
+            <span>Generowanie Alpha Hint</span>
+          </div>
+          <div class="ck-section-body" id="ckAlphaGenBody">
+            <div class="control-group">
+              <label class="control-label">Metoda</label>
+              <div class="control-btn-group" id="ckAlphaMethodGroup">
+                <button class="control-btn active" data-method="none">Brak</button>
+                <button class="control-btn" data-method="birefnet">BiRefNet</button>
+                <button class="control-btn" data-method="gvm">GVM</button>
+                <button class="control-btn" data-method="videomama">VideoMaMa</button>
+              </div>
+            </div>
+            <div class="ck-alpha-note" id="ckAlphaNote">
+              BiRefNet: lekkie, ~6GB VRAM. GVM: automatyczne, ~80GB VRAM. VideoMaMa: z maską, ~24GB+ VRAM.
+            </div>
+          </div>
+        </div>
+
+        <div class="control-actions">
+          <button class="btn btn-primary" id="ckRunInference" style="flex:1" disabled>
+            <svg width="14" height="14" viewBox="0 0 14 14"><polygon points="2,0 14,7 2,14" fill="currentColor"/></svg>
+            <span>Uruchom Inference</span>
+          </button>
+        </div>
+
+        <div class="control-actions">
+          <button class="btn btn-secondary" id="ckRunWizard" style="flex:1" disabled>
+            <span>Wizard (CLI)</span>
+          </button>
+          <button class="btn btn-ghost" id="ckListShots" style="flex:1" disabled>
+            <span>Listuj shaty</span>
+          </button>
+        </div>
+
+        <div class="chat-export-progress" id="ckProgress" style="display:none">
+          <div class="chat-export-bar"><div class="chat-export-bar-fill" id="ckProgressBar"></div></div>
+          <span class="chat-export-label" id="ckProgressLabel">...</span>
+        </div>
+
+        <div class="ck-output-section" id="ckOutputSection" style="display:none">
+          <div class="ck-section-header">
+            <span>Wyniki</span>
+          </div>
+          <div class="ck-output-grid" id="ckOutputGrid"></div>
+        </div>
+
+        <div class="control-group" style="margin-top:auto">
+          <div class="ck-footer-info">
+            <span>CorridorKey v1.0 &middot; Corridor Digital</span>
+            <span>CC BY-NC-SA 4.0</span>
+          </div>
+        </div>
+      </aside>
+    </div>
   </div>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="renderer.js"></script>
   <script src="map-renderer.js"></script>
   <script src="chart-renderer.js"></script>
+  <script src="notification-renderer.js"></script>
+  <script src="corridorkey-renderer.js"></script>
 </body>
 </html>
