@@ -1,0 +1,226 @@
+/* ─── Map Travel Tool ─── */
+
+#mapContainer {
+  width: 100%;
+  height: 100%;
+  background: var(--preview-bg);
+}
+
+.leaflet-container {
+  background: var(--preview-bg);
+  font-family: inherit;
+}
+
+.map-vehicle-icon {
+  background: none !important;
+  border: none !important;
+}
+
+.map-vehicle-icon .vehicle-rot {
+  transition: transform 0.08s linear;
+  filter: drop-shadow(0 0 8px rgba(99, 102, 241, 0.5));
+}
+
+.map-vehicle-icon .vehicle-rot img {
+  display: block;
+}
+
+.map-wp-marker-wrapper {
+  background: none !important;
+  border: none !important;
+}
+
+.map-wp-marker {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: 'Manrope', sans-serif;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.3), 0 2px 8px rgba(0,0,0,0.4);
+  border: 2px solid var(--on-accent);
+}
+
+.map-waypoints-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 180px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.map-wp-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.map-wp-num {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.map-wp-input-wrap {
+  flex: 1;
+  position: relative;
+  min-width: 0;
+}
+
+.map-wp-input {
+  width: 100%;
+  padding: 5px 8px !important;
+  font-size: 11px !important;
+}
+
+.map-wp-dropdown {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-top: 2px;
+  max-height: 160px;
+  overflow-y: auto;
+  z-index: 100;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+
+.map-wp-dropdown.active {
+  display: block;
+}
+
+.map-wp-option {
+  padding: 6px 10px;
+  font-size: 11px;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.1s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.map-wp-option:hover {
+  background: var(--bg-surface);
+  color: var(--accent);
+}
+
+.map-wp-option:first-child {
+  border-radius: 5px 5px 0 0;
+}
+
+.map-wp-option:last-child {
+  border-radius: 0 0 5px 5px;
+}
+
+.map-wp-del {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--text-dim);
+  font-size: 16px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s;
+  padding: 0;
+}
+
+.map-wp-del:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.map-add-wp-btn {
+  margin-top: 4px;
+  padding: 5px 10px !important;
+  font-size: 11px !important;
+  gap: 4px !important;
+}
+
+.map-route-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.map-route-row .control-color {
+  width: 36px !important;
+  height: 28px !important;
+  flex: none !important;
+}
+
+.map-vehicle-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.map-vehicle-preview {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.map-vehicle-preview img,
+.map-vehicle-preview svg {
+  max-width: 28px;
+  max-height: 28px;
+}
+
+.map-vehicle-upload {
+  padding: 5px 10px !important;
+  font-size: 11px !important;
+  cursor: pointer;
+}
+
+.map-city-label-wrapper {
+  background: none !important;
+  border: none !important;
+}
+
+.map-city-label {
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: 'Manrope', system-ui, sans-serif;
+  white-space: nowrap;
+  text-shadow: 0 0 8px var(--lc, #6366f1), 0 0 20px var(--lc, #6366f1), 0 1px 3px rgba(0,0,0,0.8);
+  pointer-events: none;
+}
+
+.map-wp-color {
+  width: 20px !important;
+  height: 20px !important;
+  flex: none !important;
+  padding: 1px !important;
+}

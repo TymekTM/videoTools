@@ -396,9 +396,10 @@ async function detectSystem() {
     path.join(homeDir, 'Projects', 'CorridorKey'),
     path.join(homeDir, 'repos', 'CorridorKey'),
     path.join(homeDir, 'github', 'CorridorKey'),
-    path.join('C:', 'CorridorKey'),
-    path.join('D:', 'CorridorKey'),
   ];
+  'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach(drive => {
+    possiblePaths.push(path.join(drive + ':', 'CorridorKey'));
+  });
 
   for (const p of possiblePaths) {
     if (fs.existsSync(path.join(p, 'clip_manager.py'))) {
@@ -506,6 +507,33 @@ ipcMain.handle('ck-run-install', async (event, { repoPath }) => {
     });
     proc.on('close', (code) => resolve({ code, stdout, stderr }));
     proc.on('error', (err) => resolve({ code: -1, stdout, stderr: err.message }));
+  });
+});
+
+ipcMain.handle('ck-clone-repo', async (event, { targetDir }) => {
+  const destPath = path.join(targetDir, 'CorridorKey');
+  if (fs.existsSync(destPath)) {
+    return { code: -1, stdout: '', stderr: 'Folder CorridorKey już istnieje w: ' + targetDir };
+  }
+
+  return new Promise((resolve) => {
+    const proc = spawn('git', ['clone', 'https://github.com/nikopueringer/CorridorKey.git', destPath], {
+      timeout: 600000,
+    });
+    let stdout = '';
+    let stderr = '';
+    proc.stdout.on('data', d => {
+      const text = d.toString();
+      stdout += text;
+      mainWindow.webContents.send('ck-clone-output', { text, type: 'stdout' });
+    });
+    proc.stderr.on('data', d => {
+      const text = d.toString();
+      stderr += text;
+      mainWindow.webContents.send('ck-clone-output', { text, type: 'stderr' });
+    });
+    proc.on('close', (code) => resolve({ code, stdout, stderr, destPath }));
+    proc.on('error', (err) => resolve({ code: -1, stdout, stderr: err.message, destPath }));
   });
 });
 

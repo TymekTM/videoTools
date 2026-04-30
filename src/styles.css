@@ -2180,7 +2180,13 @@ html, body {
 .ck-path-row .control-input { flex: 1; font-size: 11px !important; padding: 6px 8px !important; }
 .ck-btn-browse { flex: none !important; width: 34px; height: 34px; padding: 0 !important; font-size: 14px !important; }
 .ck-btn-scan { width: 100%; font-size: 11px !important; gap: 4px !important; }
-.ck-setup-actions { display: flex; gap: 6px; }
+.ck-setup-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.ck-setup-actions .btn { flex: 1 1 0; min-width: 90px; font-size: 11px !important; }
+.ck-clone-progress { margin-top: 6px; }
+.ck-clone-progress .ck-progress-bar-track { width: 100%; height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; }
+.ck-clone-progress .ck-progress-bar-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s; }
+.ck-clone-progress .ck-progress-label { font-size: 10px; color: var(--text-dim); display: block; margin-top: 4px; }
+@keyframes ck-indeterminate { 0% { transform: translateX(-100%); } 100% { transform: translateX(200%); } }
 .ck-setup-note { padding: 6px 10px; border-radius: 4px; font-size: 11px; line-height: 1.4; }
 .ck-note-ok { background: rgba(34,197,94,0.08); color: #22c55e; border: 1px solid rgba(34,197,94,0.2); }
 .ck-note-warn { background: rgba(245,158,11,0.08); color: #f59e0b; border: 1px solid rgba(245,158,11,0.2); }

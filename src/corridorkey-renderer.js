@@ -27,6 +27,10 @@ const CK = {
       sysModels: document.getElementById('ckSysModels'),
       compatibility: document.getElementById('ckCompatibility'),
       scanBtn: document.getElementById('ckScanBtn'),
+      cloneRepo: document.getElementById('ckCloneRepo'),
+      cloneProgress: document.getElementById('ckCloneProgress'),
+      cloneProgressBar: document.getElementById('ckCloneProgressBar'),
+      cloneProgressLabel: document.getElementById('ckCloneProgressLabel'),
       repoPath: document.getElementById('ckRepoPath'),
       browseRepo: document.getElementById('ckBrowseRepo'),
       autoDetect: document.getElementById('ckAutoDetect'),
@@ -84,6 +88,8 @@ const CK = {
     });
 
     this.els.scanBtn.addEventListener('click', () => this.scanSystem());
+
+    this.els.cloneRepo.addEventListener('click', () => this.cloneRepo());
 
     this.els.browseRepo.addEventListener('click', async () => {
       const p = await ipcRenderer.invoke('ck-select-repo');
@@ -147,6 +153,9 @@ const CK = {
       this.appendLog(data.text, data.type);
     });
     ipcRenderer.on('ck-install-output', (_event, data) => {
+      this.appendLog(data.text, data.type);
+    });
+    ipcRenderer.on('ck-clone-output', (_event, data) => {
       this.appendLog(data.text, data.type);
     });
   },
@@ -217,29 +226,37 @@ const CK = {
 
   assessCompatibility(info) {
     const comp = this.els.compatibility;
-    comp.style.display = 'block';
     const checks = [];
+
+    const hasRepo = !!(this.repoPath || info.corridorKeyRepo);
+    const hasModels = !!(info.corridorKeyModels && info.corridorKeyModels.length > 0)
+      || (this.repoPath && fs.existsSync(path.join(this.repoPath, 'CorridorKeyModule', 'checkpoints')));
 
     if (!info.python) checks.push({ ok: false, msg: 'Python nie jest zainstalowany lub nie jest w PATH. CorridorKey wymaga Python 3.10+.' });
     if (!info.uv) checks.push({ ok: false, msg: 'uv (menedżer pakietów) nie jest zainstalowany. Pobierz z docs.astral.sh/uv' });
     if (!info.cuda) checks.push({ ok: null, msg: 'CUDA nie wykryte. Inference będzie działać na CPU (wolniej).' });
     if (info.gpuVram) {
-      const vramMatch = info.gpuVram.match(/(\d+)\s*MB/i);
+      const vramMatch = info.gpuVram.match(/(\d+)\s*Mi?B/i);
       const vramGb = vramMatch ? parseInt(vramMatch[1]) / 1024 : 0;
-      if (vramGb >= 8) checks.push({ ok: true, msg: `VRAM ${vramGb.toFixed(0)}GB - wystarczające do inference.` });
-      else if (vramGb >= 6) checks.push({ ok: true, msg: `VRAM ${vramGb.toFixed(0)}GB - minimum do inference (może być wolne).` });
+      if (vramGb >= 6) { /* ok, skip */ }
       else checks.push({ ok: false, msg: `VRAM ${vramGb.toFixed(0)}GB - niewystarczające do GPU inference. Użyj CPU.` });
     }
-    if (!info.corridorKeyRepo) checks.push({ ok: false, msg: 'Repozytorium CorridorKey nie znalezione. Sklonuj z GitHub lub wskaż ścieżkę ręcznie.' });
-    if (info.corridorKeyRepo && !info.corridorKeyModels) checks.push({ ok: null, msg: 'Modele CorridorKey nie pobrane. Zostaną pobrane automatycznie przy pierwszym uruchomieniu (~300MB).' });
+    if (!hasRepo) checks.push({ ok: false, msg: 'Repozytorium CorridorKey nie znalezione. Sklonuj z GitHub lub wskaż ścieżkę ręcznie.' });
+    if (hasRepo && !hasModels) checks.push({ ok: null, msg: 'Model CorridorKey nie pobrany (~300MB). Kliknij "Pobierz model" poniżej.' });
+
+    if (checks.length === 0) {
+      comp.style.display = 'none';
+      this.setStatus('ready', 'Gotowy');
+      return;
+    }
 
     const allOk = checks.every(c => c.ok !== false);
     const anyWarn = checks.some(c => c.ok === null);
+    if (allOk && anyWarn) this.setStatus('warning', 'Ostrzeżenia');
+    else if (!allOk) this.setStatus('error', 'Problemy');
+    else this.setStatus('ready', 'Gotowy');
 
-    if (allOk && !anyWarn) this.setStatus('ready', 'Gotowy');
-    else if (allOk) this.setStatus('warning', 'Ostrzeżenia');
-    else this.setStatus('error', 'Problemy');
-
+    comp.style.display = 'block';
     comp.innerHTML = checks.map(c => {
       const cls = c.ok === true ? 'ck-comp-ok' : c.ok === false ? 'ck-comp-fail' : 'ck-comp-warn';
       const icon = c.ok === true ? '&#10003;' : c.ok === false ? '&#10007;' : '&#9888;';
@@ -334,6 +351,43 @@ const CK = {
     line.textContent = text;
     this.els.logBody.appendChild(line);
     this.els.logBody.scrollTop = this.els.logBody.scrollHeight;
+  },
+
+  async cloneRepo() {
+    if (this.running) return;
+    const targetDir = await ipcRenderer.invoke('ck-select-dir');
+    if (!targetDir) return;
+
+    this.running = true;
+    this.updateRunButtons();
+    this.els.cloneProgress.style.display = 'block';
+    this.els.cloneProgressBar.style.width = '100%';
+    this.els.cloneProgressBar.style.animation = 'ck-indeterminate 1.5s infinite';
+    this.els.cloneProgressLabel.textContent = 'Klonowanie CorridorKey z GitHub...';
+    this.setStatus('scanning', 'Klonowanie...');
+
+    try {
+      const result = await ipcRenderer.invoke('ck-clone-repo', { targetDir });
+      if (result.code === 0) {
+        this.els.repoPath.value = result.destPath;
+        this.repoPath = result.destPath;
+        this.setStatus('ready', 'Sklonowano');
+        this.showSetupNote('Repozytorium sklonowane pomyślnie. Możesz teraz zainstalować zależności.', 'ok');
+        this.validateRepo();
+      } else {
+        this.setStatus('error', 'Błąd klonowania');
+        this.appendLog('BŁĄD: ' + (result.stderr || 'Nieznany błąd'), 'stderr');
+        this.showSetupNote('Błąd klonowania: ' + (result.stderr || '').slice(0, 120), 'error');
+      }
+    } catch (err) {
+      this.setStatus('error', 'Błąd');
+      this.appendLog('Błąd: ' + err.message, 'stderr');
+    } finally {
+      this.running = false;
+      this.updateRunButtons();
+      this.els.cloneProgressBar.style.animation = '';
+      this.els.cloneProgress.style.display = 'none';
+    }
   },
 
   async installDeps() {

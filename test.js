@@ -96,6 +96,7 @@ function loadScript(filename) {
 }
 
 function loadRenderer() {
+  loadScript('templates.js');
   loadScript('news-renderer.js');
   loadScript('chat-renderer.js');
   loadScript('typing-renderer.js');

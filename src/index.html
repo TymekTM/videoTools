@@ -7,7 +7,14 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;700;900&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Crimson+Pro:ital,wght@0,400;0,600;0,700;0,900;1,400&family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;0,9..40,900;1,9..40,400&family=EB+Garamond:ital,wght@0,400;0,700;1,400&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;0,9..144,900;1,9..144,400&family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,600;0,700;1,400&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;600;700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Libre+Franklin:wght@400;600;700;900&family=Lora:ital,wght@0,400;0,700;1,400&family=Manrope:wght@300;400;500;600;700;800&family=Merriweather:wght@400;700;900&family=Outfit:wght@400;500;600;700;800&family=Oswald:wght@400;600;700&family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Roboto+Slab:wght@400;700&family=Sora:wght@400;600;700;800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=Space+Grotesk:wght@400;600;700&family=Work+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="base.css">
+  <link rel="stylesheet" href="newspaper.css">
+  <link rel="stylesheet" href="chat.css">
+  <link rel="stylesheet" href="typing.css">
+  <link rel="stylesheet" href="map.css">
+  <link rel="stylesheet" href="chart.css">
+  <link rel="stylesheet" href="notification.css">
+  <link rel="stylesheet" href="corridorkey.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
@@ -1054,11 +1061,11 @@
         <div class="ck-license-banner" id="ckLicenseBanner">
           <div class="ck-license-icon">!</div>
           <div class="ck-license-text">
-            <strong>Licencja CC BY-NC-SA 4.0</strong> &mdash; Narzędzie CorridorKey autorstwa <strong>Corridor Digital</strong>.
-            Integracja ta jest <strong>wrapperem UI</strong> wywołującym oryginalne CLI.
-            <span class="ck-license-ok">Zgodne z licencją:</span> osobiste użycie, przetwarzanie obrazów w projektach komercyjnych.
-            <span class="ck-license-warn">Ograniczenia:</span> zakaz sprzedaży, zakaz płatnego API, forks muszą zachować nazwę CorridorKey.
-            <a href="#" class="ck-license-link" id="ckLicenseToggle">Pełna licencja</a>
+            <strong>Corridor Key Licence v1.0</strong> &mdash; wolne narzędzie od <strong>Corridor Digital</strong> na licencji
+            CC BY-NC-SA 4.0 z dodatkowymi klauzulami. Ta integracja to <strong>wrapper UI</strong> oryginalnego CLI.
+            <span class="ck-license-ok">Możesz:</span> przetwarzać obrazy dowolnie, również w projektach komercyjnych; forkować i modyfikować pod warunkiem zachowania licencji i nazwy.
+            <span class="ck-license-warn">Nie możesz:</span> sprzedawać narzędzia ani oferować inference jako płatny serwis (paywall, subskrypcja, billing).
+            <a href="#" class="ck-license-link" id="ckLicenseToggle">Szczegóły licencji</a>
           </div>
         </div>
 
@@ -1066,15 +1073,17 @@
           <div class="ck-license-full-content">
             <p><strong>Corridor Key Licence v1.0</strong> &mdash; CC BY-NC-SA 4.0 + dodatkowe warunki:</p>
             <ul>
-              <li><span class="ck-tag ck-tag-yes">DOZWOLONE</span> Użycie do przetwarzania obrazów (nawet w projektach komercyjnych)</li>
-              <li><span class="ck-tag ck-tag-yes">DOZWOLONE</span> Forki i modyfikacje (pod warunkiem zachowania licencji i nazwy CorridorKey)</li>
-              <li><span class="ck-tag ck-tag-no">ZABRONIONE</span> Repakowanie i sprzedaż jako samodzielny produkt</li>
-              <li><span class="ck-tag ck-tag-no">ZABRONIONE</span> Oferowanie inference jako płatny serwis API</li>
-              <li><span class="ck-tag ck-tag-warn">WYMAGANE</span> Komercyjna integracja wymaga osobnej pisemnej umowy z Corridor Digital</li>
-              <li><span class="ck-tag ck-tag-warn">WYMAGANE</span> Atrybucja &mdash; zachowanie nazwy "CorridorKey" w forkach</li>
+              <li><span class="ck-tag ck-tag-yes">DOZWOLONE</span> Dowolne użycie, w tym keying w projektach komercyjnych (reklamy, filmy, gry itd.)</li>
+              <li><span class="ck-tag ck-tag-yes">DOZWOLONE</span> Forki, modyfikacje i ulepszenia &mdash; pod warunkiem zachowania tej samej licencji oraz widocznej nazwy &ldquo;CorridorKey&rdquo;</li>
+              <li><span class="ck-tag ck-tag-no">ZABRONIONE</span> Repakowanie, odsprzedaż lub dystrybucja jako samodzielny/konkurencyjny produkt</li>
+              <li><span class="ck-tag ck-tag-no">ZABRONIONE</span> Oferowanie dostępu do inference za opłatą &mdash; paywall, subskrypcja, billing za użycie</li>
+              <li><span class="ck-tag ck-tag-warn">WYJĄTEK</span> Komercyjne oprogramowanie chcące wbudować CorridorKey potrzebuje osobnej pisemnej umowy &mdash; <a href="mailto:contact@corridordigital.com">contact@corridordigital.com</a></li>
+              <li><span class="ck-tag ck-tag-warn">SHARE-ALIKE</span> Każda publicznie wydana modyfikacja musi zostać opublikowana na tej samej licencji (włącznie z dodatkowymi warunkami)</li>
+              <li><span class="ck-tag ck-tag-warn">ATRYBUCJA</span> Nazwa &ldquo;CorridorKey&rdquo; (lub &ldquo;Corridor Key&rdquo;) musi pozostać widoczna w forkach i materiałach</li>
+              <li><span class="ck-tag ck-tag-warn">KONTRYBUCJE</span> Zgłaszając kod/asset, przyznajesz Corridor Digital perpetual, worldwide, non-exclusive, royalty-free licencję również na cele komercyjne</li>
             </ul>
-            <p>Repozytorium: <a href="#">github.com/nikopueringer/CorridorKey</a></p>
-            <p>Kontakt licencyjny: contact@corridordigital.com</p>
+            <p>Repozytorium: <a href="https://github.com/nikopueringer/CorridorKey" target="_blank">github.com/nikopueringer/CorridorKey</a></p>
+            <p>Pełny tekst licencji znajduje się w pliku <code>LICENSE</code> repozytorium.</p>
           </div>
         </div>
 
@@ -1141,7 +1150,12 @@
             </div>
             <div class="ck-setup-actions">
               <button class="btn btn-secondary" id="ckAutoDetect" style="flex:1">Auto-wykryj</button>
+              <button class="btn btn-primary" id="ckCloneRepo" style="flex:1">Klonuj z GitHub</button>
               <button class="btn btn-primary" id="ckInstallDeps" style="flex:1" disabled>Instaluj deps</button>
+            </div>
+            <div class="ck-clone-progress" id="ckCloneProgress" style="display:none">
+              <div class="ck-progress-bar-track"><div class="ck-progress-bar-fill" id="ckCloneProgressBar"></div></div>
+              <span class="ck-progress-label" id="ckCloneProgressLabel">Klonowanie repozytorium...</span>
             </div>
             <div class="ck-setup-note" id="ckSetupNote" style="display:none"></div>
           </div>
@@ -1271,6 +1285,7 @@
   </div>
 
   <script src="shared.js"></script>
+  <script src="templates.js"></script>
   <script src="news-renderer.js"></script>
   <script src="chat-renderer.js"></script>
   <script src="typing-renderer.js"></script>
