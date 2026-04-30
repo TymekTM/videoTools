@@ -127,6 +127,8 @@ window._bgSetBody = function(html) {
     width, height,
     show: false,
     frame: false,
+    transparent: true,
+    backgroundColor: '#00000000',
     webPreferences: { offscreen: true }
   });
   await bgWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
