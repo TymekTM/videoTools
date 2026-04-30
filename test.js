@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const assert = require('assert');
 
 let passCount = 0;
@@ -74,12 +75,21 @@ function setupBrowserMocks() {
   global.ResizeObserver = function () { this.observe = () => {}; };
   global.$ = (sel) => global.document.querySelector(sel);
   global.$$ = (sel) => global.document.querySelectorAll(sel);
+  global.Map = Map;
+}
+
+function loadShared() {
+  const vm = require('vm');
+  const code = fs.readFileSync(path.join(__dirname, 'src', 'shared.js'), 'utf8');
+  const script = new vm.Script(code, { filename: 'shared.js' });
+  const context = vm.createContext(global);
+  script.runInContext(context);
 }
 
 function loadRenderer() {
   const vm = require('vm');
   const code = fs.readFileSync(path.join(__dirname, 'src', 'renderer.js'), 'utf8');
-  const startIdx = code.indexOf('const RESOLUTIONS');
+  const startIdx = code.indexOf('const LOREM_HEADLINES');
   const endIdx = code.indexOf('document.addEventListener(\'DOMContentLoaded\'');
   let moduleCode = code.substring(startIdx, endIdx);
 
@@ -93,6 +103,34 @@ function loadRenderer() {
 console.log('\n\x1b[1mVideo Tools - Unit Tests\x1b[0m\n');
 
 setupBrowserMocks();
+loadShared();
+
+console.log('\x1b[1mShared module:\x1b[0m');
+test('RESOLUTIONS has all 3 formats', () => {
+  assert.ok(RESOLUTIONS['16:9']);
+  assert.ok(RESOLUTIONS['9:16']);
+  assert.ok(RESOLUTIONS['1:1']);
+});
+test('hexToRgb parses #6366f1', () => {
+  const c = hexToRgb('#6366f1');
+  assert.strictEqual(c.r, 99);
+  assert.strictEqual(c.g, 102);
+  assert.strictEqual(c.b, 241);
+});
+test('escapeHTML escapes special characters', () => {
+  assert.strictEqual(escapeHTML('<b>hi</b>'), '&lt;b&gt;hi&lt;/b&gt;');
+  assert.strictEqual(escapeHTML('a&b'), 'a&amp;b');
+  assert.strictEqual(escapeHTML('line1\nline2'), 'line1<br>line2');
+});
+test('formatNumber formats integers with spaces', () => {
+  assert.strictEqual(formatNumber(1000000), '1 000 000');
+  assert.strictEqual(formatNumber(42), '42');
+});
+test('makeSetExporting returns a function', () => {
+  const fn = makeSetExporting('test');
+  assert.strictEqual(typeof fn, 'function');
+});
+
 loadRenderer();
 
 console.log('\x1b[1mTEMPLATES:\x1b[0m');
@@ -3065,6 +3103,22 @@ test('removeNotification removes by index', () => {
 
 loadMapRenderer();
 
+function loadMainHelpers() {
+  const vm = require('vm');
+  global.fs = fs;
+  global.path = path;
+  const code = fs.readFileSync(path.join(__dirname, 'main.js'), 'utf8');
+  const startIdx = code.indexOf('const RAF_WAIT');
+  const endIdx = code.indexOf('ipcMain.handle(', startIdx);
+  let moduleCode = code.substring(startIdx, endIdx);
+  moduleCode = moduleCode.replace(/^const /gm, 'var ');
+  const script = new vm.Script(moduleCode, { filename: 'main-helpers.js' });
+  const context = vm.createContext(global);
+  script.runInContext(context);
+}
+
+loadMainHelpers();
+
 const _mapSt = st;
 const _mapD2r = d2r;
 const _mapR2d = r2d;
@@ -3431,6 +3485,55 @@ test('buildCumulativeDists is monotonically increasing', () => {
 test('buildCumulativeDists with identical points is all zeros', () => {
   const d = _mapBuildCumulativeDists([{ lat: 5, lng: 5 }, { lat: 5, lng: 5 }, { lat: 5, lng: 5 }]);
   d.forEach((v, i) => assert.strictEqual(v, 0));
+});
+
+console.log('\n\x1b[1mMain.js helpers (pure logic tests):\x1b[0m');
+test('writeJpgConcat produces correct file names and concat content', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vt-test-'));
+  try {
+    const frames = [
+      { data: Buffer.from('fake1').toString('base64'), duration: 2 },
+      { data: Buffer.from('fake2').toString('base64'), duration: 3 },
+    ];
+    writeJpgConcat(tmpDir, frames);
+    assert.ok(fs.existsSync(path.join(tmpDir, 'f_000000.jpg')));
+    assert.ok(fs.existsSync(path.join(tmpDir, 'f_000001.jpg')));
+    const concat = fs.readFileSync(path.join(tmpDir, 'concat.txt'), 'utf8');
+    const lines = concat.trim().split('\n');
+    assert.strictEqual(lines.length, 5, '2+3=5 concat lines');
+    assert.ok(lines[0].includes('f_000000.jpg'));
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('writePngDuplicated produces correct file count', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vt-test-'));
+  try {
+    const frames = [
+      { data: Buffer.from('fake1').toString('base64'), duration: 3 },
+      { data: Buffer.from('fake2').toString('base64'), duration: 1 },
+    ];
+    writePngDuplicated(tmpDir, frames);
+    assert.ok(fs.existsSync(path.join(tmpDir, 'f_000000.png')));
+    assert.ok(fs.existsSync(path.join(tmpDir, 'f_000001.png')));
+    assert.ok(fs.existsSync(path.join(tmpDir, 'f_000002.png')));
+    assert.ok(fs.existsSync(path.join(tmpDir, 'f_000003.png')));
+    assert.ok(!fs.existsSync(path.join(tmpDir, 'f_000004.png')));
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('RAF_WAIT is a valid JS promise string', () => {
+  assert.ok(RAF_WAIT.includes('requestAnimationFrame'));
+  assert.ok(RAF_WAIT.includes('Promise'));
+});
+
+test('delayJs produces correct setTimeout string', () => {
+  const result = delayJs(500);
+  assert.ok(result.includes('500'));
+  assert.ok(result.includes('setTimeout'));
 });
 
 console.log('\n\x1b[1m' + '='.repeat(40) + '\x1b[0m');

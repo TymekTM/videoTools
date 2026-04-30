@@ -9,11 +9,7 @@
     topo: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png'
   };
 
-  const MAP_RES = {
-    '16:9': { '720p': [1280, 720], '1080p': [1920, 1080], '4K': [3840, 2160] },
-    '9:16': { '720p': [720, 1280], '1080p': [1080, 1920], '4K': [2160, 3840] },
-    '1:1': { '720p': [720, 720], '1080p': [1080, 1080], '4K': [2160, 2160] }
-  };
+  const MAP_RES = RESOLUTIONS;
 
   function vehicleSvg(type, color) {
     var c = color || '#6366f1';
@@ -97,9 +93,6 @@
     showLabels: true,
     segmentColors: ['#6366f1', '#f43f5e', '#22c55e', '#f59e0b', '#06b6d4', '#a855f7', '#ec4899', '#14b8a6']
   };
-
-  var $ = function (s) { return document.querySelector(s); };
-  var $$ = function (s) { return document.querySelectorAll(s); };
 
   function debounce(fn, ms) {
     var t;
@@ -207,13 +200,6 @@
 
   function easeInOut(t) {
     return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-  }
-
-  function hexToRgb(hex) {
-    var r = parseInt(hex.slice(1, 3), 16);
-    var g = parseInt(hex.slice(3, 5), 16);
-    var b = parseInt(hex.slice(5, 7), 16);
-    return { r: r, g: g, b: b };
   }
 
   function getSegmentColor(segIdx) {

@@ -1,9 +1,3 @@
-const RESOLUTIONS = {
-  '16:9': { '720p': [1280, 720], '1080p': [1920, 1080], '4K': [3840, 2160] },
-  '9:16': { '720p': [720, 1280], '1080p': [1080, 1920], '4K': [2160, 3840] },
-  '1:1':  { '720p': [720, 720],  '1080p': [1080, 1080], '4K': [2160, 2160] }
-};
-
 const LOREM_HEADLINES = [
   'Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod',
   'Nulla facilisi morbi tempus iaculis urna id volutpat lacus',
@@ -1937,9 +1931,6 @@ const state = {
   animationPreset: 'none',
   animIntensity: 100
 };
-
-const $ = (sel) => document.querySelector(sel);
-const $$ = (sel) => document.querySelectorAll(sel);
 
 function getResolution() {
   return RESOLUTIONS[state.format][state.resolution];

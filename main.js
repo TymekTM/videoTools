@@ -136,62 +136,83 @@ window._bgSetBody = function(html) {
   return true;
 });
 
-ipcMain.handle('bg-render', async (event, { html, delay }) => {
+const RAF_WAIT = 'new Promise(function(r){requestAnimationFrame(function(){requestAnimationFrame(r);});});';
+
+function delayJs(ms) {
+  return 'new Promise(function(r){setTimeout(r,' + ms + ');});';
+}
+
+async function bgCapture({ html = null, js = null, delay = null, format = 'jpeg' } = {}) {
   if (!bgWindow) return null;
   const wc = bgWindow.webContents;
-  await wc.executeJavaScript(
-    'window._bgRender(' + JSON.stringify(html) + ');' +
-    'new Promise(function(r){requestAnimationFrame(function(){requestAnimationFrame(r);});});'
-  );
+  if (html !== null) {
+    await wc.executeJavaScript('window._bgRender(' + JSON.stringify(html) + ');' + RAF_WAIT);
+  }
+  if (js) {
+    await wc.executeJavaScript(js);
+    await wc.executeJavaScript(RAF_WAIT);
+  }
   if (delay) {
-    await wc.executeJavaScript(
-      'new Promise(function(r){setTimeout(r,' + delay + ');});'
-    );
+    await wc.executeJavaScript(delayJs(delay));
   }
   const image = await wc.capturePage();
-  return image.toJPEG(92).toString('base64');
-});
+  return format === 'png'
+    ? image.toPNG().toString('base64')
+    : image.toJPEG(92).toString('base64');
+}
 
-ipcMain.handle('bg-render-png', async (event, { html }) => {
-  if (!bgWindow) return null;
-  const wc = bgWindow.webContents;
-  await wc.executeJavaScript(
-    'window._bgRender(' + JSON.stringify(html) + ');' +
-    'new Promise(function(r){requestAnimationFrame(function(){requestAnimationFrame(r);});});'
-  );
-  const image = await wc.capturePage();
-  return image.toPNG().toString('base64');
-});
+async function runFfmpegExport({ frames, savePath, fps, width, height, writeFrames, buildArgs }) {
+  const tmpDir = path.join(os.tmpdir(), `vt-export-${Date.now()}`);
+  fs.mkdirSync(tmpDir, { recursive: true });
+  await writeFrames(tmpDir, frames);
+  return new Promise((resolve, reject) => {
+    const args = buildArgs(tmpDir, { fps, width, height, savePath });
+    const proc = spawn(ffmpegPath, args);
+    let stderr = '';
+    proc.stderr.on('data', d => stderr += d.toString());
+    proc.on('close', (code) => {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+      if (code === 0) resolve(savePath);
+      else reject(new Error('ffmpeg exited ' + code + ': ' + stderr));
+    });
+  });
+}
 
-ipcMain.handle('bg-render-js', async (event, { html, js }) => {
-  if (!bgWindow) return null;
-  const wc = bgWindow.webContents;
-  await wc.executeJavaScript(
-    'window._bgRender(' + JSON.stringify(html) + ');' +
-    'new Promise(function(r){requestAnimationFrame(function(){requestAnimationFrame(r);});});'
-  );
-  if (js) {
-    await wc.executeJavaScript(js);
-    await wc.executeJavaScript(
-      'new Promise(function(r){requestAnimationFrame(function(){requestAnimationFrame(r);});});'
-    );
+function writeJpgConcat(tmpDir, frames) {
+  let frameIdx = 0;
+  for (const frame of frames) {
+    const buf = Buffer.from(frame.data, 'base64');
+    const fname = `f_${String(frameIdx).padStart(6, '0')}.jpg`;
+    fs.writeFileSync(path.join(tmpDir, fname), buf);
+    frameIdx++;
   }
-  const image = await wc.capturePage();
-  return image.toJPEG(92).toString('base64');
-});
-
-ipcMain.handle('bg-apply-capture', async (event, { js }) => {
-  if (!bgWindow) return null;
-  const wc = bgWindow.webContents;
-  if (js) {
-    await wc.executeJavaScript(js);
-    await wc.executeJavaScript(
-      'new Promise(function(r){requestAnimationFrame(function(){requestAnimationFrame(r);});});'
-    );
+  let concatContent = '';
+  for (let idx = 0; idx < frames.length; idx++) {
+    for (let d = 0; d < frames[idx].duration; d++) {
+      concatContent += `file 'f_${String(idx).padStart(6, '0')}.jpg'\n`;
+    }
   }
-  const image = await wc.capturePage();
-  return image.toJPEG(92).toString('base64');
-});
+  fs.writeFileSync(path.join(tmpDir, 'concat.txt'), concatContent);
+}
+
+function writePngDuplicated(tmpDir, frames) {
+  let idx = 0;
+  for (const frame of frames) {
+    const buf = Buffer.from(frame.data, 'base64');
+    for (let d = 0; d < frame.duration; d++) {
+      fs.writeFileSync(path.join(tmpDir, `f_${String(idx).padStart(6, '0')}.png`), buf);
+      idx++;
+    }
+  }
+}
+
+ipcMain.handle('bg-render', (e, p) => bgCapture({ html: p.html, delay: p.delay, format: 'jpeg' }));
+
+ipcMain.handle('bg-render-png', (e, p) => bgCapture({ html: p.html, format: 'png' }));
+
+ipcMain.handle('bg-render-js', (e, p) => bgCapture({ html: p.html, js: p.js, format: 'jpeg' }));
+
+ipcMain.handle('bg-apply-capture', (e, p) => bgCapture({ js: p.js, format: 'jpeg' }));
 
 ipcMain.handle('bg-eval', async (event, code) => {
   if (!bgWindow) return null;
@@ -210,28 +231,17 @@ ipcMain.handle('bg-load-html', async (event, { html, width, height }) => {
   return true;
 });
 
-ipcMain.handle('bg-eval-capture', async (event, { js, delay }) => {
-  if (!bgWindow) return null;
-  const wc = bgWindow.webContents;
-  if (js) await wc.executeJavaScript(js);
-  await wc.executeJavaScript('new Promise(function(r){requestAnimationFrame(function(){requestAnimationFrame(r);});});');
-  if (delay) {
-    await wc.executeJavaScript('new Promise(function(r){setTimeout(r,' + delay + ');});');
-  }
-  const image = await wc.capturePage();
-  return image.toJPEG(92).toString('base64');
-});
+ipcMain.handle('bg-eval-capture', (e, p) => bgCapture({ js: p.js, delay: p.delay, format: 'jpeg' }));
 
 ipcMain.handle('bg-eval-capture-batch', async (event, { frames }) => {
   if (!bgWindow) return [];
   const wc = bgWindow.webContents;
   const results = [];
-  const rafWait = 'new Promise(function(r){requestAnimationFrame(function(){requestAnimationFrame(r);});});';
   for (const frame of frames) {
     if (frame.js) await wc.executeJavaScript(frame.js);
-    await wc.executeJavaScript(rafWait);
+    await wc.executeJavaScript(RAF_WAIT);
     if (frame.delay) {
-      await wc.executeJavaScript('new Promise(function(r){setTimeout(r,' + frame.delay + ');});');
+      await wc.executeJavaScript(delayJs(frame.delay));
     }
     const image = await wc.capturePage();
     results.push(image.toJPEG(92).toString('base64'));
@@ -266,8 +276,7 @@ ipcMain.handle('export-slides', async (event, { slides }) => {
   const frames = [];
   for (const d of slides) {
     await wc.executeJavaScript(
-      'window._renderSlide(' + JSON.stringify(d) + ');' +
-      'new Promise(function(r){requestAnimationFrame(function(){requestAnimationFrame(r);});});'
+      'window._renderSlide(' + JSON.stringify(d) + ');' + RAF_WAIT
     );
     const image = await wc.capturePage();
     frames.push({ data: image.toJPEG(92).toString('base64'), duration: d.duration });
@@ -279,138 +288,46 @@ ipcMain.handle('export-cleanup', () => {
   if (exportWindow) { exportWindow.close(); exportWindow = null; }
 });
 
-ipcMain.handle('export-mp4', async (event, { frames, savePath, fps, width, height }) => {
-  const tmpDir = path.join(os.tmpdir(), `vt-export-${Date.now()}`);
-  fs.mkdirSync(tmpDir, { recursive: true });
+ipcMain.handle('export-mp4', (e, p) => runFfmpegExport({
+  ...p,
+  writeFrames: writeJpgConcat,
+  buildArgs: (tmpDir, { fps, savePath }) => [
+    '-y', '-f', 'concat', '-safe', '0',
+    '-r', String(fps),
+    '-i', path.join(tmpDir, 'concat.txt'),
+    '-vf', 'crop=trunc(iw/2)*2:trunc(ih/2)*2',
+    '-c:v', 'libx264', '-pix_fmt', 'yuv420p',
+    '-preset', 'fast', '-crf', '18', '-movflags', '+faststart',
+    savePath
+  ]
+}));
 
-  let frameIdx = 0;
-  const dupMap = new Map();
-  for (const frame of frames) {
-    const buf = Buffer.from(frame.data, 'base64');
-    const fname = `f_${String(frameIdx).padStart(6, '0')}.jpg`;
-    fs.writeFileSync(path.join(tmpDir, fname), buf);
-    dupMap.set(frameIdx, { buf, count: frame.duration });
-    frameIdx++;
-  }
+ipcMain.handle('export-mov', (e, p) => runFfmpegExport({
+  ...p,
+  writeFrames: writePngDuplicated,
+  buildArgs: (tmpDir, { fps, width, height, savePath }) => [
+    '-y', '-f', 'image2', '-framerate', String(fps),
+    '-i', path.join(tmpDir, 'f_%06d.png'),
+    '-s', `${width}x${height}`,
+    '-c:v', 'prores_ks', '-profile:v', '3',
+    '-pix_fmt', 'yuva444p10le', '-vendor', 'ap10',
+    savePath
+  ]
+}));
 
-  let concatContent = '';
-  for (const [idx, info] of dupMap) {
-    for (let d = 0; d < info.count; d++) {
-      concatContent += `file 'f_${String(idx).padStart(6, '0')}.jpg'\n`;
-    }
-  }
+ipcMain.handle('export-webm', (e, p) => runFfmpegExport({
+  ...p,
+  writeFrames: writePngDuplicated,
+  buildArgs: (tmpDir, { fps, savePath }) => [
+    '-y', '-f', 'image2', '-framerate', String(fps),
+    '-i', path.join(tmpDir, 'f_%06d.png'),
+    '-c:v', 'libvpx-vp9', '-pix_fmt', 'yuva420p',
+    '-auto-alt-ref', '0', '-crf', '18', '-b:v', '0',
+    savePath
+  ]
+}));
 
-  fs.writeFileSync(path.join(tmpDir, 'concat.txt'), concatContent);
-
-  return new Promise((resolve, reject) => {
-    const args = [
-      '-y', '-f', 'concat', '-safe', '0',
-      '-r', String(fps),
-      '-i', path.join(tmpDir, 'concat.txt'),
-      '-vf', 'crop=trunc(iw/2)*2:trunc(ih/2)*2',
-      '-c:v', 'libx264',
-      '-pix_fmt', 'yuv420p',
-      '-preset', 'fast',
-      '-crf', '18',
-      '-movflags', '+faststart',
-      savePath
-    ];
-    const proc = spawn(ffmpegPath, args);
-    let stderr = '';
-    proc.stderr.on('data', d => stderr += d.toString());
-    proc.on('close', (code) => {
-      fs.rmSync(tmpDir, { recursive: true, force: true });
-      if (code === 0) resolve(savePath);
-      else reject(new Error('ffmpeg exited ' + code + ': ' + stderr));
-    });
-  });
-});
-
-ipcMain.handle('export-mov', async (event, { frames, savePath, fps, width, height }) => {
-  const tmpDir = path.join(os.tmpdir(), `vt-export-${Date.now()}`);
-  fs.mkdirSync(tmpDir, { recursive: true });
-
-  let idx = 0;
-  for (const frame of frames) {
-    const buf = Buffer.from(frame.data, 'base64');
-    for (let d = 0; d < frame.duration; d++) {
-      fs.writeFileSync(path.join(tmpDir, `f_${String(idx).padStart(6, '0')}.png`), buf);
-      idx++;
-    }
-  }
-
-  return new Promise((resolve, reject) => {
-    const args = [
-      '-y',
-      '-f', 'image2',
-      '-framerate', String(fps),
-      '-i', path.join(tmpDir, 'f_%06d.png'),
-      '-s', `${width}x${height}`,
-      '-c:v', 'prores_ks',
-      '-profile:v', '3',
-      '-pix_fmt', 'yuva444p10le',
-      '-vendor', 'ap10',
-      savePath
-    ];
-    const proc = spawn(ffmpegPath, args);
-    let stderr = '';
-    proc.stderr.on('data', d => stderr += d.toString());
-    proc.on('close', (code) => {
-      fs.rmSync(tmpDir, { recursive: true, force: true });
-      if (code === 0) resolve(savePath);
-      else reject(new Error('ffmpeg exited ' + code + ': ' + stderr));
-    });
-  });
-});
-
-ipcMain.handle('export-webm', async (event, { frames, savePath, fps, width, height }) => {
-  const tmpDir = path.join(os.tmpdir(), `vt-export-${Date.now()}`);
-  fs.mkdirSync(tmpDir, { recursive: true });
-
-  let idx = 0;
-  for (const frame of frames) {
-    const buf = Buffer.from(frame.data, 'base64');
-    for (let d = 0; d < frame.duration; d++) {
-      fs.writeFileSync(path.join(tmpDir, `f_${String(idx).padStart(6, '0')}.png`), buf);
-      idx++;
-    }
-  }
-
-  return new Promise((resolve, reject) => {
-    const args = [
-      '-y',
-      '-f', 'image2',
-      '-framerate', String(fps),
-      '-i', path.join(tmpDir, 'f_%06d.png'),
-      '-c:v', 'libvpx-vp9',
-      '-pix_fmt', 'yuva420p',
-      '-auto-alt-ref', '0',
-      '-crf', '18',
-      '-b:v', '0',
-      savePath
-    ];
-    const proc = spawn(ffmpegPath, args);
-    let stderr = '';
-    proc.stderr.on('data', d => stderr += d.toString());
-    proc.on('close', (code) => {
-      fs.rmSync(tmpDir, { recursive: true, force: true });
-      if (code === 0) resolve(savePath);
-      else reject(new Error('ffmpeg exited ' + code + ': ' + stderr));
-    });
-  });
-});
-
-ipcMain.handle('bg-capture-png', async (event, { js, delay }) => {
-  if (!bgWindow) return null;
-  const wc = bgWindow.webContents;
-  if (js) await wc.executeJavaScript(js);
-  await wc.executeJavaScript('new Promise(function(r){requestAnimationFrame(function(){requestAnimationFrame(r);});});');
-  if (delay) {
-    await wc.executeJavaScript('new Promise(function(r){setTimeout(r,' + delay + ');});');
-  }
-  const image = await bgWindow.webContents.capturePage();
-  return image.toPNG().toString('base64');
-});
+ipcMain.handle('bg-capture-png', (e, p) => bgCapture({ js: p.js, delay: p.delay, format: 'png' }));
 
 function execAsync(cmd, opts = {}) {
   return new Promise((resolve) => {

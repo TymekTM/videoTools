@@ -3,11 +3,7 @@
 
   var { ipcRenderer } = require('electron');
 
-  var NOTIF_RES = {
-    '16:9': { '720p': [1280, 720], '1080p': [1920, 1080], '4K': [3840, 2160] },
-    '9:16': { '720p': [720, 1280], '1080p': [1080, 1920], '4K': [2160, 3840] },
-    '1:1': { '720p': [720, 720], '1080p': [1080, 1080], '4K': [2160, 2160] }
-  };
+  var NOTIF_RES = RESOLUTIONS;
 
   var DESIGN_H = 540;
   var CARD_H = 100;
@@ -75,14 +71,6 @@
     customRadius: 16,
     bgMode: 'white'
   };
-
-  var $ = function (s) { return document.querySelector(s); };
-  var $$ = function (s) { return document.querySelectorAll(s); };
-
-  function listen(sel, evt, fn) {
-    var el = $(sel);
-    if (el) el.addEventListener(evt, fn);
-  }
 
   function getResolution() {
     return NOTIF_RES[st.format][st.resolution];

@@ -3,11 +3,7 @@
 
   var { ipcRenderer } = require('electron');
 
-  var CHART_RES = {
-    '16:9': { '720p': [1280, 720], '1080p': [1920, 1080], '4K': [3840, 2160] },
-    '9:16': { '720p': [720, 1280], '1080p': [1080, 1920], '4K': [2160, 3840] },
-    '1:1': { '720p': [720, 720], '1080p': [1080, 1080], '4K': [2160, 2160] }
-  };
+  var CHART_RES = RESOLUTIONS;
 
   var PALETTES = {
     vivid: ['#6366f1', '#f43f5e', '#22c55e', '#f59e0b', '#06b6d4', '#a855f7', '#ec4899', '#14b8a6'],
@@ -88,14 +84,6 @@
     ctx: null
   };
 
-  var $ = function (s) { return document.querySelector(s); };
-  var $$ = function (s) { return document.querySelectorAll(s); };
-
-  function listen(sel, evt, fn) {
-    var el = $(sel);
-    if (el) el.addEventListener(evt, fn);
-  }
-
   function getResolution() {
     return CHART_RES[st.format][st.resolution];
   }
@@ -103,18 +91,6 @@
   function getColor(idx) {
     if (st.useCustomColors) return st.customColors[idx % st.customColors.length];
     return PALETTES[st.palette][idx % PALETTES[st.palette].length];
-  }
-
-  var _rgbCache = new Map();
-  function hexToRgb(hex) {
-    var cached = _rgbCache.get(hex);
-    if (cached) return cached;
-    var r = parseInt(hex.slice(1, 3), 16);
-    var g = parseInt(hex.slice(3, 5), 16);
-    var b = parseInt(hex.slice(5, 7), 16);
-    var result = { r: r, g: g, b: b };
-    _rgbCache.set(hex, result);
-    return result;
   }
 
   function ease(t) {
