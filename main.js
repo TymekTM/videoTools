@@ -150,6 +150,17 @@ ipcMain.handle('bg-render', async (event, { html, delay }) => {
   return image.toJPEG(92).toString('base64');
 });
 
+ipcMain.handle('bg-render-png', async (event, { html }) => {
+  if (!bgWindow) return null;
+  const wc = bgWindow.webContents;
+  await wc.executeJavaScript(
+    'window._bgRender(' + JSON.stringify(html) + ');' +
+    'new Promise(function(r){requestAnimationFrame(function(){requestAnimationFrame(r);});});'
+  );
+  const image = await wc.capturePage();
+  return image.toPNG().toString('base64');
+});
+
 ipcMain.handle('bg-render-js', async (event, { html, js }) => {
   if (!bgWindow) return null;
   const wc = bgWindow.webContents;

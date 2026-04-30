@@ -3128,32 +3128,45 @@ function initChat() {
     });
     if (!savePath) return;
 
-    const wrapper = $('#chatPreviewWrapper');
-    const canvas = $('#chatPreviewCanvas');
     const [w, h] = chatGetResolution();
 
-    const oldW = wrapper.style.width;
-    const oldH = wrapper.style.height;
-    const oldOverflow = wrapper.style.overflow;
-    const oldTransform = canvas.style.transform;
-
-    wrapper.style.width = w + 'px';
-    wrapper.style.height = h + 'px';
-    wrapper.style.overflow = 'hidden';
-    canvas.style.transform = 'none';
-
-    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-
-    const rect = wrapper.getBoundingClientRect();
-    await ipcRenderer.invoke('export-png', {
-      rect: { x: Math.round(rect.x), y: Math.round(rect.y), width: Math.round(rect.width), height: Math.round(rect.height) },
-      savePath
+    setExporting(true, 'Eksportuję PNG...');
+    await ipcRenderer.invoke('bg-init', {
+      width: w, height: h,
+      css: require('path').join(__dirname, 'styles.css')
     });
 
-    wrapper.style.width = oldW;
-    wrapper.style.height = oldH;
-    wrapper.style.overflow = oldOverflow;
-    canvas.style.transform = oldTransform;
+    const p = chatState.platform;
+    let headerStyle = '', bodyStyle = '', bubbleLStyle = '', bubbleRStyle = '', textStyle = '';
+    if (p === 'custom') {
+      const t = chatState.customTheme;
+      headerStyle = `background:${t.headerBg}`;
+      bodyStyle = `background:${t.bg}`;
+      bubbleLStyle = `background:${t.bubbleL};color:${t.text}`;
+      bubbleRStyle = `background:${t.bubbleR};color:#fff`;
+      textStyle = `color:${t.text}`;
+    }
+    const avatarSize = '1.7em';
+    const headerContact = chatState.contacts[1];
+    const avatar = chatAvatarHTML(headerContact, avatarSize);
+    const statuses = { imessage:'iMessage', whatsapp:'online', discord:'', messenger:'Active now', custom:'online' };
+    const headerHTML = `<div class="chat-render-header" ${headerStyle?`style="${headerStyle}"`:''}><div class="chat-render-back"><svg width="${p==='discord'?'0.72em':'0.56em'}" height="${p==='discord'?'0.72em':'0.56em'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></div>${avatar}<div class="chat-render-info"><div class="chat-render-name">${headerContact.name}</div><div class="chat-render-status">${statuses[p]||''}</div></div></div>`;
+
+    let msgHTML = '';
+    for (let i = 0; i < chatState.messages.length; i++) {
+      msgHTML += chatBubbleHTML(chatState.messages[i], i, p, bubbleLStyle, bubbleRStyle, false);
+    }
+    const bodyStyleFull = (bodyStyle ? bodyStyle + ';' : '') + 'overflow:visible';
+    const html = `<div style="font-size:${Math.min(w,h)/15*chatState.fontScale/100}px;width:100%;height:100%"><div class="chat-render chat-platform-${p}" ${textStyle?`style="${textStyle}"`:''}>${headerHTML}<div class="chat-render-body" style="${bodyStyleFull}">${msgHTML}</div></div></div>`;
+
+    const pngData = await ipcRenderer.invoke('bg-render-png', { html });
+    await ipcRenderer.invoke('bg-cleanup');
+
+    const buffer = Buffer.from(pngData, 'base64');
+    require('fs').writeFileSync(savePath, buffer);
+
+    chatRenderPreview(chatState.animSpeed > 0);
+    setExporting(false);
   });
 
   $('#chatExportMp4Btn').addEventListener('click', async () => {

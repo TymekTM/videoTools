@@ -348,9 +348,11 @@
     var data = st.data;
     if (!data.length) return;
 
-    var cx = w * (st.showLegend && data.length > 2 ? 0.38 : 0.5);
+    var hasLegend = st.showLegend && data.length > 2;
+    var cx = w * (hasLegend ? 0.38 : 0.5);
     var cy = h * (st.title ? 0.54 : 0.5);
-    var radius = Math.min(w, h) * 0.32;
+    var maxRadius = hasLegend ? w * 0.32 : Math.min(w, h) * 0.38;
+    var radius = Math.min(maxRadius, h * 0.36);
     var innerRadius = radius * st.donutHole;
 
     var total = data.reduce(function (s, d) { return s + d.value; }, 0);
@@ -406,26 +408,27 @@
     }
 
     if (st.showLegend && data.length > 2) {
-      var legendX = w * 0.62;
-      var legendY = h * 0.25;
+      var legendX = cx + radius + w * 0.06;
+      var legendY = h * 0.2;
+      var legendSpacing = Math.max(st.fontSize * 2, (h * 0.6) / data.length);
       data.forEach(function (d, i) {
         var lp = staggerProgress(progress, i, data.length);
         ctx.globalAlpha = Math.min(1, lp * 2);
 
         ctx.fillStyle = getColor(i);
         ctx.beginPath();
-        ctx.arc(legendX, legendY + i * st.fontSize * 2, Math.max(st.fontSize * 0.4, 4), 0, Math.PI * 2);
+        ctx.arc(legendX, legendY + i * legendSpacing, Math.max(st.fontSize * 0.4, 4), 0, Math.PI * 2);
         ctx.fill();
 
         ctx.fillStyle = st.textColor;
         ctx.font = '600 ' + Math.max(st.fontSize * 0.8, 10) + 'px "Manrope", system-ui, sans-serif';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
-        ctx.fillText(d.label, legendX + st.fontSize, legendY + i * st.fontSize * 2);
+        ctx.fillText(d.label, legendX + st.fontSize, legendY + i * legendSpacing);
 
         ctx.globalAlpha = 0.4;
         ctx.font = '400 ' + Math.max(st.fontSize * 0.7, 9) + 'px "Manrope", system-ui, sans-serif';
-        ctx.fillText(formatNumber(d.value), legendX + st.fontSize, legendY + i * st.fontSize * 2 + st.fontSize * 0.9);
+        ctx.fillText(formatNumber(d.value), legendX + st.fontSize, legendY + i * legendSpacing + st.fontSize * 0.9);
 
         ctx.globalAlpha = 1;
       });

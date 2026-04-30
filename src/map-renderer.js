@@ -19,7 +19,6 @@
     var c = color || '#6366f1';
     var cw = 'rgba(255,255,255,0.9)';
     var cm = 'rgba(255,255,255,0.25)';
-    var cd = 'rgba(0,0,0,0.35)';
     var svgs = {
       plane: '<svg viewBox="0 0 64 64" width="44" height="44">' +
         '<ellipse cx="32" cy="30" rx="4" ry="22" fill="' + c + '"/>' +
@@ -31,19 +30,15 @@
         '</svg>',
 
       car: '<svg viewBox="0 0 64 64" width="44" height="44">' +
-        '<path d="M26 54L26 46 24 42 24 22 26 18 26 14 30 10 34 10 38 14 38 18 40 22 40 42 38 46 38 54Z" fill="' + c + '"/>' +
-        '<path d="M26 18L30 14 34 14 38 18 38 26 26 26Z" fill="' + cm + '"/>' +
-        '<rect x="26" y="28" width="12" height="10" rx="2" fill="rgba(0,0,0,0.1)"/>' +
-        '<rect x="28" y="42" width="3" height="8" rx="1.5" fill="#222"/>' +
-        '<rect x="33" y="42" width="3" height="8" rx="1.5" fill="#222"/>' +
-        '<rect x="28" y="10" width="3" height="8" rx="1.5" fill="#222"/>' +
-        '<rect x="33" y="10" width="3" height="8" rx="1.5" fill="#222"/>' +
-        '<rect x="22" y="18" width="4" height="8" rx="2" fill="' + c + '"/>' +
-        '<rect x="38" y="18" width="4" height="8" rx="2" fill="' + c + '"/>' +
-        '<circle cx="29.5" cy="46" r="1.5" fill="' + cw + '" opacity="0.3"/>' +
-        '<circle cx="34.5" cy="46" r="1.5" fill="' + cw + '" opacity="0.3"/>' +
-        '<circle cx="29.5" cy="12" r="1.5" fill="' + cw + '" opacity="0.4"/>' +
-        '<circle cx="34.5" cy="12" r="1.5" fill="' + cw + '" opacity="0.4"/>' +
+        '<path d="M22 52Q22 46 20 42L20 20Q20 12 28 8L36 8Q44 12 44 20L44 42Q42 46 42 52Q42 58 32 58Q22 58 22 52Z" fill="' + c + '"/>' +
+        '<path d="M32 8Q24 12 24 20L24 26 40 26 40 20Q40 12 32 8Z" fill="' + cm + '"/>' +
+        '<rect x="25" y="40" width="14" height="6" rx="2" fill="rgba(255,255,255,0.12)"/>' +
+        '<rect x="18" y="22" width="3" height="7" rx="1.5" fill="' + c + '"/>' +
+        '<rect x="43" y="22" width="3" height="7" rx="1.5" fill="' + c + '"/>' +
+        '<circle cx="27" cy="10" r="1.8" fill="' + cw + '" opacity="0.6"/>' +
+        '<circle cx="37" cy="10" r="1.8" fill="' + cw + '" opacity="0.6"/>' +
+        '<circle cx="27" cy="54" r="1.5" fill="rgba(255,0,0,0.4)"/>' +
+        '<circle cx="37" cy="54" r="1.5" fill="rgba(255,0,0,0.4)"/>' +
         '</svg>',
 
       ship: '<svg viewBox="0 0 64 64" width="44" height="44">' +
@@ -685,7 +680,7 @@
           if (el) {
             var inner = el.querySelector('.vehicle-rot');
             if (inner) {
-              var noRotate = st.transportType === 'plane' || st.transportType === 'train';
+              var noRotate = st.transportType === 'train';
               inner.style.transform = 'rotate(' + (noRotate ? 0 : smoothCam.heading) + 'deg)';
             }
           }
@@ -827,7 +822,7 @@
     var legS = JSON.stringify(legFracs.starts);
     var legE = JSON.stringify(legFracs.ends);
 
-    var noRotate = opts.transportType === 'plane' || opts.transportType === 'train';
+    var noRotate = opts.transportType === 'train';
     var updateFrameCode = 'var _legS=' + legS + ',_legE=' + legE + ';' +
       'var _cam={lat:_rc[0].lat,lng:_rc[0].lng};' +
       'var _noRot=' + JSON.stringify(noRotate) + ';' +
