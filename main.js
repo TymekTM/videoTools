@@ -343,8 +343,9 @@ ipcMain.handle('export-mov', async (event, { frames, savePath, fps, width, heigh
       '-f', 'image2',
       '-framerate', String(fps),
       '-i', path.join(tmpDir, 'f_%06d.png'),
+      '-s', `${width}x${height}`,
       '-c:v', 'prores_ks',
-      '-profile:v', '4444',
+      '-profile:v', '3',
       '-pix_fmt', 'yuva444p10le',
       '-vendor', 'ap10',
       savePath
