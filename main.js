@@ -220,6 +220,23 @@ ipcMain.handle('bg-eval-capture', async (event, { js, delay }) => {
   return image.toJPEG(92).toString('base64');
 });
 
+ipcMain.handle('bg-eval-capture-batch', async (event, { frames }) => {
+  if (!bgWindow) return [];
+  const wc = bgWindow.webContents;
+  const results = [];
+  const rafWait = 'new Promise(function(r){requestAnimationFrame(function(){requestAnimationFrame(r);});});';
+  for (const frame of frames) {
+    if (frame.js) await wc.executeJavaScript(frame.js);
+    await wc.executeJavaScript(rafWait);
+    if (frame.delay) {
+      await wc.executeJavaScript('new Promise(function(r){setTimeout(r,' + frame.delay + ');});');
+    }
+    const image = await wc.capturePage();
+    results.push(image.toJPEG(92).toString('base64'));
+  }
+  return results;
+});
+
 ipcMain.handle('bg-cleanup', () => {
   if (bgWindow) { bgWindow.close(); bgWindow = null; }
 });
@@ -304,6 +321,310 @@ ipcMain.handle('export-mp4', async (event, { frames, savePath, fps, width, heigh
       if (code === 0) resolve(savePath);
       else reject(new Error('ffmpeg exited ' + code + ': ' + stderr));
     });
+  });
+});
+
+ipcMain.handle('export-mov', async (event, { frames, savePath, fps, width, height }) => {
+  const tmpDir = path.join(os.tmpdir(), `vt-export-${Date.now()}`);
+  fs.mkdirSync(tmpDir, { recursive: true });
+
+  const pngBufs = [];
+  for (const frame of frames) {
+    const buf = Buffer.from(frame.data, 'base64');
+    for (let d = 0; d < frame.duration; d++) {
+      pngBufs.push(buf);
+    }
+  }
+
+  for (let i = 0; i < pngBufs.length; i++) {
+    fs.writeFileSync(path.join(tmpDir, `f_${String(i).padStart(6, '0')}.png`), pngBufs[i]);
+  }
+
+  let concatContent = '';
+  for (let i = 0; i < pngBufs.length; i++) {
+    concatContent += `file 'f_${String(i).padStart(6, '0')}.png'\n`;
+  }
+  fs.writeFileSync(path.join(tmpDir, 'concat.txt'), concatContent);
+
+  return new Promise((resolve, reject) => {
+    const args = [
+      '-y', '-f', 'concat', '-safe', '0',
+      '-r', String(fps),
+      '-i', path.join(tmpDir, 'concat.txt'),
+      '-c:v', 'prores_ks',
+      '-profile:v', '4444',
+      '-pix_fmt', 'yuva444p10le',
+      '-vendor', 'ap10',
+      savePath
+    ];
+    const proc = spawn(ffmpegPath, args);
+    let stderr = '';
+    proc.stderr.on('data', d => stderr += d.toString());
+    proc.on('close', (code) => {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+      if (code === 0) resolve(savePath);
+      else reject(new Error('ffmpeg exited ' + code + ': ' + stderr));
+    });
+  });
+});
+
+ipcMain.handle('export-webm', async (event, { frames, savePath, fps, width, height }) => {
+  const tmpDir = path.join(os.tmpdir(), `vt-export-${Date.now()}`);
+  fs.mkdirSync(tmpDir, { recursive: true });
+
+  const pngBufs = [];
+  for (const frame of frames) {
+    const buf = Buffer.from(frame.data, 'base64');
+    for (let d = 0; d < frame.duration; d++) {
+      pngBufs.push(buf);
+    }
+  }
+
+  for (let i = 0; i < pngBufs.length; i++) {
+    fs.writeFileSync(path.join(tmpDir, `f_${String(i).padStart(6, '0')}.png`), pngBufs[i]);
+  }
+
+  let concatContent = '';
+  for (let i = 0; i < pngBufs.length; i++) {
+    concatContent += `file 'f_${String(i).padStart(6, '0')}.png'\n`;
+  }
+  fs.writeFileSync(path.join(tmpDir, 'concat.txt'), concatContent);
+
+  return new Promise((resolve, reject) => {
+    const args = [
+      '-y', '-f', 'concat', '-safe', '0',
+      '-r', String(fps),
+      '-i', path.join(tmpDir, 'concat.txt'),
+      '-c:v', 'libvpx-vp9',
+      '-pix_fmt', 'yuva420p',
+      '-auto-alt-ref', '0',
+      '-crf', '18',
+      '-b:v', '0',
+      savePath
+    ];
+    const proc = spawn(ffmpegPath, args);
+    let stderr = '';
+    proc.stderr.on('data', d => stderr += d.toString());
+    proc.on('close', (code) => {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+      if (code === 0) resolve(savePath);
+      else reject(new Error('ffmpeg exited ' + code + ': ' + stderr));
+    });
+  });
+});
+
+ipcMain.handle('bg-capture-png', async (event, { js, delay }) => {
+  if (!bgWindow) return null;
+  const wc = bgWindow.webContents;
+  if (js) await wc.executeJavaScript(js);
+  await wc.executeJavaScript('new Promise(function(r){requestAnimationFrame(function(){requestAnimationFrame(r);});});');
+  if (delay) {
+    await wc.executeJavaScript('new Promise(function(r){setTimeout(r,' + delay + ');});');
+  }
+  const image = await bgWindow.webContents.capturePage();
+  return image.toPNG().toString('base64');
+});
+
+function execAsync(cmd, opts = {}) {
+  return new Promise((resolve) => {
+    const proc = spawn('cmd', ['/c', cmd], { timeout: 15000, ...opts });
+    let stdout = '';
+    let stderr = '';
+    proc.stdout.on('data', d => stdout += d.toString());
+    proc.stderr.on('data', d => stderr += d.toString());
+    proc.on('close', (code) => resolve({ code, stdout: stdout.trim(), stderr: stderr.trim() }));
+    proc.on('error', (err) => resolve({ code: -1, stdout: '', stderr: err.message }));
+  });
+}
+
+async function detectSystem() {
+  const result = {
+    platform: process.platform,
+    arch: process.arch,
+    python: null,
+    pythonVersion: null,
+    uv: null,
+    uvVersion: null,
+    cuda: null,
+    cudaVersion: null,
+    gpu: null,
+    gpuVram: null,
+    gpuDriver: null,
+    corridorKeyRepo: null,
+    corridorKeyModels: null,
+    errors: []
+  };
+
+  const pyCmd = process.platform === 'win32' ? 'where python' : 'which python3 || which python';
+  const pyRes = await execAsync(pyCmd);
+  if (pyRes.code === 0 && pyRes.stdout) {
+    result.python = pyRes.stdout.split('\n')[0].trim();
+    const verRes = await execAsync('python --version 2>&1');
+    result.pythonVersion = verRes.stdout || verRes.stderr || null;
+  }
+
+  const uvCmd = process.platform === 'win32' ? 'where uv' : 'which uv';
+  const uvRes = await execAsync(uvCmd);
+  if (uvRes.code === 0 && uvRes.stdout) {
+    result.uv = uvRes.stdout.split('\n')[0].trim();
+    const uvVerRes = await execAsync('uv --version 2>&1');
+    result.uvVersion = uvVerRes.stdout || uvVerRes.stderr || null;
+  }
+
+  const nvccRes = await execAsync('nvcc --version 2>&1');
+  if (nvccRes.code === 0) {
+    result.cuda = true;
+    const m = (nvccRes.stdout + nvccRes.stderr).match(/release\s+([\d.]+)/);
+    result.cudaVersion = m ? m[1] : 'unknown';
+  }
+
+  const nvidiaSmiRes = await execAsync('nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader 2>&1');
+  if (nvidiaSmiRes.code === 0 && nvidiaSmiRes.stdout) {
+    const parts = nvidiaSmiRes.stdout.split(',').map(s => s.trim());
+    result.gpu = parts[0] || null;
+    result.gpuVram = parts[1] || null;
+    result.gpuDriver = parts[2] || null;
+  }
+
+  const homeDir = os.homedir();
+  const possiblePaths = [
+    path.join(homeDir, 'CorridorKey'),
+    path.join(homeDir, 'Projects', 'CorridorKey'),
+    path.join(homeDir, 'repos', 'CorridorKey'),
+    path.join(homeDir, 'github', 'CorridorKey'),
+    path.join('C:', 'CorridorKey'),
+    path.join('D:', 'CorridorKey'),
+  ];
+
+  for (const p of possiblePaths) {
+    if (fs.existsSync(path.join(p, 'clip_manager.py'))) {
+      result.corridorKeyRepo = p;
+      const ckpts = path.join(p, 'CorridorKeyModule', 'checkpoints');
+      if (fs.existsSync(ckpts)) {
+        const files = fs.readdirSync(ckpts);
+        const modelFiles = files.filter(f => f.endsWith('.safetensors') || f.endsWith('.pth'));
+        result.corridorKeyModels = modelFiles.length > 0 ? modelFiles : null;
+      }
+      break;
+    }
+  }
+
+  return result;
+}
+
+ipcMain.handle('ck-detect-system', async () => {
+  return await detectSystem();
+});
+
+ipcMain.handle('ck-select-dir', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openDirectory'],
+    title: 'Wybierz folder z materiałem green screen'
+  });
+  return result.canceled ? null : result.filePaths[0];
+});
+
+ipcMain.handle('ck-select-file', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openFile'],
+    title: 'Wybierz plik wideo lub obraz',
+    filters: [
+      { name: 'Media', extensions: ['mp4', 'mov', 'avi', 'mkv', 'png', 'jpg', 'jpeg', 'exr', 'tiff', 'tif'] }
+    ]
+  });
+  return result.canceled ? null : result.filePaths[0];
+});
+
+ipcMain.handle('ck-select-repo', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openDirectory'],
+    title: 'Wybierz folder repozytorium CorridorKey'
+  });
+  return result.canceled ? null : result.filePaths[0];
+});
+
+ipcMain.handle('ck-run', async (event, { repoPath, action, args }) => {
+  const cmd = `uv run python clip_manager.py --action ${action} ${args || ''}`;
+  return new Promise((resolve) => {
+    const proc = spawn('cmd', ['/c', cmd], {
+      cwd: repoPath,
+      timeout: 600000,
+      env: { ...process.env, OPENCV_IO_ENABLE_OPENEXR: '1' }
+    });
+    let stdout = '';
+    let stderr = '';
+    proc.stdout.on('data', d => {
+      const text = d.toString();
+      stdout += text;
+      mainWindow.webContents.send('ck-run-output', { text, type: 'stdout' });
+    });
+    proc.stderr.on('data', d => {
+      const text = d.toString();
+      stderr += text;
+      mainWindow.webContents.send('ck-run-output', { text, type: 'stderr' });
+    });
+    proc.on('close', (code) => {
+      resolve({ code, stdout, stderr });
+    });
+    proc.on('error', (err) => {
+      resolve({ code: -1, stdout, stderr: err.message });
+    });
+  });
+});
+
+ipcMain.handle('ck-run-install', async (event, { repoPath }) => {
+  const scriptName = process.platform === 'win32'
+    ? 'Install_CorridorKey_Windows.bat'
+    : 'Install_CorridorKey_Linux_Mac.sh';
+  const scriptPath = path.join(repoPath, scriptName);
+
+  if (!fs.existsSync(scriptPath)) {
+    return { code: -1, stdout: '', stderr: `Skrypt instalacyjny nie znaleziony: ${scriptPath}` };
+  }
+
+  return new Promise((resolve) => {
+    const proc = spawn('cmd', ['/c', scriptPath], {
+      cwd: repoPath,
+      timeout: 600000,
+      env: { ...process.env }
+    });
+    let stdout = '';
+    let stderr = '';
+    proc.stdout.on('data', d => {
+      const text = d.toString();
+      stdout += text;
+      mainWindow.webContents.send('ck-install-output', { text, type: 'stdout' });
+    });
+    proc.stderr.on('data', d => {
+      const text = d.toString();
+      stderr += text;
+      mainWindow.webContents.send('ck-install-output', { text, type: 'stderr' });
+    });
+    proc.on('close', (code) => resolve({ code, stdout, stderr }));
+    proc.on('error', (err) => resolve({ code: -1, stdout, stderr: err.message }));
+  });
+});
+
+ipcMain.handle('ck-check-dir-structure', async (event, dirPath) => {
+  if (!dirPath || !fs.existsSync(dirPath)) return null;
+  const entries = fs.readdirSync(dirPath);
+  const hasInput = entries.includes('Input') || entries.some(e => /\.(mp4|mov|avi|png|jpg|exr)$/i.test(e));
+  const hasAlphaHint = entries.includes('AlphaHint');
+  const hasVideoMamaMaskHint = entries.includes('VideoMamaMaskHint');
+  const subDirs = entries.filter(e => fs.statSync(path.join(dirPath, e)).isDirectory());
+  const shotDirs = subDirs.filter(sd => {
+    const subEntries = fs.readdirSync(path.join(dirPath, sd));
+    return subEntries.includes('Input') || subEntries.includes('AlphaHint');
+  });
+  return { entries, hasInput, hasAlphaHint, hasVideoMamaMaskHint, subDirs, shotDirs };
+});
+
+ipcMain.handle('ck-read-dir', async (event, dirPath) => {
+  if (!dirPath || !fs.existsSync(dirPath)) return null;
+  return fs.readdirSync(dirPath).map(name => {
+    const fullPath = path.join(dirPath, name);
+    const stat = fs.statSync(fullPath);
+    return { name, path: fullPath, isDir: stat.isDirectory(), size: stat.size };
   });
 });
 

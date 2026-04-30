@@ -34,6 +34,16 @@
     }
   };
 
+  var _fontCache = new Map();
+  function chartFont(weight, size) {
+    var key = weight + '|' + size;
+    var cached = _fontCache.get(key);
+    if (cached) return cached;
+    var result = weight + ' ' + Math.max(size, 9) + 'px "Manrope", system-ui, sans-serif';
+    _fontCache.set(key, result);
+    return result;
+  }
+
   var st = {
     chartType: 'bar',
     data: [
@@ -95,11 +105,16 @@
     return PALETTES[st.palette][idx % PALETTES[st.palette].length];
   }
 
+  var _rgbCache = new Map();
   function hexToRgb(hex) {
+    var cached = _rgbCache.get(hex);
+    if (cached) return cached;
     var r = parseInt(hex.slice(1, 3), 16);
     var g = parseInt(hex.slice(3, 5), 16);
     var b = parseInt(hex.slice(5, 7), 16);
-    return { r: r, g: g, b: b };
+    var result = { r: r, g: g, b: b };
+    _rgbCache.set(hex, result);
+    return result;
   }
 
   function ease(t) {
@@ -144,7 +159,7 @@
 
     ctx.save();
     ctx.fillStyle = st.textColor;
-    ctx.font = '600 ' + Math.max(st.fontSize * 0.8, 10) + 'px "Manrope", system-ui, sans-serif';
+    ctx.font = chartFont('600', st.fontSize * 0.8);
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
 
@@ -167,8 +182,11 @@
       }
     }
 
+    var progressArr = new Array(barCount);
+    for (var pi = 0; pi < barCount; pi++) progressArr[pi] = staggerProgress(progress, pi, barCount);
+
     data.forEach(function (d, i) {
-      var p = staggerProgress(progress, i, barCount);
+      var p = progressArr[i];
       var barH = (d.value / maxVal) * chartH * p;
       var x = pad.left + gap + i * (barW + gap);
       var y = pad.top + chartH - barH;
@@ -200,7 +218,7 @@
       if (st.showValues && p > 0.1) {
         ctx.fillStyle = st.textColor;
         ctx.globalAlpha = Math.min(1, p * 2);
-        ctx.font = '700 ' + Math.max(st.fontSize * 0.75, 9) + 'px "Manrope", system-ui, sans-serif';
+        ctx.font = chartFont('700', st.fontSize * 0.75);
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
         ctx.fillText(formatNumber(d.value), x + barW / 2, y - 6);
@@ -210,7 +228,7 @@
       if (st.showLabels) {
         ctx.fillStyle = st.textColor;
         ctx.globalAlpha = 0.6;
-        ctx.font = '500 ' + Math.max(st.fontSize * 0.7, 9) + 'px "Manrope", system-ui, sans-serif';
+        ctx.font = chartFont('500', st.fontSize * 0.7);
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
         ctx.fillText(d.label, x + barW / 2, pad.top + chartH + 8);
@@ -247,7 +265,7 @@
         var gv = Math.round((g / gridLines) * maxVal);
         ctx.fillStyle = st.textColor;
         ctx.globalAlpha = 0.4;
-        ctx.font = '500 ' + Math.max(st.fontSize * 0.7, 9) + 'px "Manrope", system-ui, sans-serif';
+        ctx.font = chartFont('500', st.fontSize * 0.7);
         ctx.textAlign = 'right';
         ctx.textBaseline = 'middle';
         ctx.fillText(formatNumber(gv), pad.left - 8, gy);
@@ -323,7 +341,7 @@
       if (st.showValues && pp > 0.3) {
         ctx.fillStyle = st.textColor;
         ctx.globalAlpha = Math.min(1, pp * 2);
-        ctx.font = '700 ' + Math.max(st.fontSize * 0.7, 9) + 'px "Manrope", system-ui, sans-serif';
+        ctx.font = chartFont('700', st.fontSize * 0.7);
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
         ctx.fillText(formatNumber(pt.d.value), pt.x, pt.y - 10);
@@ -333,7 +351,7 @@
       if (st.showLabels) {
         ctx.fillStyle = st.textColor;
         ctx.globalAlpha = 0.6;
-        ctx.font = '500 ' + Math.max(st.fontSize * 0.7, 9) + 'px "Manrope", system-ui, sans-serif';
+        ctx.font = chartFont('500', st.fontSize * 0.7);
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
         ctx.fillText(pt.d.label, pt.x, baseline + 8);
@@ -373,8 +391,12 @@
 
     var startAngle = -Math.PI / 2;
 
+    var pieCount = data.length;
+    var progressArr = new Array(pieCount);
+    for (var pi = 0; pi < pieCount; pi++) progressArr[pi] = staggerProgress(progress, pi, pieCount);
+
     data.forEach(function (d, i) {
-      var p = staggerProgress(progress, i, data.length);
+      var p = progressArr[i];
       var sliceAngle = (d.value / total) * Math.PI * 2 * p;
       var color = getColor(i);
 
@@ -396,7 +418,7 @@
         var ly = cy + Math.sin(midAngle) * labelR;
         ctx.fillStyle = '#fff';
         ctx.globalAlpha = Math.min(1, p * 2);
-        ctx.font = '700 ' + Math.max(st.fontSize * 0.75, 9) + 'px "Manrope", system-ui, sans-serif';
+        ctx.font = chartFont('700', st.fontSize * 0.75);
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         var pct = Math.round((d.value / total) * 100);
@@ -410,13 +432,13 @@
     if (innerRadius > 10) {
       ctx.fillStyle = st.textColor;
       ctx.globalAlpha = 0.3;
-      ctx.font = '500 ' + Math.max(st.fontSize * 0.6, 8) + 'px "Manrope", system-ui, sans-serif';
+      ctx.font = chartFont('500', st.fontSize * 0.6);
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('TOTAL', cx, cy - st.fontSize * 0.5);
       ctx.globalAlpha = 1;
       ctx.fillStyle = st.textColor;
-      ctx.font = '800 ' + Math.max(st.fontSize * 1.2, 12) + 'px "Manrope", system-ui, sans-serif';
+      ctx.font = chartFont('800', st.fontSize * 1.2);
       ctx.fillText(formatNumber(total), cx, cy + st.fontSize * 0.5);
     }
 
@@ -440,7 +462,7 @@
           ctx.fill();
 
           ctx.fillStyle = st.textColor;
-          ctx.font = '600 ' + Math.max(st.fontSize * 0.75, 9) + 'px "Manrope", system-ui, sans-serif';
+          ctx.font = chartFont('600', st.fontSize * 0.75);
           ctx.textAlign = 'left';
           ctx.textBaseline = 'top';
           ctx.fillText(d.label + '  ' + formatNumber(d.value), lx + st.fontSize, ly);
@@ -461,13 +483,13 @@
           ctx.fill();
 
           ctx.fillStyle = st.textColor;
-          ctx.font = '600 ' + Math.max(st.fontSize * 0.8, 10) + 'px "Manrope", system-ui, sans-serif';
+ctx.font = chartFont('600', st.fontSize * 0.8);
           ctx.textAlign = 'left';
           ctx.textBaseline = 'middle';
           ctx.fillText(d.label, legendX + st.fontSize, legendY + i * legendSpacing);
 
           ctx.globalAlpha = 0.4;
-          ctx.font = '400 ' + Math.max(st.fontSize * 0.7, 9) + 'px "Manrope", system-ui, sans-serif';
+          ctx.font = chartFont('400', st.fontSize * 0.7);
           ctx.fillText(formatNumber(d.value), legendX + st.fontSize, legendY + i * legendSpacing + st.fontSize * 0.9);
 
           ctx.globalAlpha = 1;
@@ -482,7 +504,7 @@
     var str = formatNumber(val, st.counterPrefix, st.counterSuffix, st.counterDecimals);
 
     ctx.fillStyle = st.textColor;
-    ctx.font = '800 ' + Math.min(w * 0.12, h * 0.2, 120) + 'px "Manrope", system-ui, sans-serif';
+    ctx.font = chartFont('800', Math.min(w * 0.12, h * 0.2, 120));
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(str, w / 2, h / 2);
@@ -490,9 +512,8 @@
     if (st.title) {
       ctx.fillStyle = st.textColor;
       ctx.globalAlpha = 0.5;
-      ctx.font = '600 ' + Math.max(st.fontSize, 14) + 'px "Manrope", system-ui, sans-serif';
+      ctx.font = chartFont('600', st.fontSize);
       ctx.fillText(st.title, w / 2, h * 0.35);
-      ctx.globalAlpha = 1;
     }
   }
 
@@ -530,7 +551,7 @@
     ctx.stroke();
 
     ctx.fillStyle = st.textColor;
-    ctx.font = '800 ' + Math.min(radius * 0.6, 80) + 'px "Manrope", system-ui, sans-serif';
+    ctx.font = chartFont('800', Math.min(radius * 0.6, 80));
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(Math.round(val) + '%', cx, cy);
@@ -538,7 +559,7 @@
     if (st.gaugeLabel) {
       ctx.fillStyle = st.textColor;
       ctx.globalAlpha = 0.5;
-      ctx.font = '600 ' + Math.max(st.fontSize, 14) + 'px "Manrope", system-ui, sans-serif';
+      ctx.font = chartFont('600', st.fontSize);
       ctx.fillText(st.gaugeLabel, cx, cy + radius * 0.5);
       ctx.globalAlpha = 1;
     }
@@ -551,7 +572,7 @@
       var ty = cy + Math.sin(a) * tr;
       ctx.fillStyle = st.textColor;
       ctx.globalAlpha = 0.3;
-      ctx.font = '400 ' + Math.max(st.fontSize * 0.6, 8) + 'px "Manrope", system-ui, sans-serif';
+      ctx.font = chartFont('400', st.fontSize * 0.6);
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(lbl, tx, ty);
@@ -566,7 +587,7 @@
 
     if (st.title && st.chartType !== 'counter') {
       ctx.fillStyle = st.textColor;
-      ctx.font = '800 ' + Math.max(st.fontSize * 1.4, 16) + 'px "Manrope", system-ui, sans-serif';
+      ctx.font = chartFont('800', st.fontSize * 1.4);
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
       ctx.fillText(st.title, w / 2, h * 0.03);
@@ -575,7 +596,7 @@
     if (st.subtitle && st.chartType !== 'counter') {
       ctx.fillStyle = st.textColor;
       ctx.globalAlpha = 0.4;
-      ctx.font = '500 ' + Math.max(st.fontSize * 0.8, 10) + 'px "Manrope", system-ui, sans-serif';
+      ctx.font = chartFont('500', st.fontSize * 0.8);
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
       ctx.fillText(st.subtitle, w / 2, h * 0.03 + st.fontSize * 2);
@@ -817,14 +838,20 @@
     setExporting(true, 'Renderowanie klatek...', 5);
 
     var frames = [];
+    var batchSize = 10;
+    var batchItems = [];
+
     for (var i = 0; i < totalFrames; i++) {
       var t = totalFrames === 1 ? 1 : i / (totalFrames - 1);
-      var frameJs = 'window._updateFrame(' + t + ')';
-      var frameData = await ipcRenderer.invoke('bg-eval-capture', { js: frameJs, delay: 30 });
-      frames.push({ data: frameData, duration: 1 });
+      batchItems.push({ js: 'window._updateFrame(' + t + ')', delay: 30 });
 
-      if (i % 5 === 0) {
-        var pct = 5 + Math.round((i / totalFrames) * 80);
+      if (batchItems.length >= batchSize || i === totalFrames - 1) {
+        var batchData = await ipcRenderer.invoke('bg-eval-capture-batch', { frames: batchItems });
+        for (var b = 0; b < batchData.length; b++) {
+          frames.push({ data: batchData[b], duration: 1 });
+        }
+        batchItems = [];
+        var pct = 5 + Math.round(((i + 1) / totalFrames) * 80);
         setExporting(true, 'Klatka ' + (i + 1) + '/' + totalFrames, pct);
       }
     }

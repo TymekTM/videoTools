@@ -153,7 +153,25 @@
     return pts;
   }
 
-  function interpolatePath(points, t) {
+  function buildCumulativeDists(points) {
+    var dists = [0];
+    for (var i = 1; i < points.length; i++) {
+      dists.push(dists[i - 1] + haversine(points[i - 1], points[i]));
+    }
+    return dists;
+  }
+
+  function bisectCumulative(dists, target) {
+    var lo = 1, hi = dists.length - 1;
+    while (lo < hi) {
+      var mid = (lo + hi) >>> 1;
+      if (dists[mid] < target) lo = mid + 1;
+      else hi = mid;
+    }
+    return lo;
+  }
+
+  function interpolatePath(points, t, _cachedDists) {
     if (!points.length) return { lat: 0, lng: 0, heading: 0 };
     if (points.length === 1 || t <= 0) {
       return { lat: points[0].lat, lng: points[0].lng, heading: points.length > 1 ? bearing(points[0], points[1]) : 0 };
@@ -163,32 +181,24 @@
       var prev = points[points.length - 2];
       return { lat: last.lat, lng: last.lng, heading: bearing(prev, last) };
     }
-    var dists = [0];
-    for (var i = 1; i < points.length; i++) {
-      dists.push(dists[i - 1] + haversine(points[i - 1], points[i]));
-    }
+    var dists = _cachedDists || buildCumulativeDists(points);
     var total = dists[dists.length - 1];
     if (total === 0) return { lat: points[0].lat, lng: points[0].lng, heading: 0 };
     var target = t * total;
-    for (var j = 1; j < dists.length; j++) {
-      if (dists[j] >= target) {
-        var seg = dists[j] - dists[j - 1];
-        var f = seg > 0 ? (target - dists[j - 1]) / seg : 0;
-        var lat = points[j - 1].lat + (points[j].lat - points[j - 1].lat) * f;
-        var lng = points[j - 1].lng + (points[j].lng - points[j - 1].lng) * f;
-        var look = Math.max(1, Math.round(points.length * 0.03));
-        var iBack = Math.max(0, j - look);
-        var iFwd = Math.min(points.length - 1, j + look);
-        while (iBack < iFwd && haversine(points[iBack], points[iFwd]) < 50) {
-          look++;
-          iBack = Math.max(0, j - look);
-          iFwd = Math.min(points.length - 1, j + look);
-        }
-        return { lat: lat, lng: lng, heading: bearing(points[iBack], points[iFwd]) };
-      }
+    var j = bisectCumulative(dists, target);
+    var seg = dists[j] - dists[j - 1];
+    var f = seg > 0 ? (target - dists[j - 1]) / seg : 0;
+    var lat = points[j - 1].lat + (points[j].lat - points[j - 1].lat) * f;
+    var lng = points[j - 1].lng + (points[j].lng - points[j - 1].lng) * f;
+    var look = Math.max(1, Math.round(points.length * 0.03));
+    var iBack = Math.max(0, j - look);
+    var iFwd = Math.min(points.length - 1, j + look);
+    while (iBack < iFwd && haversine(points[iBack], points[iFwd]) < 50) {
+      look++;
+      iBack = Math.max(0, j - look);
+      iFwd = Math.min(points.length - 1, j + look);
     }
-    var l = points[points.length - 1];
-    return { lat: l.lat, lng: l.lng, heading: bearing(points[points.length - 2], l) };
+    return { lat: lat, lng: lng, heading: bearing(points[iBack], points[iFwd]) };
   }
 
   function getResolution() {
@@ -664,6 +674,8 @@
     }
 
       var smoothCam = { lat: coords[0].lat, lng: coords[0].lng, heading: 0 };
+      var cachedVehicleInner = null;
+      var noRotate = st.transportType === 'train';
 
       function frame(now) {
         var elapsed = now - st.animStartTime;
@@ -676,17 +688,17 @@
 
         if (st.vehicleMarker) {
           st.vehicleMarker.setLatLng([pos.lat, pos.lng]);
-          var el = st.vehicleMarker.getElement();
-          if (el) {
-            var inner = el.querySelector('.vehicle-rot');
-            if (inner) {
-              var noRotate = st.transportType === 'train';
-              inner.style.transform = 'rotate(' + (noRotate ? 0 : smoothCam.heading) + 'deg)';
-            }
+          if (!cachedVehicleInner) {
+            var el = st.vehicleMarker.getElement();
+            if (el) cachedVehicleInner = el.querySelector('.vehicle-rot');
+          }
+          if (cachedVehicleInner) {
+            cachedVehicleInner.style.transform = 'rotate(' + (noRotate ? 0 : smoothCam.heading) + 'deg)';
           }
         }
 
         var steps = 60;
+        var cachedDists = buildCumulativeDists(coords);
         trailLines.forEach(function (tl, si) {
           var segStart = legTStart[si] || 0;
           var segEnd = legTEnd[si] != null ? legTEnd[si] : 1;
@@ -695,7 +707,7 @@
           var pts = [];
           for (var k = 0; k <= steps; k++) {
             var tt = segStart + (k / steps) * (effEnd - segStart);
-            var p = interpolatePath(coords, tt);
+            var p = interpolatePath(coords, tt, cachedDists);
             pts.push([p.lat, p.lng]);
           }
           tl.setLatLngs(pts);
@@ -772,19 +784,18 @@
       'var _r2d=function(r){return r*180/Math.PI};',
       'var _hav=function(a,b){var R=6371e3,dL=_d2r(b.lat-a.lat),dG=_d2r(b.lng-a.lng),x=Math.pow(Math.sin(dL/2),2)+Math.cos(_d2r(a.lat))*Math.cos(_d2r(b.lat))*Math.pow(Math.sin(dG/2),2);return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x))};',
       'var _brg=function(f,t){var dG=_d2r(t.lng-f.lng),y=Math.sin(dG)*Math.cos(_d2r(t.lat)),x=Math.cos(_d2r(f.lat))*Math.sin(_d2r(t.lat))-Math.sin(_d2r(f.lat))*Math.cos(_d2r(t.lat))*Math.cos(dG);return(_r2d(Math.atan2(y,x))+360)%360};',
-      'var _interp=function(pts,t){',
+      'var _buildDs=function(pts){var ds=[0];for(var i=1;i<pts.length;i++)ds.push(ds[i-1]+_hav(pts[i-1],pts[i]));return ds};',
+      'var _bsearch=function(ds,tgt){var lo=1,hi=ds.length-1;while(lo<hi){var mid=(lo+hi)>>>1;if(ds[mid]<tgt)lo=mid+1;else hi=mid}return lo};',
+      'var _interp=function(pts,t,_cd){',
       'if(!pts.length)return{lat:0,lng:0,heading:0};',
       'if(pts.length===1||t<=0)return{lat:pts[0].lat,lng:pts[0].lng,heading:pts.length>1?_brg(pts[0],pts[1]):0};',
       'if(t>=1)return{lat:pts[pts.length-1].lat,lng:pts[pts.length-1].lng,heading:_brg(pts[pts.length-2],pts[pts.length-1])};',
-      'var ds=[0];for(var i=1;i<pts.length;i++)ds.push(ds[i-1]+_hav(pts[i-1],pts[i]));',
-      'var tot=ds[ds.length-1];if(tot===0)return{lat:pts[0].lat,lng:pts[0].lng,heading:0};',
-      'var tgt=t*tot;',
-      'for(var j=1;j<ds.length;j++){if(ds[j]>=tgt){var s=ds[j]-ds[j-1],f=s>0?(tgt-ds[j-1])/s:0;',
+      'var ds=_cd||_buildDs(pts);var tot=ds[ds.length-1];if(tot===0)return{lat:pts[0].lat,lng:pts[0].lng,heading:0};',
+      'var tgt=t*tot;var j=_bsearch(ds,tgt);var s=ds[j]-ds[j-1],f=s>0?(tgt-ds[j-1])/s:0;',
       'var _lat=pts[j-1].lat+(pts[j].lat-pts[j-1].lat)*f,_lng=pts[j-1].lng+(pts[j].lng-pts[j-1].lng)*f;',
       'var _lk=Math.max(1,Math.round(pts.length*0.03)),_ib=Math.max(0,j-_lk),_if=Math.min(pts.length-1,j+_lk);',
       'while(_ib<_if&&_hav(pts[_ib],pts[_if])<50){_lk++;_ib=Math.max(0,j-_lk);_if=Math.min(pts.length-1,j+_lk)}',
-      'return{lat:_lat,lng:_lng,heading:_brg(pts[_ib],pts[_if])}}}',
-      'return{lat:pts[pts.length-1].lat,lng:pts[pts.length-1].lng,heading:_brg(pts[pts.length-2],pts[pts.length-1])}};',
+      'return{lat:_lat,lng:_lng,heading:_brg(pts[_ib],pts[_if])}};',
       'var _ease=function(t){return t<0.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2};'
     ].join('\n');
 
@@ -827,14 +838,15 @@
       'var _cam={lat:_rc[0].lat,lng:_rc[0].lng};' +
       'var _noRot=' + JSON.stringify(noRotate) + ';' +
       'window._updateFrame=function(t,cm,z){' +
-      'var p=_interp(_rc,t);' +
+      'var _cd=_buildDs(_rc);' +
+      'var p=_interp(_rc,t,_cd);' +
       '_vm.setLatLng([p.lat,p.lng]);' +
       'var el=_vm.getElement();' +
       'if(el){var inn=el.querySelector(".vehicle-rot");if(inn)inn.style.transform="rotate("+(_noRot?0:p.heading)+"deg)"}' +
       '_tlines.forEach(function(tl,si){' +
       'var s0=_legS[si]||0,s1=_legE[si]!=null?_legE[si]:1;' +
       'var eEnd=Math.min(t,s1);if(eEnd<=s0){tl.setLatLngs([]);return}' +
-      'var pts=[];for(var k=0;k<=60;k++){var tt=s0+(k/60)*(eEnd-s0);var q=_interp(_rc,tt);pts.push([q.lat,q.lng])}' +
+      'var pts=[];for(var k=0;k<=60;k++){var tt=s0+(k/60)*(eEnd-s0);var q=_interp(_rc,tt,_cd);pts.push([q.lat,q.lng])}' +
       'tl.setLatLngs(pts)});' +
       'if(cm==="follow"){_cam.lat+=(p.lat-_cam.lat)*0.1;_cam.lng+=(p.lng-_cam.lng)*0.1;' +
       '_map.setView([_cam.lat,_cam.lng],z,{animate:false})}' +
@@ -972,6 +984,10 @@
     var framesPerSegment = Math.round(moveFrames / numSegments);
 
     var frames = [];
+    var batchItems = [];
+    var batchMeta = [];
+    var batchSize = 10;
+
     for (var seg = 0; seg < numSegments; seg++) {
       var tStart = wpTPositions[seg];
       var tEnd = wpTPositions[seg + 1];
@@ -979,10 +995,20 @@
         var rawSegT = framesPerSegment === 1 ? 0 : f / (framesPerSegment - 1);
         var segT = st.easing ? easeInOut(rawSegT) : rawSegT;
         var globalT = tStart + (tEnd - tStart) * segT;
-        var frameJs = 'window._updateFrame(' + globalT + ',"' + st.cameraMode + '",' + st.zoom + ')';
+        batchItems.push({ js: 'window._updateFrame(' + globalT + ',"' + st.cameraMode + '",' + st.zoom + ')', delay: 30 });
+        batchMeta.push({ checkpoint: false });
 
-        var frameData = await ipcRenderer.invoke('bg-eval-capture', { js: frameJs, delay: 30 });
-        frames.push({ data: frameData, duration: 1 });
+        if (batchItems.length >= batchSize) {
+          var batchData = await ipcRenderer.invoke('bg-eval-capture-batch', { frames: batchItems });
+          for (var b = 0; b < batchData.length; b++) {
+            frames.push({ data: batchData[b], duration: 1 });
+          }
+          batchItems = [];
+          batchMeta = [];
+          var doneFrames = frames.length;
+          var pct = 10 + Math.round((doneFrames / (totalFrames + totalCheckpointFrames)) * 70);
+          setExporting(true, 'Klatka ' + doneFrames, pct);
+        }
       }
 
       if (seg < numSegments - 1 && frames.length > 0) {
@@ -990,10 +1016,13 @@
           frames.push({ data: frames[frames.length - 1].data, duration: 1 });
         }
       }
+    }
 
-      var doneFrames = frames.length;
-      var pct = 10 + Math.round((doneFrames / (totalFrames + totalCheckpointFrames)) * 70);
-      setExporting(true, 'Klatka ' + doneFrames, pct);
+    if (batchItems.length > 0) {
+      var batchData = await ipcRenderer.invoke('bg-eval-capture-batch', { frames: batchItems });
+      for (var b = 0; b < batchData.length; b++) {
+        frames.push({ data: batchData[b], duration: 1 });
+      }
     }
 
     frames.push({ data: frames[frames.length - 1].data, duration: Math.round(fps * 1.5) });

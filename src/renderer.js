@@ -3237,15 +3237,34 @@ function initChat() {
     let total = framesPerPause + (framesPerTyping + framesPerBubble + framesPerPause) * msgCount + framesEnd;
     let done = 0;
 
+    let prevFrameHtml = null;
+    let prevFrameData = null;
+
     for (let i = 0; i < msgCount; i++) {
       const typingStep = Math.max(1, Math.round(typingMs / framesPerTyping));
+      const typingHtml = buildFrame(i, i);
+      let typingData;
+      if (typingHtml === prevFrameHtml && prevFrameData) {
+        typingData = prevFrameData;
+      } else {
+        typingData = await capture(typingHtml, typingStep);
+        prevFrameHtml = typingHtml;
+        prevFrameData = typingData;
+      }
       for (let t = 0; t < framesPerTyping; t++) {
-        const typingData = await capture(buildFrame(i, i), (t + 1) * typingStep);
         frames.push({ data: typingData, duration: 1 });
       }
       done += framesPerTyping;
 
-      const bubbleData = await capture(buildFrame(i + 1, undefined, true), 450);
+      const bubbleHtml = buildFrame(i + 1, undefined, true);
+      let bubbleData;
+      if (bubbleHtml === prevFrameHtml && prevFrameData) {
+        bubbleData = prevFrameData;
+      } else {
+        bubbleData = await capture(bubbleHtml, 450);
+        prevFrameHtml = bubbleHtml;
+        prevFrameData = bubbleData;
+      }
       frames.push({ data: bubbleData, duration: framesPerBubble + framesPerPause });
       done += framesPerBubble + framesPerPause;
 
@@ -3824,6 +3843,8 @@ function initTyping() {
     await ipcRenderer.invoke('bg-init', { width: w, height: h, css: require('path').join(__dirname, 'styles.css') });
 
     const frames = [];
+    let prevHtml = null;
+    let prevData = null;
     for (let i = 0; i < totalFrames; i++) {
       const T = i / fps * 1000;
       const t = T - typingState.startDelay;
@@ -3842,7 +3863,14 @@ function initTyping() {
       const cursor = typingCursorHTML(blinkOn, false);
       const html = typingRenderTheme(typingState.theme, escaped + cursor);
 
-      const data = await ipcRenderer.invoke('bg-render', { html });
+      let data;
+      if (html === prevHtml && prevData) {
+        data = prevData;
+      } else {
+        data = await ipcRenderer.invoke('bg-render', { html });
+        prevHtml = html;
+        prevData = data;
+      }
       frames.push({ data, duration: 1 });
 
       if (i % 5 === 0) {
