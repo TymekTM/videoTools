@@ -86,18 +86,19 @@ function loadShared() {
   script.runInContext(context);
 }
 
-function loadRenderer() {
+function loadScript(filename) {
   const vm = require('vm');
-  const code = fs.readFileSync(path.join(__dirname, 'src', 'renderer.js'), 'utf8');
-  const startIdx = code.indexOf('const LOREM_HEADLINES');
-  const endIdx = code.indexOf('document.addEventListener(\'DOMContentLoaded\'');
-  let moduleCode = code.substring(startIdx, endIdx);
-
-  moduleCode = moduleCode.replace(/^const /gm, 'var ');
-
-  const script = new vm.Script(moduleCode, { filename: 'renderer.js' });
+  const code = fs.readFileSync(path.join(__dirname, 'src', filename), 'utf8');
+  const moduleCode = code.replace(/^const /gm, 'var ');
+  const script = new vm.Script(moduleCode, { filename });
   const context = vm.createContext(global);
   script.runInContext(context);
+}
+
+function loadRenderer() {
+  loadScript('news-renderer.js');
+  loadScript('chat-renderer.js');
+  loadScript('typing-renderer.js');
 }
 
 console.log('\n\x1b[1mVideo Tools - Unit Tests\x1b[0m\n');
