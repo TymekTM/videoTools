@@ -1089,159 +1089,102 @@
         <div class="ck-license-banner" id="ckLicenseBanner">
           <div class="ck-license-icon">!</div>
           <div class="ck-license-text">
-            <strong>Corridor Key Licence v1.0</strong> &mdash; wolne narzędzie od <strong>Corridor Digital</strong> na licencji
-            CC BY-NC-SA 4.0 z dodatkowymi klauzulami. Ta integracja to <strong>wrapper UI</strong> oryginalnego CLI.
-            <span class="ck-license-ok">Możesz:</span> przetwarzać obrazy dowolnie, również w projektach komercyjnych; forkować i modyfikować pod warunkiem zachowania licencji i nazwy.
-            <span class="ck-license-warn">Nie możesz:</span> sprzedawać narzędzia ani oferować inference jako płatny serwis (paywall, subskrypcja, billing).
-            <a href="#" class="ck-license-link" id="ckLicenseToggle">Szczegóły licencji</a>
+            <strong>Corridor Key Licence v1.0</strong> &mdash; CC BY-NC-SA 4.0.
+            <span class="ck-license-ok">Możesz:</span> przetwarzać obrazy dowolnie, również komercyjnie.
+            <span class="ck-license-warn">Nie możesz:</span> sprzedawać narzędzia ani oferować inference jako płatny serwis.
+            <a href="#" class="ck-license-link" id="ckLicenseToggle">Więcej</a>
           </div>
         </div>
-
         <div class="ck-license-full" id="ckLicenseFull" style="display:none">
           <div class="ck-license-full-content">
             <p><strong>Corridor Key Licence v1.0</strong> &mdash; CC BY-NC-SA 4.0 + dodatkowe warunki:</p>
             <ul>
-              <li><span class="ck-tag ck-tag-yes">DOZWOLONE</span> Dowolne użycie, w tym keying w projektach komercyjnych (reklamy, filmy, gry itd.)</li>
-              <li><span class="ck-tag ck-tag-yes">DOZWOLONE</span> Forki, modyfikacje i ulepszenia &mdash; pod warunkiem zachowania tej samej licencji oraz widocznej nazwy &ldquo;CorridorKey&rdquo;</li>
-              <li><span class="ck-tag ck-tag-no">ZABRONIONE</span> Repakowanie, odsprzedaż lub dystrybucja jako samodzielny/konkurencyjny produkt</li>
-              <li><span class="ck-tag ck-tag-no">ZABRONIONE</span> Oferowanie dostępu do inference za opłatą &mdash; paywall, subskrypcja, billing za użycie</li>
-              <li><span class="ck-tag ck-tag-warn">WYJĄTEK</span> Komercyjne oprogramowanie chcące wbudować CorridorKey potrzebuje osobnej pisemnej umowy &mdash; <a href="mailto:contact@corridordigital.com">contact@corridordigital.com</a></li>
-              <li><span class="ck-tag ck-tag-warn">SHARE-ALIKE</span> Każda publicznie wydana modyfikacja musi zostać opublikowana na tej samej licencji (włącznie z dodatkowymi warunkami)</li>
-              <li><span class="ck-tag ck-tag-warn">ATRYBUCJA</span> Nazwa &ldquo;CorridorKey&rdquo; (lub &ldquo;Corridor Key&rdquo;) musi pozostać widoczna w forkach i materiałach</li>
-              <li><span class="ck-tag ck-tag-warn">KONTRYBUCJE</span> Zgłaszając kod/asset, przyznajesz Corridor Digital perpetual, worldwide, non-exclusive, royalty-free licencję również na cele komercyjne</li>
+              <li><span class="ck-tag ck-tag-yes">DOZWOLONE</span> Dowolne użycie, w tym keying w projektach komercyjnych</li>
+              <li><span class="ck-tag ck-tag-yes">DOZWOLONE</span> Forki i modyfikacje z zachowaniem licencji i nazwy CorridorKey</li>
+              <li><span class="ck-tag ck-tag-no">ZABRONIONE</span> Repakowanie i sprzedaż jako samodzielny produkt</li>
+              <li><span class="ck-tag ck-tag-no">ZABRONIONE</span> Płatny dostęp do inference (paywall, subskrypcja, billing)</li>
+              <li><span class="ck-tag ck-tag-warn">WYJĄTEK</span> Komercyjne oprogramowanie wymaga pisemnej umowy &mdash; <a href="mailto:contact@corridordigital.com">contact@corridordigital.com</a></li>
+              <li><span class="ck-tag ck-tag-warn">SHARE-ALIKE</span> Publiczne modyfikacje muszą zachować tę samą licencję</li>
             </ul>
             <p>Repozytorium: <a href="https://github.com/nikopueringer/CorridorKey" target="_blank">github.com/nikopueringer/CorridorKey</a></p>
-            <p>Pełny tekst licencji znajduje się w pliku <code>LICENSE</code> repozytorium.</p>
           </div>
         </div>
 
-        <div class="ck-section">
-          <div class="ck-section-header" id="ckSystemToggle">
-            <span class="ck-section-arrow">&#9660;</span>
-            <span>Detekcja systemu</span>
+        <div class="ck-step ck-step-active" id="ckStepSetup">
+          <div class="ck-step-header" id="ckStepSetupToggle">
+            <div class="ck-step-num">1</div>
+            <span class="ck-step-title">Setup repozytorium</span>
+            <span class="ck-step-status" id="ckStepSetupStatus"></span>
           </div>
-          <div class="ck-section-body" id="ckSystemBody">
-            <div class="ck-sys-grid" id="ckSysGrid">
-              <div class="ck-sys-item" data-sys="platform">
-                <span class="ck-sys-label">Platform</span>
-                <span class="ck-sys-value" id="ckSysPlatform">&mdash;</span>
-              </div>
-              <div class="ck-sys-item" data-sys="python">
-                <span class="ck-sys-label">Python</span>
-                <span class="ck-sys-value" id="ckSysPython">&mdash;</span>
-              </div>
-              <div class="ck-sys-item" data-sys="uv">
-                <span class="ck-sys-label">uv (pkg mgr)</span>
-                <span class="ck-sys-value" id="ckSysUv">&mdash;</span>
-              </div>
-              <div class="ck-sys-item" data-sys="cuda">
-                <span class="ck-sys-label">CUDA</span>
-                <span class="ck-sys-value" id="ckSysCuda">&mdash;</span>
-              </div>
-              <div class="ck-sys-item" data-sys="gpu">
-                <span class="ck-sys-label">GPU</span>
-                <span class="ck-sys-value" id="ckSysGpu">&mdash;</span>
-              </div>
-              <div class="ck-sys-item" data-sys="vram">
-                <span class="ck-sys-label">VRAM</span>
-                <span class="ck-sys-value" id="ckSysVram">&mdash;</span>
-              </div>
-              <div class="ck-sys-item" data-sys="repo">
-                <span class="ck-sys-label">CorridorKey Repo</span>
-                <span class="ck-sys-value" id="ckSysRepo">&mdash;</span>
-              </div>
-              <div class="ck-sys-item" data-sys="models">
-                <span class="ck-sys-label">Modele</span>
-                <span class="ck-sys-value" id="ckSysModels">&mdash;</span>
-              </div>
+          <div class="ck-step-body" id="ckStepSetupBody">
+            <div class="ck-path-row">
+              <input type="text" class="control-input" id="ckRepoPath" placeholder="Ścieżka do CorridorKey" readonly>
+              <button class="btn btn-ghost ck-btn-browse" id="ckBrowseRepo">...</button>
             </div>
-            <div class="ck-compatibility" id="ckCompatibility" style="display:none"></div>
-            <button class="btn btn-ghost ck-btn-scan" id="ckScanBtn" style="margin-top:6px">
-              <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 1v12M1 7h12"/></svg>
-              <span>Skanuj ponownie</span>
-            </button>
-          </div>
-        </div>
-
-        <div class="ck-section">
-          <div class="ck-section-header" id="ckSetupToggle">
-            <span class="ck-section-arrow">&#9660;</span>
-            <span>Konfiguracja repozytorium</span>
-          </div>
-          <div class="ck-section-body" id="ckSetupBody">
-            <div class="control-group">
-              <label class="control-label">Ścieżka repozytorium CorridorKey</label>
-              <div class="ck-path-row">
-                <input type="text" class="control-input" id="ckRepoPath" placeholder="np. C:\Users\...\CorridorKey" readonly>
-                <button class="btn btn-ghost ck-btn-browse" id="ckBrowseRepo">...</button>
-              </div>
-            </div>
-            <div class="ck-setup-actions">
-              <button class="btn btn-secondary" id="ckAutoDetect" style="flex:1">Auto-wykryj</button>
-              <button class="btn btn-primary" id="ckCloneRepo" style="flex:1">Klonuj z GitHub</button>
-              <button class="btn btn-primary" id="ckInstallDeps" style="flex:1" disabled>Instaluj deps</button>
-              <button class="btn btn-secondary" id="ckDownloadModel" style="flex:1" disabled>Pobierz model</button>
+            <div class="ck-step-btns">
+              <button class="btn btn-secondary" id="ckCloneRepo">Klonuj z GitHub</button>
+              <button class="btn btn-primary" id="ckInstallDeps" disabled>Instaluj deps</button>
+              <button class="btn btn-secondary" id="ckDownloadModel" disabled>Pobierz model</button>
             </div>
             <div class="ck-clone-progress" id="ckCloneProgress" style="display:none">
               <div class="ck-progress-bar-track"><div class="ck-progress-bar-fill" id="ckCloneProgressBar"></div></div>
-              <span class="ck-progress-label" id="ckCloneProgressLabel">Klonowanie repozytorium...</span>
+              <span class="ck-progress-label" id="ckCloneProgressLabel"></span>
             </div>
             <div class="ck-setup-note" id="ckSetupNote" style="display:none"></div>
           </div>
         </div>
 
-        <div class="ck-section">
-          <div class="ck-section-header" id="ckInputToggle">
-            <span class="ck-section-arrow">&#9660;</span>
-            <span>Materiał wejściowy</span>
+        <div class="ck-step" id="ckStepInput">
+          <div class="ck-step-header" id="ckStepInputToggle">
+            <div class="ck-step-num">2</div>
+            <span class="ck-step-title">Materiał wejściowy</span>
+            <span class="ck-step-status" id="ckStepInputStatus"></span>
           </div>
-          <div class="ck-section-body" id="ckInputBody">
-            <div class="control-group">
-              <label class="control-label">Folder / plik wejsciowy</label>
-              <div class="ck-path-row">
-                <input type="text" class="control-input" id="ckInputPath" placeholder="Folder z sekwencja lub plik wideo" readonly>
-                <button class="btn btn-ghost ck-btn-browse" id="ckBrowseInput" title="Wybierz folder">Dir</button>
-                <button class="btn btn-ghost ck-btn-browse" id="ckBrowseInputVideo" title="Wybierz plik wideo">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><polygon points="10,8 16,12 10,16" fill="currentColor" stroke="none"/></svg>
-                </button>
-              </div>
+          <div class="ck-step-body" id="ckStepInputBody">
+            <p class="ck-step-hint">Wybierz folder z klatkami lub plik wideo green screen.</p>
+            <div class="ck-path-row">
+              <input type="text" class="control-input" id="ckInputPath" placeholder="Wybierz folder lub plik wideo" readonly>
+              <button class="btn btn-ghost ck-btn-browse" id="ckBrowseInput" title="Folder">Dir</button>
+              <button class="btn btn-ghost ck-btn-browse" id="ckBrowseInputVideo" title="Plik wideo">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><polygon points="10,8 16,12 10,16" fill="currentColor" stroke="none"/></svg>
+              </button>
             </div>
             <div class="ck-video-section" id="ckVideoSection" style="display:none">
               <div class="ck-video-info" id="ckVideoInfo"></div>
               <button class="btn btn-primary" id="ckExtractFrames" disabled style="width:100%">Ekstrahuj klatki do PNG</button>
               <div class="ck-clone-progress" id="ckVideoProgress" style="display:none">
                 <div class="ck-progress-bar-track"><div class="ck-progress-bar-fill" id="ckVideoProgressBar"></div></div>
-                <span class="ck-progress-label" id="ckVideoProgressLabel">Ekstrakcja klatek...</span>
+                <span class="ck-progress-label" id="ckVideoProgressLabel"></span>
               </div>
             </div>
-            <div class="control-group">
-              <label class="control-label">Alpha Hint (opcjonalnie)</label>
-              <div class="ck-path-row">
-                <input type="text" class="control-input" id="ckAlphaHintPath" placeholder="Folder AlphaHint" readonly>
-                <button class="btn btn-ghost ck-btn-browse" id="ckBrowseAlpha">...</button>
-              </div>
-            </div>
+            <button class="btn btn-primary" id="ckOrganizeInput" disabled style="width:100%">Przygotuj do inference</button>
             <div class="ck-input-info" id="ckInputInfo" style="display:none"></div>
           </div>
         </div>
 
-        <div class="ck-section">
-          <div class="ck-section-header" id="ckParamsToggle">
-            <span class="ck-section-arrow">&#9660;</span>
-            <span>Parametry inferencji</span>
+        <div class="ck-step" id="ckStepAlpha">
+          <div class="ck-step-header" id="ckStepAlphaToggle">
+            <div class="ck-step-num">3</div>
+            <span class="ck-step-title">Alpha Hint</span>
+            <span class="ck-step-status" id="ckStepAlphaStatus"></span>
           </div>
-          <div class="ck-section-body" id="ckParamsBody">
-            <div class="control-group">
-              <label class="control-label">Gamma Space</label>
-              <div class="control-btn-group" id="ckGammaGroup">
-                <button class="control-btn active" data-gamma="srgb">sRGB</button>
-                <button class="control-btn" data-gamma="linear">Linear</button>
-              </div>
+          <div class="ck-step-body" id="ckStepAlphaBody">
+            <p class="ck-step-hint">Alpha to czarno-biała maska wydzielająca pierwszy plan z green screen. Wygeneruj automatycznie lub pomiń jeśli masz własną.</p>
+            <div class="ck-step-btns">
+              <button class="btn btn-primary" id="ckGenerateAlphasBiRefNet" disabled>BiRefNet (szybkie)</button>
+              <button class="btn btn-secondary" id="ckGenerateAlphasGVM" disabled>GVM (automatyczne)</button>
             </div>
-            <div class="control-group">
-              <label class="control-label">Despill Strength <span class="control-value" id="ckDespillVal">0</span></label>
-              <input type="range" class="control-range" id="ckDespillRange" min="0" max="10" step="1" value="0">
-            </div>
+            <div class="ck-input-info" id="ckAlphaInfo" style="display:none"></div>
+          </div>
+        </div>
+
+        <div class="ck-step" id="ckStepProcess">
+          <div class="ck-step-header" id="ckStepProcessToggle">
+            <div class="ck-step-num">4</div>
+            <span class="ck-step-title">Inference</span>
+            <span class="ck-step-status" id="ckStepProcessStatus"></span>
+          </div>
+          <div class="ck-step-body" id="ckStepProcessBody">
             <div class="control-group">
               <label class="control-label">Device</label>
               <div class="control-btn-group" id="ckDeviceGroup">
@@ -1250,55 +1193,19 @@
                 <button class="control-btn" data-device="cpu">CPU</button>
               </div>
             </div>
-            <label class="control-checkbox">
-              <input type="checkbox" id="ckAutoDespeckle" checked>
-              Auto-Despeckle
-            </label>
-            <div class="control-group">
-              <label class="control-label">Despeckle threshold <span class="control-value" id="ckDespeckleVal">100</span></label>
-              <input type="range" class="control-range" id="ckDespeckleRange" min="10" max="500" step="10" value="100">
-            </div>
-            <div class="control-group">
-              <label class="control-label">Refiner Strength <span class="control-value" id="ckRefinerVal">1.0</span></label>
-              <input type="range" class="control-range" id="ckRefinerRange" min="0.1" max="2.0" step="0.1" value="1.0">
-            </div>
+            <button class="btn btn-primary" id="ckRunInference" disabled style="width:100%">
+              <svg width="14" height="14" viewBox="0 0 14 14"><polygon points="2,0 14,7 2,14" fill="currentColor"/></svg>
+              <span>Uruchom Inference</span>
+            </button>
           </div>
         </div>
 
-        <div class="ck-section">
-          <div class="ck-section-header" id="ckAlphaGenToggle">
-            <span class="ck-section-arrow">&#9660;</span>
-            <span>Generowanie Alpha Hint</span>
-          </div>
-          <div class="ck-section-body" id="ckAlphaGenBody">
-            <div class="control-group">
-              <label class="control-label">Metoda</label>
-              <div class="control-btn-group" id="ckAlphaMethodGroup">
-                <button class="control-btn active" data-method="none">Brak</button>
-                <button class="control-btn" data-method="birefnet">BiRefNet</button>
-                <button class="control-btn" data-method="gvm">GVM</button>
-                <button class="control-btn" data-method="videomama">VideoMaMa</button>
-              </div>
-            </div>
-            <div class="ck-alpha-note" id="ckAlphaNote">
-              BiRefNet: lekkie, ~6GB VRAM. GVM: automatyczne, ~80GB VRAM. VideoMaMa: z maską, ~24GB+ VRAM.
-            </div>
-          </div>
-        </div>
-
-        <div class="control-actions">
-          <button class="btn btn-primary" id="ckRunInference" style="flex:1" disabled>
-            <svg width="14" height="14" viewBox="0 0 14 14"><polygon points="2,0 14,7 2,14" fill="currentColor"/></svg>
-            <span>Uruchom Inference</span>
-          </button>
-        </div>
-
-        <div class="control-actions">
-          <button class="btn btn-secondary" id="ckRunWizard" style="flex:1" disabled>
-            <span>Wizard (CLI)</span>
-          </button>
-          <button class="btn btn-ghost" id="ckListShots" style="flex:1" disabled>
-            <span>Listuj shaty</span>
+        <div class="ck-output-section" id="ckOutputSection" style="display:none">
+          <div class="ck-section-header"><span>Wyniki</span></div>
+          <div class="ck-output-grid" id="ckOutputGrid"></div>
+          <button class="btn btn-ghost" id="ckAssembleVideo" style="display:none;width:100%;margin-top:6px">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><polygon points="10,8 16,12 10,16" fill="currentColor" stroke="none"/></svg>
+            <span>Złóż Comp do MP4</span>
           </button>
         </div>
 
@@ -1307,22 +1214,9 @@
           <span class="chat-export-label" id="ckProgressLabel">...</span>
         </div>
 
-        <div class="ck-output-section" id="ckOutputSection" style="display:none">
-          <div class="ck-section-header">
-            <span>Wyniki</span>
-          </div>
-          <div class="ck-output-grid" id="ckOutputGrid"></div>
-          <button class="btn btn-ghost ck-btn-assemble" id="ckAssembleVideo" style="display:none;width:100%;margin-top:6px">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><polygon points="10,8 16,12 10,16" fill="currentColor" stroke="none"/></svg>
-            <span>Złóż Comp do wideo (MP4)</span>
-          </button>
-        </div>
-
-        <div class="control-group" style="margin-top:auto">
-          <div class="ck-footer-info">
-            <span>CorridorKey v1.0 &middot; Corridor Digital</span>
-            <span>CC BY-NC-SA 4.0</span>
-          </div>
+        <div class="ck-footer-info" style="margin-top:auto">
+          <span>CorridorKey v1.0 &middot; Corridor Digital</span>
+          <button class="btn btn-ghost" id="ckScanBtn" style="font-size:9px;padding:0 6px;height:18px">Skanuj</button>
         </div>
       </aside>
     </div>

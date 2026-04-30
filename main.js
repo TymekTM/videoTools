@@ -477,6 +477,38 @@ ipcMain.handle('ck-run', async (event, { repoPath, action, args }) => {
   });
 });
 
+ipcMain.handle('ck-run-birefnet', async (event, { repoPath, device, usage }) => {
+  const scriptPath = path.join(__dirname, 'scripts', 'birefnet_alpha.py');
+  if (!fs.existsSync(scriptPath)) {
+    return { code: -1, stdout: '', stderr: `Script not found: ${scriptPath}` };
+  }
+
+  const args = ['run', 'python', scriptPath, '--repo-path', repoPath, '--usage', usage || 'General'];
+  if (device) args.push('--device', device);
+
+  return new Promise((resolve) => {
+    const proc = spawn('uv', args, {
+      cwd: repoPath,
+      timeout: 600000,
+      env: { ...process.env, OPENCV_IO_ENABLE_OPENEXR: '1' }
+    });
+    let stdout = '';
+    let stderr = '';
+    proc.stdout.on('data', d => {
+      const text = d.toString();
+      stdout += text;
+      mainWindow.webContents.send('ck-run-output', { text, type: 'stdout' });
+    });
+    proc.stderr.on('data', d => {
+      const text = d.toString();
+      stderr += text;
+      mainWindow.webContents.send('ck-run-output', { text, type: 'stderr' });
+    });
+    proc.on('close', (code) => resolve({ code, stdout, stderr }));
+    proc.on('error', (err) => resolve({ code: -1, stdout, stderr: err.message }));
+  });
+});
+
 ipcMain.handle('ck-run-install', async (event, { repoPath }) => {
   const scriptName = process.platform === 'win32'
     ? 'Install_CorridorKey_Windows.bat'
@@ -651,9 +683,40 @@ ipcMain.handle('ck-extract-frames', async (event, { videoPath, outputDir, fps })
 
 ipcMain.handle('ck-assemble-video', async (event, { framesDir, savePath, fps }) => {
   return new Promise((resolve) => {
+    const fs = require('fs');
+    const files = fs.readdirSync(framesDir).filter(f => /\.(png|jpg|jpeg)$/i.test(f)).sort();
+    if (files.length === 0) { resolve({ code: -1, stderr: 'No image files found' }); return; }
+
+    const firstStem = files[0].replace(/\.[^.]+$/, '');
+    let inputPattern;
+    if (/^\d+$/.test(firstStem) && files.every(f => /^\d+\.\w+$/.test(f))) {
+      inputPattern = `%0${firstStem.length}d${path.extname(files[0])}`;
+    } else {
+      const listPath = path.join(framesDir, '_ffmpeg_concat.txt');
+      fs.writeFileSync(listPath, files.map(f => `file '${path.join(framesDir, f).replace(/'/g, "'\\''")}'`).join('\n'));
+      inputPattern = null;
+      const args = [
+        '-y', '-f', 'concat', '-safe', '0', '-i', listPath,
+        '-framerate', String(fps || 24),
+        '-c:v', 'libx264', '-pix_fmt', 'yuv420p',
+        '-preset', 'fast', '-crf', '18', '-movflags', '+faststart',
+        savePath
+      ];
+      const proc = spawn(ffmpegPath, args, { timeout: 600000 });
+      let stderr = '';
+      proc.stderr.on('data', d => stderr += d.toString());
+      proc.on('close', (code) => {
+        try { fs.unlinkSync(listPath); } catch {}
+        resolve({ code, savePath, stderr });
+      });
+      proc.on('error', (err) => { try { fs.unlinkSync(listPath); } catch {}; resolve({ code: -1, savePath, stderr: err.message }); });
+      return;
+    }
+
     const args = [
       '-y', '-framerate', String(fps || 24),
-      '-i', path.join(framesDir, 'frame_%06d.png'),
+      '-start_number', String(parseInt(firstStem, 10)),
+      '-i', path.join(framesDir, inputPattern),
       '-c:v', 'libx264', '-pix_fmt', 'yuv420p',
       '-preset', 'fast', '-crf', '18', '-movflags', '+faststart',
       savePath

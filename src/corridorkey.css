@@ -16,7 +16,7 @@
 .ck-license-link { color: var(--accent); text-decoration: none; font-weight: 600; display: inline-block; margin-top: 4px; }
 .ck-license-link:hover { text-decoration: underline; }
 
-.ck-license-full { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.ck-license-full { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-top: 6px; }
 .ck-license-full-content { padding: 12px; font-size: 11px; line-height: 1.6; color: var(--text-muted); }
 .ck-license-full-content ul { list-style: none; padding: 0; margin: 8px 0; display: flex; flex-direction: column; gap: 4px; }
 .ck-license-full-content li { display: flex; align-items: baseline; gap: 6px; }
@@ -27,47 +27,41 @@
 .ck-tag-no { background: rgba(239,68,68,0.15); color: #ef4444; }
 .ck-tag-warn { background: rgba(245,158,11,0.15); color: #f59e0b; }
 
-.ck-section { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
-.ck-section-header { display: flex; align-items: center; gap: 6px; padding: 7px 10px; background: var(--bg-surface); cursor: pointer; user-select: none; font-size: 11px; font-weight: 700; color: var(--text); letter-spacing: 0.02em; transition: background 0.12s; }
-.ck-section-header:hover { background: var(--border); }
-.ck-section-arrow { font-size: 10px; color: var(--text-muted); transition: transform 0.15s; }
-.ck-section-body { display: flex; flex-direction: column; gap: 6px; padding: 8px; }
-
-.ck-sys-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
-.ck-sys-item { display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; background: var(--bg); border-radius: 4px; border-left: 3px solid transparent; }
-.ck-sys-item.ck-sys-ok { border-left-color: #22c55e; }
-.ck-sys-item.ck-sys-fail { border-left-color: #ef4444; }
-.ck-sys-item.ck-sys-warn { border-left-color: #f59e0b; }
-.ck-sys-label { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); }
-.ck-sys-value { font-size: 11px; color: var(--text); font-weight: 500; word-break: break-all; }
-
-.ck-compatibility { display: flex; flex-direction: column; gap: 3px; margin-top: 4px; }
-.ck-comp-item { display: flex; align-items: flex-start; gap: 6px; padding: 4px 8px; border-radius: 4px; font-size: 11px; line-height: 1.4; }
-.ck-comp-icon { font-size: 12px; font-weight: 700; flex-shrink: 0; line-height: 1.4; }
-.ck-comp-ok { background: rgba(34,197,94,0.06); color: #22c55e; }
-.ck-comp-fail { background: rgba(239,68,68,0.06); color: #ef4444; }
-.ck-comp-warn { background: rgba(245,158,11,0.06); color: #f59e0b; }
+/* ─── Steps ─── */
+.ck-step { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.ck-step + .ck-step { margin-top: 6px; }
+.ck-step-header { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--bg-surface); cursor: pointer; user-select: none; transition: background 0.12s; }
+.ck-step-header:hover { background: var(--border); }
+.ck-step-num { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; flex-shrink: 0; background: rgba(255,255,255,0.06); color: var(--text-dim); }
+.ck-step-active .ck-step-num { background: var(--accent); color: #000; }
+.ck-step-done .ck-step-num { background: #22c55e; color: #000; }
+.ck-step-title { font-size: 11px; font-weight: 700; color: var(--text); flex: 1; }
+.ck-step-status { font-size: 10px; color: var(--text-dim); }
+.ck-step-done .ck-step-status { color: #22c55e; }
+.ck-step-body { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; }
+.ck-step-hint { font-size: 10px; color: var(--text-dim); line-height: 1.4; margin: 0; }
+.ck-step-btns { display: flex; gap: 4px; flex-wrap: wrap; }
+.ck-step-btns .btn { flex: 1 1 0; min-width: 80px; font-size: 11px !important; }
 
 .ck-path-row { display: flex; gap: 4px; }
 .ck-path-row .control-input { flex: 1; font-size: 11px !important; padding: 6px 8px !important; }
-.ck-btn-browse { flex: none !important; width: 34px; height: 34px; padding: 0 !important; font-size: 14px !important; }
-.ck-btn-scan { width: 100%; font-size: 11px !important; gap: 4px !important; }
-.ck-setup-actions { display: flex; gap: 6px; flex-wrap: wrap; }
-.ck-setup-actions .btn { flex: 1 1 0; min-width: 90px; font-size: 11px !important; }
-.ck-clone-progress { margin-top: 6px; }
+.ck-btn-browse { flex: none !important; width: 34px; height: 34px; padding: 0 !important; font-size: 14px !important; display: flex; align-items: center; justify-content: center; }
+
+.ck-clone-progress { margin-top: 4px; }
 .ck-clone-progress .ck-progress-bar-track { width: 100%; height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; }
 .ck-clone-progress .ck-progress-bar-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s; }
 .ck-clone-progress .ck-progress-label { font-size: 10px; color: var(--text-dim); display: block; margin-top: 4px; }
 @keyframes ck-indeterminate { 0% { transform: translateX(-100%); } 100% { transform: translateX(200%); } }
-.ck-setup-note { padding: 6px 10px; border-radius: 4px; font-size: 11px; line-height: 1.4; }
+
+.ck-setup-note, .ck-input-info { padding: 6px 10px; border-radius: 4px; font-size: 11px; line-height: 1.4; }
 .ck-note-ok { background: rgba(34,197,94,0.08); color: #22c55e; border: 1px solid rgba(34,197,94,0.2); }
 .ck-note-warn { background: rgba(245,158,11,0.08); color: #f59e0b; border: 1px solid rgba(245,158,11,0.2); }
 .ck-note-error { background: rgba(239,68,68,0.08); color: #ef4444; border: 1px solid rgba(239,68,68,0.2); }
-.ck-input-info { padding: 6px 10px; border-radius: 4px; font-size: 11px; line-height: 1.4; }
-.ck-alpha-note { font-size: 10px; color: var(--text-dim); padding: 4px 8px; background: var(--bg); border-radius: 4px; line-height: 1.4; }
 
-.ck-preview-container { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+.ck-video-section { display: flex; flex-direction: column; gap: 6px; padding: 6px 8px; background: var(--bg); border-radius: 4px; border: 1px solid rgba(245,158,11,0.2); }
+.ck-video-info { font-size: 10px; color: var(--text-muted); line-height: 1.4; }
 
+/* ─── Workspace ─── */
 .ck-workspace { width: 100%; height: 100%; display: flex; flex-direction: column; background: #0c0c10; }
 .ck-ws-tabs { display: flex; gap: 0; border-bottom: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.02); flex-shrink: 0; }
 .ck-ws-tab { padding: 7px 16px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; transition: all 0.12s; font-family: inherit; }
@@ -105,16 +99,11 @@
 .ck-ws-progress-fill { height: 100%; background: var(--accent); border-radius: 2px; width: 100%; }
 .ck-ws-progress-label { font-size: 10px; color: var(--text-dim); white-space: nowrap; }
 
-.ck-video-section { display: flex; flex-direction: column; gap: 6px; padding: 6px 8px; background: var(--bg); border-radius: 4px; border: 1px solid rgba(245,158,11,0.2); }
-.ck-video-info { font-size: 10px; color: var(--text-muted); line-height: 1.4; }
-
-.ck-preview-log { width: 100%; height: 100%; display: flex; flex-direction: column; background: #0c0c10; font-family: 'JetBrains Mono','IBM Plex Mono',monospace; font-size: 11px; }
-
-.ck-output-section { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
-.ck-output-section .ck-section-header { background: rgba(34,197,94,0.06); color: #22c55e; }
+.ck-output-section { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-top: 6px; }
+.ck-output-section .ck-section-header { background: rgba(34,197,94,0.06); color: #22c55e; padding: 7px 10px; font-size: 11px; font-weight: 700; }
 .ck-output-grid { display: flex; flex-direction: column; gap: 4px; padding: 8px; }
 .ck-output-card { padding: 8px 10px; background: var(--bg); border-radius: 4px; display: flex; flex-direction: column; gap: 4px; }
 .ck-output-card-label { font-size: 11px; font-weight: 700; color: var(--text); }
 .ck-output-card-path { font-size: 10px; color: var(--text-dim); word-break: break-all; font-family: 'JetBrains Mono',monospace; }
 .ck-output-card .ck-open-dir { align-self: flex-start; padding: 3px 10px !important; font-size: 10px !important; }
-.ck-footer-info { display: flex; justify-content: space-between; font-size: 9px; color: var(--text-dim); padding: 6px; background: var(--bg); border-radius: 4px; }
+.ck-footer-info { display: flex; justify-content: space-between; align-items: center; font-size: 9px; color: var(--text-dim); padding: 6px; background: var(--bg); border-radius: 4px; }

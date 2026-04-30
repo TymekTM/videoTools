@@ -6,7 +6,9 @@ const CK = {
   sysInfo: null,
   repoPath: '',
   inputPath: '',
-  alphaHintPath: '',
+  videoPath: '',
+  videoInfo: null,
+  shotDir: '',
   running: false,
 
   els: {},
@@ -16,16 +18,6 @@ const CK = {
       statusBadge: document.getElementById('ckStatusBadge'),
       licenseToggle: document.getElementById('ckLicenseToggle'),
       licenseFull: document.getElementById('ckLicenseFull'),
-      sysGrid: document.getElementById('ckSysGrid'),
-      sysPlatform: document.getElementById('ckSysPlatform'),
-      sysPython: document.getElementById('ckSysPython'),
-      sysUv: document.getElementById('ckSysUv'),
-      sysCuda: document.getElementById('ckSysCuda'),
-      sysGpu: document.getElementById('ckSysGpu'),
-      sysVram: document.getElementById('ckSysVram'),
-      sysRepo: document.getElementById('ckSysRepo'),
-      sysModels: document.getElementById('ckSysModels'),
-      compatibility: document.getElementById('ckCompatibility'),
       scanBtn: document.getElementById('ckScanBtn'),
       cloneRepo: document.getElementById('ckCloneRepo'),
       cloneProgress: document.getElementById('ckCloneProgress'),
@@ -34,51 +26,59 @@ const CK = {
       downloadModel: document.getElementById('ckDownloadModel'),
       repoPath: document.getElementById('ckRepoPath'),
       browseRepo: document.getElementById('ckBrowseRepo'),
-      autoDetect: document.getElementById('ckAutoDetect'),
       installDeps: document.getElementById('ckInstallDeps'),
       setupNote: document.getElementById('ckSetupNote'),
       inputPath: document.getElementById('ckInputPath'),
       browseInput: document.getElementById('ckBrowseInput'),
-      alphaHintPath: document.getElementById('ckAlphaHintPath'),
-      browseAlpha: document.getElementById('ckBrowseAlpha'),
+      browseInputVideo: document.getElementById('ckBrowseInputVideo'),
+      videoSection: document.getElementById('ckVideoSection'),
+      videoInfo: document.getElementById('ckVideoInfo'),
+      extractFrames: document.getElementById('ckExtractFrames'),
+      videoProgress: document.getElementById('ckVideoProgress'),
+      videoProgressBar: document.getElementById('ckVideoProgressBar'),
+      videoProgressLabel: document.getElementById('ckVideoProgressLabel'),
+      organizeInput: document.getElementById('ckOrganizeInput'),
       inputInfo: document.getElementById('ckInputInfo'),
-      gammaGroup: document.getElementById('ckGammaGroup'),
-      despillRange: document.getElementById('ckDespillRange'),
-      despillVal: document.getElementById('ckDespillVal'),
+      generateAlphasBiRefNet: document.getElementById('ckGenerateAlphasBiRefNet'),
+      generateAlphasGVM: document.getElementById('ckGenerateAlphasGVM'),
+      alphaInfo: document.getElementById('ckAlphaInfo'),
       deviceGroup: document.getElementById('ckDeviceGroup'),
-      autoDespeckle: document.getElementById('ckAutoDespeckle'),
-      despeckleRange: document.getElementById('ckDespeckleRange'),
-      despeckleVal: document.getElementById('ckDespeckleVal'),
-      refinerRange: document.getElementById('ckRefinerRange'),
-      refinerVal: document.getElementById('ckRefinerVal'),
-      alphaMethodGroup: document.getElementById('ckAlphaMethodGroup'),
-      alphaNote: document.getElementById('ckAlphaNote'),
       runInference: document.getElementById('ckRunInference'),
-      runWizard: document.getElementById('ckRunWizard'),
-      listShots: document.getElementById('ckListShots'),
       progress: document.getElementById('ckProgress'),
       progressBar: document.getElementById('ckProgressBar'),
       progressLabel: document.getElementById('ckProgressLabel'),
       logBody: document.getElementById('ckLogBody'),
       logClear: document.getElementById('ckLogClear'),
-      previewLog: document.getElementById('ckPreviewLog'),
-      previewPlaceholder: document.getElementById('ckPreviewPlaceholder'),
       outputSection: document.getElementById('ckOutputSection'),
       outputGrid: document.getElementById('ckOutputGrid'),
-      systemToggle: document.getElementById('ckSystemToggle'),
-      systemBody: document.getElementById('ckSystemBody'),
-      setupToggle: document.getElementById('ckSetupToggle'),
-      setupBody: document.getElementById('ckSetupBody'),
-      inputToggle: document.getElementById('ckInputToggle'),
-      inputBody: document.getElementById('ckInputBody'),
-      paramsToggle: document.getElementById('ckParamsToggle'),
-      paramsBody: document.getElementById('ckParamsBody'),
-      alphaGenToggle: document.getElementById('ckAlphaGenToggle'),
-      alphaGenBody: document.getElementById('ckAlphaGenBody'),
+      assembleVideo: document.getElementById('ckAssembleVideo'),
+      wsProgress: document.getElementById('ckWsProgress'),
+      wsProgressFill: document.getElementById('ckWsProgressFill'),
+      wsProgressLabel: document.getElementById('ckWsProgressLabel'),
     };
 
     this.bindEvents();
+    this.initWorkspace();
     this.scanSystem();
+  },
+
+  initWorkspace() {
+    const tabs = document.querySelectorAll('.ck-ws-tab');
+    const panels = document.querySelectorAll('.ck-ws-panel');
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        tabs.forEach(t => t.classList.remove('active'));
+        panels.forEach(p => p.style.display = 'none');
+        tab.classList.add('active');
+        const panel = document.querySelector(`[data-ws-panel="${tab.dataset.wsTab}"]`);
+        if (panel) panel.style.display = '';
+      });
+    });
+  },
+
+  switchTab(name) {
+    const tab = document.querySelector(`.ck-ws-tab[data-ws-tab="${name}"]`);
+    if (tab) tab.click();
   },
 
   bindEvents() {
@@ -89,9 +89,7 @@ const CK = {
     });
 
     this.els.scanBtn.addEventListener('click', () => this.scanSystem());
-
     this.els.cloneRepo.addEventListener('click', () => this.cloneRepo());
-
     this.els.downloadModel.addEventListener('click', () => this.downloadModel());
 
     this.els.browseRepo.addEventListener('click', async () => {
@@ -103,83 +101,57 @@ const CK = {
       }
     });
 
-    this.els.autoDetect.addEventListener('click', () => this.scanSystem());
-
     this.els.installDeps.addEventListener('click', () => this.installDeps());
 
     this.els.browseInput.addEventListener('click', async () => {
       const p = await ipcRenderer.invoke('ck-select-dir');
       if (p) {
+        this.videoPath = '';
+        this.videoInfo = null;
+        this.els.videoSection.style.display = 'none';
         this.els.inputPath.value = p;
         this.inputPath = p;
-        this.checkInputStructure(p);
+        this.els.organizeInput.disabled = !this.repoPath;
+        this.loadInputThumbnails();
       }
     });
 
-    this.els.browseAlpha.addEventListener('click', async () => {
-      const p = await ipcRenderer.invoke('ck-select-dir');
+    this.els.browseInputVideo.addEventListener('click', async () => {
+      const p = await ipcRenderer.invoke('ck-select-file');
       if (p) {
-        this.els.alphaHintPath.value = p;
-        this.alphaHintPath = p;
+        this.els.inputPath.value = p;
+        this.inputPath = p;
+        this.videoPath = p;
+        this.loadVideoInfo(p);
       }
     });
 
-    this.bindBtnGroup(this.els.gammaGroup, 'gamma');
-    this.bindBtnGroup(this.els.deviceGroup, 'device');
-    this.bindBtnGroup(this.els.alphaMethodGroup, 'alphaMethod');
+    this.els.extractFrames.addEventListener('click', () => this.extractFrames());
+    this.els.organizeInput.addEventListener('click', () => this.organizeInput());
 
-    this.els.despillRange.addEventListener('input', () => {
-      this.els.despillVal.textContent = this.els.despillRange.value;
-    });
-    this.els.despeckleRange.addEventListener('input', () => {
-      this.els.despeckleVal.textContent = this.els.despeckleRange.value;
-    });
-    this.els.refinerRange.addEventListener('input', () => {
-      this.els.refinerVal.textContent = parseFloat(this.els.refinerRange.value).toFixed(1);
-    });
+    this.els.generateAlphasBiRefNet.addEventListener('click', () => this.generateAlphas('birefnet'));
+    this.els.generateAlphasGVM.addEventListener('click', () => this.generateAlphas('gvm'));
 
+    this.bindBtnGroup(this.els.deviceGroup);
     this.els.runInference.addEventListener('click', () => this.runInference());
-    this.els.runWizard.addEventListener('click', () => this.runWizard());
-    this.els.listShots.addEventListener('click', () => this.listShots());
+    this.els.assembleVideo.addEventListener('click', () => this.assembleVideo());
+    this.els.logClear.addEventListener('click', () => { this.els.logBody.innerHTML = ''; });
 
-    this.els.logClear.addEventListener('click', () => {
-      this.els.logBody.innerHTML = '';
-    });
-
-    this.bindSectionToggle(this.els.systemToggle, this.els.systemBody);
-    this.bindSectionToggle(this.els.setupToggle, this.els.setupBody);
-    this.bindSectionToggle(this.els.inputToggle, this.els.inputBody);
-    this.bindSectionToggle(this.els.paramsToggle, this.els.paramsBody);
-    this.bindSectionToggle(this.els.alphaGenToggle, this.els.alphaGenBody);
-
-    ipcRenderer.on('ck-run-output', (_event, data) => {
-      this.appendLog(data.text, data.type);
-    });
-    ipcRenderer.on('ck-install-output', (_event, data) => {
-      this.appendLog(data.text, data.type);
-    });
-    ipcRenderer.on('ck-clone-output', (_event, data) => {
-      this.appendLog(data.text, data.type);
-    });
-    ipcRenderer.on('ck-download-output', (_event, data) => {
-      this.appendLog(data.text, data.type);
+    ipcRenderer.on('ck-run-output', (_e, d) => this.appendLog(d.text, d.type));
+    ipcRenderer.on('ck-install-output', (_e, d) => this.appendLog(d.text, d.type));
+    ipcRenderer.on('ck-clone-output', (_e, d) => this.appendLog(d.text, d.type));
+    ipcRenderer.on('ck-download-output', (_e, d) => this.appendLog(d.text, d.type));
+    ipcRenderer.on('ck-extract-progress', (_e, d) => {
+      this.els.videoProgressLabel.textContent = `Ekstrahowano ${d.frame} klatek...`;
     });
   },
 
-  bindBtnGroup(container, key) {
+  bindBtnGroup(container) {
     container.addEventListener('click', (e) => {
       const btn = e.target.closest('.control-btn');
       if (!btn) return;
       container.querySelectorAll('.control-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-    });
-  },
-
-  bindSectionToggle(header, body) {
-    header.addEventListener('click', () => {
-      const collapsed = body.style.display === 'none';
-      body.style.display = collapsed ? '' : 'none';
-      header.querySelector('.ck-section-arrow').innerHTML = collapsed ? '&#9660;' : '&#9654;';
     });
   },
 
@@ -196,13 +168,18 @@ const CK = {
     return files.length > 0 ? files : null;
   },
 
+  setStepState(stepId, state) {
+    const el = document.getElementById(stepId);
+    if (!el) return;
+    el.classList.remove('ck-step-active', 'ck-step-done');
+    if (state) el.classList.add('ck-step-' + state);
+  },
+
   async scanSystem() {
-    this.setStatus('scanning', 'Skanowanie...');
+    this.setStatus('scanning', '...');
     try {
       const info = await ipcRenderer.invoke('ck-detect-system');
       this.sysInfo = info;
-      this.renderSystemInfo(info);
-      this.assessCompatibility(info);
 
       if (info.corridorKeyRepo) {
         this.els.repoPath.value = info.corridorKeyRepo;
@@ -210,428 +187,546 @@ const CK = {
         this.validateRepo();
       }
 
-      this.updateRunButtons();
+      this.updateSteps();
     } catch (err) {
-      this.setStatus('error', 'Błąd skanowania');
-      this.appendLog('Błąd skanowania systemu: ' + err.message, 'stderr');
+      this.setStatus('error', 'Blad skanowania');
     }
-  },
-
-  renderSystemInfo(info) {
-    this.setSysField('ckSysPlatform', info.platform + ' / ' + info.arch, true);
-    this.setSysField('ckSysPython', info.python ? (info.pythonVersion || 'Znaleziono') : 'Nie znaleziono', !!info.python);
-    this.setSysField('ckSysUv', info.uv ? (info.uvVersion || 'Znaleziono') : 'Nie znaleziono', !!info.uv);
-    this.setSysField('ckSysCuda', info.cuda ? ('v' + info.cudaVersion) : 'Brak', !!info.cuda);
-    this.setSysField('ckSysGpu', info.gpu || 'Brak / Nie wykryto', !!info.gpu);
-    this.setSysField('ckSysVram', info.gpuVram || 'N/A', !!info.gpuVram);
-    const repoPath = info.corridorKeyRepo || this.repoPath || null;
-    const models = info.corridorKeyModels || this.getRepoModels();
-    this.setSysField('ckSysRepo', repoPath || 'Nie znaleziono', !!repoPath);
-    this.setSysField('ckSysModels', models ? models.join(', ') : 'Brak', !!models);
-  },
-
-  setSysField(id, text, ok) {
-    const el = document.getElementById(id);
-    el.textContent = text;
-    const item = el.closest('.ck-sys-item');
-    if (item) {
-      item.classList.remove('ck-sys-ok', 'ck-sys-fail', 'ck-sys-warn');
-      item.classList.add(ok ? 'ck-sys-ok' : 'ck-sys-fail');
-    }
-  },
-
-  assessCompatibility(info) {
-    const comp = this.els.compatibility;
-    const checks = [];
-
-    const hasRepo = !!(this.repoPath || info.corridorKeyRepo);
-    const hasModels = !!(info.corridorKeyModels && info.corridorKeyModels.length > 0)
-      || (this.repoPath && fs.existsSync(path.join(this.repoPath, 'CorridorKeyModule', 'checkpoints')));
-
-    if (!info.python) checks.push({ ok: false, msg: 'Python nie jest zainstalowany lub nie jest w PATH. CorridorKey wymaga Python 3.10+.' });
-    if (!info.uv) checks.push({ ok: false, msg: 'uv (menedżer pakietów) nie jest zainstalowany. Pobierz z docs.astral.sh/uv' });
-    if (!info.cuda) checks.push({ ok: null, msg: 'CUDA nie wykryte. Inference będzie działać na CPU (wolniej).' });
-    if (info.gpuVram) {
-      const vramMatch = info.gpuVram.match(/(\d+)\s*Mi?B/i);
-      const vramGb = vramMatch ? parseInt(vramMatch[1]) / 1024 : 0;
-      if (vramGb >= 6) { /* ok, skip */ }
-      else checks.push({ ok: false, msg: `VRAM ${vramGb.toFixed(0)}GB - niewystarczające do GPU inference. Użyj CPU.` });
-    }
-    if (!hasRepo) checks.push({ ok: false, msg: 'Repozytorium CorridorKey nie znalezione. Sklonuj z GitHub lub wskaż ścieżkę ręcznie.' });
-    if (hasRepo && !hasModels) checks.push({ ok: null, msg: 'Model CorridorKey nie pobrany (~300MB). Kliknij "Pobierz model" poniżej.' });
-
-    if (checks.length === 0) {
-      comp.style.display = 'none';
-      this.setStatus('ready', 'Gotowy');
-      return;
-    }
-
-    const allOk = checks.every(c => c.ok !== false);
-    const anyWarn = checks.some(c => c.ok === null);
-    if (allOk && anyWarn) this.setStatus('warning', 'Ostrzeżenia');
-    else if (!allOk) this.setStatus('error', 'Problemy');
-    else this.setStatus('ready', 'Gotowy');
-
-    comp.style.display = 'block';
-    comp.innerHTML = checks.map(c => {
-      const cls = c.ok === true ? 'ck-comp-ok' : c.ok === false ? 'ck-comp-fail' : 'ck-comp-warn';
-      const icon = c.ok === true ? '&#10003;' : c.ok === false ? '&#10007;' : '&#9888;';
-      return `<div class="ck-comp-item ${cls}"><span class="ck-comp-icon">${icon}</span><span>${c.msg}</span></div>`;
-    }).join('');
-  },
-
-  setStatus(type, text) {
-    const badge = this.els.statusBadge;
-    badge.className = 'ck-badge ck-badge-' + type;
-    badge.textContent = text;
   },
 
   async validateRepo() {
     const p = this.repoPath;
     if (!p) return;
-    try {
-      const structure = await ipcRenderer.invoke('ck-check-dir-structure', p);
-      if (!structure) {
-        this.showSetupNote('Nieprawidłowy folder repozytorium.', 'error');
-        return;
-      }
-      const hasClipMgr = fs.existsSync(path.join(p, 'clip_manager.py'));
-      if (!hasClipMgr) {
-        this.showSetupNote('Brak clip_manager.py - to nie wygląda na repozytorium CorridorKey.', 'error');
-        return;
-      }
-      const hasPyproject = fs.existsSync(path.join(p, 'pyproject.toml'));
-      const hasUvLock = fs.existsSync(path.join(p, 'uv.lock'));
-      const ckptDir = path.join(p, 'CorridorKeyModule', 'checkpoints');
-      const hasCheckpoints = fs.existsSync(ckptDir);
-      const modelFiles = hasCheckpoints
-        ? fs.readdirSync(ckptDir).filter(f => f.endsWith('.safetensors') || f.endsWith('.pth'))
-        : [];
-      const hasModel = modelFiles.length > 0;
-
-      let msg = 'Repozytorium wykryte.';
-      if (!hasUvLock) msg += ' Wymaga instalacji zależności.';
-      if (!hasModel) msg += ' Model nie pobrany (~300MB).';
-      this.showSetupNote(msg, hasUvLock && hasModel ? 'ok' : 'warn');
-      this.els.installDeps.disabled = false;
-      this.els.downloadModel.disabled = hasModel;
-      this.updateRunButtons();
-    } catch (err) {
-      this.showSetupNote('Błąd walidacji: ' + err.message, 'error');
-    }
-  },
-
-  showSetupNote(msg, type) {
-    const el = this.els.setupNote;
-    el.style.display = 'block';
-    el.className = 'ck-setup-note ck-note-' + type;
-    el.textContent = msg;
-  },
-
-  async checkInputStructure(dirPath) {
-    const info = await ipcRenderer.invoke('ck-check-dir-structure', dirPath);
-    const el = this.els.inputInfo;
-    if (!info) {
-      el.style.display = 'block';
-      el.className = 'ck-input-info ck-note-error';
-      el.textContent = 'Nie można odczytać folderu.';
+    const hasClipMgr = fs.existsSync(path.join(p, 'clip_manager.py'));
+    if (!hasClipMgr) {
+      this.showNote(this.els.setupNote, 'Brak clip_manager.py - to nie jest repo CorridorKey.', 'error');
       return;
     }
+    const hasUvLock = fs.existsSync(path.join(p, 'uv.lock'));
+    const ckptDir = path.join(p, 'CorridorKeyModule', 'checkpoints');
+    const hasModel = fs.existsSync(ckptDir) && fs.readdirSync(ckptDir).some(f => f.endsWith('.safetensors') || f.endsWith('.pth'));
 
-    let msg = '';
-    if (info.shotDirs.length > 0) {
-      msg = `Znaleziono ${info.shotDirs.length} shot(s): ${info.shotDirs.join(', ')}.`;
-    } else if (info.hasInput) {
-      msg = 'Pliki wejściowe znalezione.';
-      if (info.hasAlphaHint) msg += ' AlphaHint obecny.';
-      else msg += ' Brak AlphaHint - wygeneruj lub dostarcz.';
+    let msg = 'Repozytorium wykryte.';
+    if (!hasUvLock) msg += ' Wymaga instalacji zaleznosci.';
+    if (!hasModel) msg += ' Model nie pobrany (~300MB).';
+    this.showNote(this.els.setupNote, msg, hasUvLock && hasModel ? 'ok' : 'warn');
+    this.els.installDeps.disabled = false;
+    this.els.downloadModel.disabled = hasModel;
+    this.updateSteps();
+  },
+
+  updateSteps() {
+    const repoValid = !!this.repoPath && fs.existsSync(path.join(this.repoPath, 'clip_manager.py'));
+    const hasModel = this.repoPath && this.getRepoModels();
+    const setupDone = repoValid && hasModel;
+
+    this.setStepState('ckStepSetup', setupDone ? 'done' : 'active');
+
+    this.els.organizeInput.disabled = !this.inputPath || !this.repoPath;
+
+    const inputReady = !!this.shotDir && fs.existsSync(this.shotDir);
+    this.setStepState('ckStepInput', inputReady ? 'done' : (this.inputPath ? 'active' : ''));
+
+    const hasAlpha = inputReady && fs.existsSync(path.join(this.shotDir, 'AlphaHint')) &&
+      fs.readdirSync(path.join(this.shotDir, 'AlphaHint')).some(f => /\.(png|jpg|jpeg|exr)$/i.test(f));
+    this.setStepState('ckStepAlpha', hasAlpha ? 'done' : (inputReady ? 'active' : ''));
+
+    this.els.generateAlphasBiRefNet.disabled = !inputReady || this.running;
+    this.els.generateAlphasGVM.disabled = !inputReady || this.running;
+    this.els.runInference.disabled = !inputReady || !this.repoPath || this.running;
+
+    if (hasAlpha) {
+      this.setStepState('ckStepProcess', 'active');
     } else {
-      msg = 'Brak plików wejściowych w folderze. Umieść pliki w podfolderze Input/ lub użyj struktury shot/Input.';
+      this.setStepState('ckStepProcess', '');
     }
 
+    if (setupDone && inputReady) this.setStatus('ready', 'Gotowy');
+    else if (setupDone) this.setStatus('warning', 'Wybierz input');
+    else this.setStatus('error', 'Setup wymagany');
+  },
+
+  setStatus(type, text) {
+    const b = this.els.statusBadge;
+    b.className = 'ck-badge ck-badge-' + type;
+    b.textContent = text;
+  },
+
+  showNote(el, msg, type) {
     el.style.display = 'block';
-    el.className = 'ck-input-info ck-note-' + (info.hasInput ? 'ok' : 'warn');
+    el.className = (el.id.includes('setup') ? 'ck-setup-note' : 'ck-input-info') + ' ck-note-' + type;
     el.textContent = msg;
   },
 
-  updateRunButtons() {
-    const canRun = this.repoPath && this.sysInfo;
-    this.els.runInference.disabled = !canRun || this.running;
-    this.els.runWizard.disabled = !canRun || this.running;
-    this.els.listShots.disabled = !canRun || this.running;
+  showWsProgress(text) {
+    this.els.wsProgress.style.display = 'flex';
+    this.els.wsProgressFill.style.animation = 'ck-indeterminate 1.5s infinite';
+    this.els.wsProgressLabel.textContent = text;
   },
 
-  showLog() {
-    this.els.previewPlaceholder.style.display = 'none';
-    this.els.previewLog.style.display = 'flex';
+  hideWsProgress() {
+    this.els.wsProgress.style.display = 'none';
+    this.els.wsProgressFill.style.animation = '';
+  },
+
+  showSidebarProgress(text) {
+    this.els.progress.style.display = 'flex';
+    this.els.progressBar.style.width = '100%';
+    this.els.progressBar.style.animation = 'ck-indeterminate 1.5s infinite';
+    this.els.progressLabel.textContent = text;
+  },
+
+  hideSidebarProgress() {
+    this.els.progress.style.display = 'none';
+    this.els.progressBar.style.animation = '';
   },
 
   appendLog(text, type) {
-    this.showLog();
+    if (/^\s*$/.test(text)) return;
+    if (/Materializing param=|Loading weights:|Fetching \d+ files/i.test(text)) return;
+    if (type === 'stderr' && /UserWarning|warnings\.warn/i.test(text)) return;
+    this.switchTab('log');
     const line = document.createElement('div');
     line.className = 'ck-log-line ck-log-' + (type === 'stderr' ? 'err' : 'out');
-    line.textContent = text;
+    line.textContent = text.replace(/\r/g, '');
     this.els.logBody.appendChild(line);
     this.els.logBody.scrollTop = this.els.logBody.scrollHeight;
+  },
+
+  getImageFiles(dirPath) {
+    try {
+      return fs.readdirSync(dirPath).filter(f => /\.(png|jpg|jpeg|bmp)$/i.test(f)).sort();
+    } catch { return []; }
+  },
+
+  pickSamples(files, count) {
+    if (files.length <= count) return files;
+    const step = files.length / count;
+    const result = [];
+    for (let i = 0; i < count; i++) result.push(files[Math.floor(i * step)]);
+    if (result[result.length - 1] !== files[files.length - 1]) result.push(files[files.length - 1]);
+    return result;
+  },
+
+  getActualInputDir() {
+    if (!this.inputPath) return null;
+    const inputSub = path.join(this.inputPath, 'Input');
+    if (fs.existsSync(inputSub)) return inputSub;
+    try {
+      const entries = fs.readdirSync(this.inputPath);
+      if (entries.some(f => /\.(png|jpg|jpeg|bmp|exr|tiff|tif)$/i.test(f))) return this.inputPath;
+      for (const d of entries) {
+        const subInput = path.join(this.inputPath, d, 'Input');
+        if (fs.existsSync(subInput)) return subInput;
+      }
+    } catch {}
+    return null;
+  },
+
+  loadInputThumbnails() {
+    const dirPath = this.getActualInputDir();
+    const idle = document.getElementById('ckWsIdle');
+    const content = document.getElementById('ckWsInputContent');
+    const infoBar = document.getElementById('ckInputInfoBar');
+    const grid = document.getElementById('ckInputGrid');
+
+    if (!dirPath) {
+      idle.style.display = '';
+      content.style.display = 'none';
+      return;
+    }
+    const files = this.getImageFiles(dirPath);
+    if (files.length === 0) { idle.style.display = ''; content.style.display = 'none'; return; }
+
+    idle.style.display = 'none';
+    content.style.display = '';
+    infoBar.textContent = `${files.length} klatek | ${path.basename(dirPath)}`;
+    grid.innerHTML = '';
+    for (const f of this.pickSamples(files, 8)) {
+      const url = 'file:///' + path.join(dirPath, f).replace(/\\/g, '/');
+      const el = document.createElement('div');
+      el.className = 'ck-ws-thumb';
+      el.innerHTML = `<img src="${url}" loading="lazy"/><span>${f}</span>`;
+      el.addEventListener('click', () => require('child_process').exec(`explorer "${dirPath}"`));
+      grid.appendChild(el);
+    }
+    this.switchTab('input');
+  },
+
+  loadOutputThumbnails() {
+    const compDir = this.findOutputDir('Comp');
+    if (!compDir) return;
+    const files = this.getImageFiles(compDir);
+    if (files.length === 0) return;
+
+    document.getElementById('ckOutputEmpty').style.display = 'none';
+    const content = document.getElementById('ckWsOutputContent');
+    content.style.display = '';
+    document.getElementById('ckOutputInfoBar').textContent = `Comp | ${files.length} klatek`;
+
+    const grid = document.getElementById('ckOutputGrid');
+    grid.innerHTML = '';
+    for (const f of this.pickSamples(files, 8)) {
+      const url = 'file:///' + path.join(compDir, f).replace(/\\/g, '/');
+      const el = document.createElement('div');
+      el.className = 'ck-ws-thumb';
+      el.innerHTML = `<img src="${url}" loading="lazy"/><span>${f}</span>`;
+      el.addEventListener('click', () => require('child_process').exec(`explorer "${compDir}"`));
+      grid.appendChild(el);
+    }
+    this.switchTab('output');
+  },
+
+  findOutputDir(name) {
+    if (!this.shotDir) return null;
+    const d = path.join(this.shotDir, 'Output', name);
+    if (fs.existsSync(d)) return d;
+    return null;
+  },
+
+  async loadVideoInfo(videoPath) {
+    const info = await ipcRenderer.invoke('ck-video-info', { videoPath });
+    if (!info) { this.els.videoSection.style.display = 'none'; return; }
+    this.videoInfo = info;
+    const approxFrames = info.durationSec && info.fps ? Math.round(info.durationSec * info.fps) : '?';
+    this.els.videoInfo.textContent = `${info.width || '?'}x${info.height || '?'} | ${info.duration || '?'} | ${info.fps || '?'} fps | ~${approxFrames} klatek`;
+    this.els.videoSection.style.display = 'flex';
+    this.els.extractFrames.disabled = false;
+    this.els.organizeInput.disabled = !this.repoPath;
+
+    document.getElementById('ckWsIdle').style.display = 'none';
+    document.getElementById('ckWsInputContent').style.display = '';
+    document.getElementById('ckInputInfoBar').textContent = `Wideo: ${path.basename(videoPath)}`;
+    document.getElementById('ckInputGrid').innerHTML = '';
+    this.switchTab('input');
+  },
+
+  async extractFrames() {
+    if (!this.videoPath || this.running) return;
+    this.running = true;
+    this.els.extractFrames.disabled = true;
+    this.els.videoProgress.style.display = 'block';
+    this.els.videoProgressBar.style.width = '100%';
+    this.els.videoProgressBar.style.animation = 'ck-indeterminate 1.5s infinite';
+    this.els.videoProgressLabel.textContent = 'Ekstrakcja klatek...';
+    this.showWsProgress('Ekstrakcja klatek...');
+
+    const videoName = path.basename(this.videoPath, path.extname(this.videoPath));
+    const outputDir = path.join(path.dirname(this.videoPath), videoName + '_frames');
+
+    try {
+      const result = await ipcRenderer.invoke('ck-extract-frames', {
+        videoPath: this.videoPath, outputDir, fps: this.videoInfo ? this.videoInfo.fps : null,
+      });
+      if (result.code === 0 || fs.existsSync(path.join(outputDir, 'Input'))) {
+        this.inputPath = outputDir;
+        this.els.inputPath.value = outputDir;
+        this.els.videoSection.style.display = 'none';
+        this.loadInputThumbnails();
+        this.els.organizeInput.disabled = !this.repoPath;
+      } else {
+        this.appendLog('BLAD: ' + (result.stderr || '').slice(0, 200), 'stderr');
+        this.els.extractFrames.disabled = false;
+      }
+    } catch (err) {
+      this.appendLog('Blad: ' + err.message, 'stderr');
+      this.els.extractFrames.disabled = false;
+    } finally {
+      this.running = false;
+      this.els.videoProgressBar.style.animation = '';
+      this.els.videoProgress.style.display = 'none';
+      this.hideWsProgress();
+      this.updateSteps();
+    }
+  },
+
+  organizeInput() {
+    if (!this.inputPath) { this.showNote(this.els.inputInfo, 'Wybierz materiał wejściowy.', 'err'); return; }
+    if (!this.repoPath) { this.showNote(this.els.inputInfo, 'Najpierw ustaw repo CorridorKey (Krok 1).', 'err'); return; }
+
+    try {
+      const clipsDir = path.join(this.repoPath, 'ClipsForInference');
+      fs.mkdirSync(clipsDir, { recursive: true });
+
+      const stat = fs.statSync(this.inputPath);
+      let shotName, shotDir;
+
+      if (stat.isDirectory()) {
+        const hasInputSub = fs.existsSync(path.join(this.inputPath, 'Input'));
+        shotName = path.basename(this.inputPath).replace(/[^a-zA-Z0-9_\-.]/g, '_');
+        shotDir = path.join(clipsDir, shotName);
+
+        if (fs.existsSync(shotDir)) {
+          try {
+            if (fs.lstatSync(shotDir).isSymbolicLink()) fs.unlinkSync(shotDir);
+            else fs.rmSync(shotDir, { recursive: true, force: true });
+          } catch {}
+        }
+
+        if (hasInputSub) {
+          fs.symlinkSync(this.inputPath, shotDir, 'junction');
+        } else {
+          fs.mkdirSync(shotDir, { recursive: true });
+          fs.symlinkSync(this.inputPath, path.join(shotDir, 'Input'), 'junction');
+          if (!fs.existsSync(path.join(shotDir, 'AlphaHint'))) {
+            fs.mkdirSync(path.join(shotDir, 'AlphaHint'), { recursive: true });
+          }
+        }
+      } else {
+        shotName = path.basename(this.inputPath, path.extname(this.inputPath)).replace(/[^a-zA-Z0-9_\-.]/g, '_');
+        shotDir = path.join(clipsDir, shotName);
+        if (fs.existsSync(shotDir)) { try { fs.rmSync(shotDir, { recursive: true, force: true }); } catch {} }
+        fs.mkdirSync(shotDir, { recursive: true });
+        fs.copyFileSync(this.inputPath, path.join(shotDir, `Input${path.extname(this.inputPath)}`));
+        if (!fs.existsSync(path.join(shotDir, 'AlphaHint'))) {
+          fs.mkdirSync(path.join(shotDir, 'AlphaHint'), { recursive: true });
+        }
+      }
+
+      this.shotDir = shotDir;
+      this.showNote(this.els.inputInfo, `Przygotowano: ${shotName} → ClipsForInference/${shotName}`, 'ok');
+    } catch (err) {
+      this.appendLog('Blad organizacji: ' + err.message, 'stderr');
+      this.showNote(this.els.inputInfo, 'Blad: ' + err.message, 'err');
+    }
+    this.updateSteps();
+  },
+
+  async generateAlphas(method) {
+    if (!this.repoPath || this.running) {
+      if (!this.repoPath) this.appendLog('Brak repo — ustaw CorridorKey (Krok 1).', 'stderr');
+      return;
+    }
+    this.running = true;
+    this.updateSteps();
+    this.showWsProgress(`Generowanie Alpha (${method})...`);
+    this.showSidebarProgress(`Generowanie Alpha (${method})...`);
+    this.setStatus('scanning', 'Alpha...');
+    this.appendLog(`Generowanie Alpha (${method})...`, 'stdout');
+
+    const device = this.getActiveBtnValue(this.els.deviceGroup) || 'auto';
+    try {
+      let result;
+      if (method === 'birefnet') {
+        result = await ipcRenderer.invoke('ck-run-birefnet', {
+          repoPath: this.repoPath,
+          device,
+          usage: 'General',
+        });
+      } else {
+        const weightsDir = path.join(this.repoPath, 'gvm_core', 'weights');
+        if (!fs.existsSync(path.join(weightsDir, 'vae', 'config.json'))) {
+          this.appendLog('Brak wag GVM — pobierz wagi do gvm_core/weights/{vae,scheduler,unet}/', 'stderr');
+          this.showNote(this.els.alphaInfo, 'Brak wag GVM. Sprawdz instrukcje.', 'err');
+          this.running = false;
+          this.hideWsProgress();
+          this.hideSidebarProgress();
+          this.updateSteps();
+          return;
+        }
+        result = await ipcRenderer.invoke('ck-run', {
+          repoPath: this.repoPath,
+          action: 'generate_alphas',
+          args: `--device ${device}`,
+        });
+      }
+
+      const hasError = result.stderr && /ERROR/i.test(result.stderr);
+      if (result.code === 0 && !hasError) {
+        this.setStatus('ready', 'Alpha gotowe');
+        if (this.els.alphaInfo) this.showNote(this.els.alphaInfo, 'Alpha wygenerowane.', 'ok');
+        this.appendLog('Alpha wygenerowane pomyslnie.', 'stdout');
+      } else {
+        this.setStatus('error', 'Blad');
+        const errMsg = hasError
+          ? result.stderr.split('\n').filter(l => /ERROR/i.test(l)).join('\n')
+          : result.stderr;
+        this.appendLog('BLAD: ' + errMsg, 'stderr');
+        if (this.els.alphaInfo) this.showNote(this.els.alphaInfo, 'Blad generowania Alpha.', 'err');
+      }
+    } catch (err) {
+      this.setStatus('error', 'Blad');
+      this.appendLog('Blad: ' + err.message, 'stderr');
+    } finally {
+      this.running = false;
+      this.hideWsProgress();
+      this.hideSidebarProgress();
+      this.updateSteps();
+    }
   },
 
   async cloneRepo() {
     if (this.running) return;
     const targetDir = await ipcRenderer.invoke('ck-select-dir');
     if (!targetDir) return;
-
     this.running = true;
-    this.updateRunButtons();
     this.els.cloneProgress.style.display = 'block';
     this.els.cloneProgressBar.style.width = '100%';
     this.els.cloneProgressBar.style.animation = 'ck-indeterminate 1.5s infinite';
-    this.els.cloneProgressLabel.textContent = 'Klonowanie CorridorKey z GitHub...';
-    this.setStatus('scanning', 'Klonowanie...');
-
+    this.els.cloneProgressLabel.textContent = 'Klonowanie...';
+    this.showWsProgress('Klonowanie repozytorium...');
     try {
       const result = await ipcRenderer.invoke('ck-clone-repo', { targetDir });
       if (result.code === 0) {
         this.els.repoPath.value = result.destPath;
         this.repoPath = result.destPath;
-        this.setStatus('ready', 'Sklonowano');
-        this.showSetupNote('Repozytorium sklonowane pomyślnie. Możesz teraz zainstalować zależności.', 'ok');
+        this.showNote(this.els.setupNote, 'Sklonowano. Zainstaluj deps.', 'ok');
         this.validateRepo();
       } else {
-        this.setStatus('error', 'Błąd klonowania');
-        this.appendLog('BŁĄD: ' + (result.stderr || 'Nieznany błąd'), 'stderr');
-        this.showSetupNote('Błąd klonowania: ' + (result.stderr || '').slice(0, 120), 'error');
+        this.appendLog('BLAD: ' + (result.stderr || ''), 'stderr');
       }
-    } catch (err) {
-      this.setStatus('error', 'Błąd');
-      this.appendLog('Błąd: ' + err.message, 'stderr');
-    } finally {
+    } catch (err) { this.appendLog('Blad: ' + err.message, 'stderr'); }
+    finally {
       this.running = false;
-      this.updateRunButtons();
       this.els.cloneProgressBar.style.animation = '';
       this.els.cloneProgress.style.display = 'none';
+      this.hideWsProgress();
+      this.updateSteps();
     }
   },
 
   async downloadModel() {
     if (!this.repoPath || this.running) return;
     this.running = true;
-    this.updateRunButtons();
     this.els.downloadModel.disabled = true;
-    this.setStatus('scanning', 'Pobieranie modelu...');
-    this.els.progress.style.display = 'flex';
-    this.els.progressBar.style.width = '100%';
-    this.els.progressBar.style.animation = 'ck-indeterminate 1.5s infinite';
-    this.els.progressLabel.textContent = 'Pobieranie CorridorKey_v1.0.safetensors (~300MB)...';
-
+    this.showWsProgress('Pobieranie modelu (~300MB)...');
     try {
       const result = await ipcRenderer.invoke('ck-download-model', { repoPath: this.repoPath });
       if (result.code === 0) {
-        this.setStatus('ready', 'Model pobrany');
-        this.showSetupNote('Model pobrany pomyślnie.', 'ok');
+        this.showNote(this.els.setupNote, 'Model pobrany.', 'ok');
         this.scanSystem();
       } else {
-        this.setStatus('error', 'Błąd pobierania');
-        this.appendLog('BŁĄD: ' + (result.stderr || 'Nieznany błąd'), 'stderr');
-        this.showSetupNote('Błąd pobierania modelu. Sprawdź log.', 'error');
+        this.appendLog('BLAD: ' + (result.stderr || ''), 'stderr');
         this.els.downloadModel.disabled = false;
       }
-    } catch (err) {
-      this.setStatus('error', 'Błąd');
-      this.appendLog('Błąd: ' + err.message, 'stderr');
-      this.els.downloadModel.disabled = false;
-    } finally {
-      this.running = false;
-      this.updateRunButtons();
-      this.els.progressBar.style.animation = '';
-    }
+    } catch (err) { this.appendLog('Blad: ' + err.message, 'stderr'); this.els.downloadModel.disabled = false; }
+    finally { this.running = false; this.hideWsProgress(); this.updateSteps(); }
   },
 
   async installDeps() {
     if (!this.repoPath || this.running) return;
     this.running = true;
-    this.updateRunButtons();
-    this.setStatus('scanning', 'Instalacja...');
-    this.els.progress.style.display = 'flex';
-    this.els.progressBar.style.width = '100%';
-    this.els.progressBar.style.animation = 'ck-indeterminate 1.5s infinite';
-    this.els.progressLabel.textContent = 'Instalacja zależności...';
-
+    this.showWsProgress('Instalacja zaleznosci...');
     try {
       const result = await ipcRenderer.invoke('ck-run-install', { repoPath: this.repoPath });
       if (result.code === 0) {
-        this.setStatus('ready', 'Zainstalowano');
-        this.showSetupNote('Zależności zainstalowane pomyślnie.', 'ok');
+        this.showNote(this.els.setupNote, 'Zaleznosci zainstalowane.', 'ok');
         this.scanSystem();
       } else {
-        this.setStatus('error', 'Błąd instalacji');
-        this.showSetupNote('Błąd instalacji. Sprawdź console output.', 'error');
-        this.appendLog('BŁĄD: ' + result.stderr, 'stderr');
+        this.showNote(this.els.setupNote, 'Blad instalacji.', 'error');
+        this.appendLog('BLAD: ' + result.stderr, 'stderr');
       }
-    } catch (err) {
-      this.setStatus('error', 'Błąd');
-      this.appendLog('Błąd: ' + err.message, 'stderr');
-    } finally {
-      this.running = false;
-      this.updateRunButtons();
-      this.els.progressBar.style.animation = '';
-    }
+    } catch (err) { this.appendLog('Blad: ' + err.message, 'stderr'); }
+    finally { this.running = false; this.hideWsProgress(); this.updateSteps(); }
   },
 
   async runInference() {
-    if (!this.repoPath || this.running) return;
-    if (!this.inputPath) {
-      this.showSetupNote('Wybierz folder/plik wejściowy przed uruchomieniem.', 'error');
+    if (!this.repoPath) {
+      this.showNote(this.els.inputInfo, 'Najpierw ustaw repo CorridorKey (Krok 1).', 'err');
+      this.appendLog('Nie mozna uruchomic inference — brak repo CorridorKey.', 'stderr');
       return;
     }
-
+    if (!this.shotDir) {
+      this.showNote(this.els.inputInfo, 'Najpierw przygotuj materiał wejściowy (Krok 2).', 'err');
+      this.appendLog('Nie mozna uruchomic inference — brak przygotowanego shotu. Kliknij "Przygotuj do inference" w Kroku 2.', 'stderr');
+      return;
+    }
+    if (this.running) {
+      this.appendLog('Inna operacja w toku, poczekaj...', 'stderr');
+      return;
+    }
     this.running = true;
-    this.updateRunButtons();
-    this.els.progress.style.display = 'flex';
-    this.els.progressBar.style.width = '100%';
-    this.els.progressBar.style.animation = 'ck-indeterminate 1.5s infinite';
-    this.els.progressLabel.textContent = 'Inference w toku...';
+    this.updateSteps();
     this.setStatus('scanning', 'Inference...');
+    this.showWsProgress('Inference w toku...');
+    this.showSidebarProgress('Inference w toku...');
+    this.appendLog('Uruchamiam inference...', 'stdout');
 
-    const device = this.getActiveBtnValue(this.els.deviceGroup);
-    const gamma = this.getActiveBtnValue(this.els.gammaGroup);
-    const despill = this.els.despillRange.value;
-    const despeckle = this.els.autoDespeckle.checked ? this.els.despeckleRange.value : '0';
-    const refiner = this.els.refinerRange.value;
-
-    let args = `--win_path "${this.inputPath}" --device ${device}`;
-    if (gamma === 'linear') args += ' --gamma linear';
-    if (despill !== '0') args += ` --despill ${despill}`;
-    if (despeckle !== '0') args += ` --despeckle ${despeckle}`;
-    if (refiner !== '1.0') args += ` --refiner ${refiner}`;
-
+    const device = this.getActiveBtnValue(this.els.deviceGroup) || 'auto';
     try {
       const result = await ipcRenderer.invoke('ck-run', {
         repoPath: this.repoPath,
         action: 'run_inference',
-        args
+        args: `--device ${device}`,
       });
-
-      if (result.code === 0) {
-        this.setStatus('ready', 'Zakończono');
-        this.els.progressLabel.textContent = 'Inference zakończona pomyślnie!';
+      const hasError = result.stderr && /ERROR/i.test(result.stderr);
+      if (result.code === 0 && !hasError) {
+        this.setStatus('ready', 'Zakonczono');
+        this.hideWsProgress();
+        this.hideSidebarProgress();
+        this.appendLog('Inference zakonczona pomyslnie!', 'stdout');
         this.scanOutputDir();
+        this.loadOutputThumbnails();
       } else {
-        this.setStatus('error', 'Błąd inference');
-        this.els.progressLabel.textContent = 'Błąd podczas inference.';
-        this.appendLog('BŁĄD: ' + result.stderr, 'stderr');
+        this.setStatus('error', 'Blad');
+        this.showWsProgress('Blad inference.');
+        this.showSidebarProgress('Blad inference.');
+        const errMsg = hasError
+          ? result.stderr.split('\n').filter(l => /ERROR/i.test(l)).join('\n')
+          : result.stderr;
+        this.appendLog('BLAD: ' + errMsg, 'stderr');
       }
     } catch (err) {
-      this.setStatus('error', 'Błąd');
-      this.appendLog('Błąd: ' + err.message, 'stderr');
+      this.setStatus('error', 'Blad');
+      this.appendLog('Blad: ' + err.message, 'stderr');
     } finally {
       this.running = false;
-      this.updateRunButtons();
-      this.els.progressBar.style.animation = '';
-    }
-  },
-
-  async runWizard() {
-    if (!this.repoPath || this.running) return;
-    this.running = true;
-    this.updateRunButtons();
-    this.setStatus('scanning', 'Wizard...');
-
-    const inputPath = this.inputPath || '';
-    const args = inputPath ? `--win_path "${inputPath}"` : '';
-
-    try {
-      const result = await ipcRenderer.invoke('ck-run', {
-        repoPath: this.repoPath,
-        action: 'wizard',
-        args
-      });
-      this.appendLog('Wizard zakończony (code: ' + result.code + ')', 'stdout');
-    } catch (err) {
-      this.appendLog('Błąd: ' + err.message, 'stderr');
-    } finally {
-      this.running = false;
-      this.updateRunButtons();
-      this.setStatus('ready', 'Gotowy');
-    }
-  },
-
-  async listShots() {
-    if (!this.repoPath || this.running) return;
-    this.running = true;
-    this.updateRunButtons();
-
-    try {
-      const result = await ipcRenderer.invoke('ck-run', {
-        repoPath: this.repoPath,
-        action: 'list',
-        args: ''
-      });
-      this.appendLog(result.stdout || '(brak danych)', 'stdout');
-      if (result.stderr) this.appendLog(result.stderr, 'stderr');
-    } catch (err) {
-      this.appendLog('Błąd: ' + err.message, 'stderr');
-    } finally {
-      this.running = false;
-      this.updateRunButtons();
+      this.hideSidebarProgress();
+      this.updateSteps();
     }
   },
 
   async scanOutputDir() {
-    if (!this.inputPath) return;
-    try {
-      const entries = await ipcRenderer.invoke('ck-read-dir', this.inputPath);
-      if (!entries) return;
-
-      const outputDirs = ['Matte', 'FG', 'Processed', 'Comp'];
-      const found = entries.filter(e => outputDirs.includes(e.name) && e.isDir);
-
-      if (found.length === 0) {
-        const subDirs = entries.filter(e => e.isDir);
-        for (const sd of subDirs) {
-          const subEntries = await ipcRenderer.invoke('ck-read-dir', sd.path);
-          if (subEntries) {
-            const subFound = subEntries.filter(e => outputDirs.includes(e.name) && e.isDir);
-            if (subFound.length > 0) {
-              this.renderOutputs(sd.path, subFound);
-              return;
-            }
-          }
-        }
-      } else {
-        this.renderOutputs(this.inputPath, found);
-      }
-    } catch (err) {
-      this.appendLog('Błąd skanowania output: ' + err.message, 'stderr');
-    }
+    if (!this.shotDir) return;
+    const outputDir = path.join(this.shotDir, 'Output');
+    if (!fs.existsSync(outputDir)) return;
+    const entries = fs.readdirSync(outputDir).map(name => {
+      const fullPath = path.join(outputDir, name);
+      return { name, path: fullPath, isDir: fs.statSync(fullPath).isDirectory() };
+    });
+    const outputDirs = ['Matte', 'FG', 'Processed', 'Comp'];
+    const found = entries.filter(e => outputDirs.includes(e.name) && e.isDir);
+    if (found.length > 0) this.renderOutputs(found);
   },
 
-  renderOutputs(basePath, dirs) {
+  renderOutputs(dirs) {
     this.els.outputSection.style.display = 'block';
     this.els.outputGrid.innerHTML = '';
-
-    const labels = {
-      'Matte': 'Alpha Matte (EXR)',
-      'FG': 'Straight Foreground (EXR)',
-      'Processed': 'Premultiplied RGBA (EXR)',
-      'Comp': 'Preview Composite (PNG)'
-    };
-
+    const labels = { 'Matte': 'Alpha Matte (EXR)', 'FG': 'Foreground (EXR)', 'Processed': 'Premultiplied RGBA (EXR)', 'Comp': 'Preview Composite (PNG)' };
     for (const dir of dirs) {
       const card = document.createElement('div');
       card.className = 'ck-output-card';
-      card.innerHTML = `
-        <div class="ck-output-card-label">${labels[dir.name] || dir.name}</div>
-        <div class="ck-output-card-path">${dir.path}</div>
-        <button class="btn btn-ghost ck-open-dir" data-path="${dir.path}">Otwórz folder</button>
-      `;
-      card.querySelector('.ck-open-dir').addEventListener('click', () => {
-        require('child_process').exec(`explorer "${dir.path}"`);
-      });
+      card.innerHTML = `<div class="ck-output-card-label">${labels[dir.name] || dir.name}</div><div class="ck-output-card-path">${dir.path}</div><button class="btn btn-ghost ck-open-dir">Otworz</button>`;
+      card.querySelector('.ck-open-dir').addEventListener('click', () => require('child_process').exec(`explorer "${dir.path}"`));
       this.els.outputGrid.appendChild(card);
     }
+    if (dirs.find(d => d.name === 'Comp')) this.els.assembleVideo.style.display = '';
+  },
+
+  async assembleVideo() {
+    const compDir = this.findOutputDir('Comp');
+    if (!compDir) { this.appendLog('Brak katalogu Comp.', 'stderr'); return; }
+    const saveResult = await ipcRenderer.invoke('save-dialog', {
+      defaultName: path.basename(this.shotDir || 'output') + '_comp.mp4',
+      filters: [{ name: 'MP4', extensions: ['mp4'] }]
+    });
+    if (!saveResult) return;
+    this.running = true;
+    this.showWsProgress('Składanie wideo...');
+    this.showSidebarProgress('Składanie wideo...');
+    this.appendLog('Składanie wideo z Comp...', 'stdout');
+    try {
+      const result = await ipcRenderer.invoke('ck-assemble-video', {
+        framesDir: compDir, savePath: saveResult, fps: this.videoInfo ? this.videoInfo.fps : 24,
+      });
+      if (result.code === 0) {
+        this.appendLog('Wideo zapisane: ' + saveResult, 'stdout');
+        require('child_process').exec(`explorer "${path.dirname(saveResult)}"`);
+      } else {
+        this.appendLog('BLAD: ' + result.stderr, 'stderr');
+      }
+    } catch (err) { this.appendLog('Blad: ' + err.message, 'stderr'); }
+    finally { this.running = false; this.hideWsProgress(); this.hideSidebarProgress(); this.updateSteps(); }
   }
 };
 
-document.addEventListener('DOMContentLoaded', () => {
-  CK.init();
-});
+document.addEventListener('DOMContentLoaded', () => CK.init());
