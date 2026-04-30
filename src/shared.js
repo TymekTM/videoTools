@@ -33,6 +33,21 @@ function formatNumber(val, decimals) {
   return str.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 }
 
+var _exportCssCache = null;
+function loadExportCss() {
+  if (_exportCssCache) return _exportCssCache;
+  var fs = require('fs');
+  var path = require('path');
+  var dir = __dirname;
+  var files = ['base.css', 'newspaper.css', 'chat.css', 'typing.css', 'map.css', 'chart.css', 'notification.css', 'corridorkey.css'];
+  var parts = [];
+  for (var i = 0; i < files.length; i++) {
+    try { parts.push(fs.readFileSync(path.join(dir, files[i]), 'utf8')); } catch (_) {}
+  }
+  _exportCssCache = parts.join('\n');
+  return _exportCssCache;
+}
+
 function makeSetExporting(prefix) {
   return function (active, label, pct) {
     var prog = $('#' + prefix + 'ExportProgress');

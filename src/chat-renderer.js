@@ -511,7 +511,7 @@ function initChat() {
     setExporting(true, 'Eksportuję PNG...');
     await ipcRenderer.invoke('bg-init', {
       width: w, height: h,
-      css: require('path').join(__dirname, 'styles.css')
+      css: loadExportCss()
     });
 
     const p = chatState.platform;
@@ -569,7 +569,7 @@ function initChat() {
     setExporting(true, 'Przygotowuję...');
     await ipcRenderer.invoke('bg-init', {
       width: w, height: h,
-      css: require('path').join(__dirname, 'styles.css')
+      css: loadExportCss()
     });
 
     const p = chatState.platform;

@@ -552,7 +552,7 @@ function initTyping() {
     const totalFrames = Math.max(1, Math.ceil(totalDuration / 1000 * fps));
 
     setExporting(true, 'Inicjalizacja...');
-    await ipcRenderer.invoke('bg-init', { width: w, height: h, css: require('path').join(__dirname, 'styles.css') });
+    await ipcRenderer.invoke('bg-init', { width: w, height: h, css: loadExportCss() });
 
     const frames = [];
     let prevHtml = null;
