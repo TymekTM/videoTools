@@ -31,6 +31,7 @@ const CK = {
       cloneProgress: document.getElementById('ckCloneProgress'),
       cloneProgressBar: document.getElementById('ckCloneProgressBar'),
       cloneProgressLabel: document.getElementById('ckCloneProgressLabel'),
+      downloadModel: document.getElementById('ckDownloadModel'),
       repoPath: document.getElementById('ckRepoPath'),
       browseRepo: document.getElementById('ckBrowseRepo'),
       autoDetect: document.getElementById('ckAutoDetect'),
@@ -90,6 +91,8 @@ const CK = {
     this.els.scanBtn.addEventListener('click', () => this.scanSystem());
 
     this.els.cloneRepo.addEventListener('click', () => this.cloneRepo());
+
+    this.els.downloadModel.addEventListener('click', () => this.downloadModel());
 
     this.els.browseRepo.addEventListener('click', async () => {
       const p = await ipcRenderer.invoke('ck-select-repo');
@@ -158,6 +161,9 @@ const CK = {
     ipcRenderer.on('ck-clone-output', (_event, data) => {
       this.appendLog(data.text, data.type);
     });
+    ipcRenderer.on('ck-download-output', (_event, data) => {
+      this.appendLog(data.text, data.type);
+    });
   },
 
   bindBtnGroup(container, key) {
@@ -180,6 +186,14 @@ const CK = {
   getActiveBtnValue(container) {
     const active = container.querySelector('.control-btn.active');
     return active ? Object.values(active.dataset)[0] : null;
+  },
+
+  getRepoModels() {
+    if (!this.repoPath) return null;
+    const ckptDir = path.join(this.repoPath, 'CorridorKeyModule', 'checkpoints');
+    if (!fs.existsSync(ckptDir)) return null;
+    const files = fs.readdirSync(ckptDir).filter(f => f.endsWith('.safetensors') || f.endsWith('.pth'));
+    return files.length > 0 ? files : null;
   },
 
   async scanSystem() {
@@ -210,8 +224,10 @@ const CK = {
     this.setSysField('ckSysCuda', info.cuda ? ('v' + info.cudaVersion) : 'Brak', !!info.cuda);
     this.setSysField('ckSysGpu', info.gpu || 'Brak / Nie wykryto', !!info.gpu);
     this.setSysField('ckSysVram', info.gpuVram || 'N/A', !!info.gpuVram);
-    this.setSysField('ckSysRepo', info.corridorKeyRepo || 'Nie znaleziono', !!info.corridorKeyRepo);
-    this.setSysField('ckSysModels', info.corridorKeyModels ? info.corridorKeyModels.join(', ') : 'Brak', !!info.corridorKeyModels);
+    const repoPath = info.corridorKeyRepo || this.repoPath || null;
+    const models = info.corridorKeyModels || this.getRepoModels();
+    this.setSysField('ckSysRepo', repoPath || 'Nie znaleziono', !!repoPath);
+    this.setSysField('ckSysModels', models ? models.join(', ') : 'Brak', !!models);
   },
 
   setSysField(id, text, ok) {
@@ -286,13 +302,19 @@ const CK = {
       }
       const hasPyproject = fs.existsSync(path.join(p, 'pyproject.toml'));
       const hasUvLock = fs.existsSync(path.join(p, 'uv.lock'));
-      const hasCheckpoints = fs.existsSync(path.join(p, 'CorridorKeyModule', 'checkpoints'));
+      const ckptDir = path.join(p, 'CorridorKeyModule', 'checkpoints');
+      const hasCheckpoints = fs.existsSync(ckptDir);
+      const modelFiles = hasCheckpoints
+        ? fs.readdirSync(ckptDir).filter(f => f.endsWith('.safetensors') || f.endsWith('.pth'))
+        : [];
+      const hasModel = modelFiles.length > 0;
 
       let msg = 'Repozytorium wykryte.';
       if (!hasUvLock) msg += ' Wymaga instalacji zależności.';
-      if (!hasCheckpoints) msg += ' Modele zostaną pobrane automatycznie.';
-      this.showSetupNote(msg, hasUvLock ? 'ok' : 'warn');
+      if (!hasModel) msg += ' Model nie pobrany (~300MB).';
+      this.showSetupNote(msg, hasUvLock && hasModel ? 'ok' : 'warn');
       this.els.installDeps.disabled = false;
+      this.els.downloadModel.disabled = hasModel;
       this.updateRunButtons();
     } catch (err) {
       this.showSetupNote('Błąd walidacji: ' + err.message, 'error');
@@ -387,6 +409,40 @@ const CK = {
       this.updateRunButtons();
       this.els.cloneProgressBar.style.animation = '';
       this.els.cloneProgress.style.display = 'none';
+    }
+  },
+
+  async downloadModel() {
+    if (!this.repoPath || this.running) return;
+    this.running = true;
+    this.updateRunButtons();
+    this.els.downloadModel.disabled = true;
+    this.setStatus('scanning', 'Pobieranie modelu...');
+    this.els.progress.style.display = 'flex';
+    this.els.progressBar.style.width = '100%';
+    this.els.progressBar.style.animation = 'ck-indeterminate 1.5s infinite';
+    this.els.progressLabel.textContent = 'Pobieranie CorridorKey_v1.0.safetensors (~300MB)...';
+
+    try {
+      const result = await ipcRenderer.invoke('ck-download-model', { repoPath: this.repoPath });
+      if (result.code === 0) {
+        this.setStatus('ready', 'Model pobrany');
+        this.showSetupNote('Model pobrany pomyślnie.', 'ok');
+        this.scanSystem();
+      } else {
+        this.setStatus('error', 'Błąd pobierania');
+        this.appendLog('BŁĄD: ' + (result.stderr || 'Nieznany błąd'), 'stderr');
+        this.showSetupNote('Błąd pobierania modelu. Sprawdź log.', 'error');
+        this.els.downloadModel.disabled = false;
+      }
+    } catch (err) {
+      this.setStatus('error', 'Błąd');
+      this.appendLog('Błąd: ' + err.message, 'stderr');
+      this.els.downloadModel.disabled = false;
+    } finally {
+      this.running = false;
+      this.updateRunButtons();
+      this.els.progressBar.style.animation = '';
     }
   },
 

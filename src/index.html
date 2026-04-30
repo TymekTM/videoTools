@@ -1032,22 +1032,50 @@
     <!-- TOOL: CorridorKey -->
     <div class="tool-panel" data-tool="corridorkey">
       <section class="preview-area" id="ckPreviewArea">
-        <div class="ck-preview-container">
-          <div class="ck-preview-placeholder" id="ckPreviewPlaceholder">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.3">
-              <rect x="2" y="3" width="20" height="14" rx="2"/>
-              <path d="M12 17v4"/><path d="M8 21h8"/>
-              <path d="M7 8l3 3-3 3"/><line x1="13" y1="14" x2="17" y2="14"/>
-            </svg>
-            <div class="ck-preview-placeholder-text">CorridorKey</div>
-            <div class="ck-preview-placeholder-sub">Neural network green screen keying</div>
+        <div class="ck-workspace">
+          <div class="ck-ws-tabs">
+            <button class="ck-ws-tab active" data-ws-tab="input">Input</button>
+            <button class="ck-ws-tab" data-ws-tab="output">Output</button>
+            <button class="ck-ws-tab" data-ws-tab="log">Log</button>
           </div>
-          <div class="ck-preview-log" id="ckPreviewLog" style="display:none">
-            <div class="ck-log-header">
-              <span class="ck-log-title">Console Output</span>
-              <button class="ck-log-clear" id="ckLogClear">Clear</button>
+          <div class="ck-ws-panels">
+            <div class="ck-ws-panel" data-ws-panel="input">
+              <div class="ck-ws-idle" id="ckWsIdle">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.3">
+                  <rect x="2" y="3" width="20" height="14" rx="2"/>
+                  <path d="M12 17v4"/><path d="M8 21h8"/>
+                  <path d="M7 8l3 3-3 3"/><line x1="13" y1="14" x2="17" y2="14"/>
+                </svg>
+                <div class="ck-ws-idle-title">CorridorKey</div>
+                <div class="ck-ws-idle-sub">Wybierz materiał wejściowy aby rozpoczac</div>
+              </div>
+              <div class="ck-ws-content" id="ckWsInputContent" style="display:none">
+                <div class="ck-ws-info-bar" id="ckInputInfoBar"></div>
+                <div class="ck-ws-grid" id="ckInputGrid"></div>
+              </div>
             </div>
-            <div class="ck-log-body" id="ckLogBody"></div>
+            <div class="ck-ws-panel" data-ws-panel="output" style="display:none">
+              <div class="ck-ws-empty" id="ckOutputEmpty">
+                <span>Uruchom inference aby zobaczyc wyniki</span>
+              </div>
+              <div class="ck-ws-content" id="ckWsOutputContent" style="display:none">
+                <div class="ck-ws-info-bar" id="ckOutputInfoBar"></div>
+                <div class="ck-ws-grid" id="ckOutputGrid"></div>
+              </div>
+            </div>
+            <div class="ck-ws-panel" data-ws-panel="log" style="display:none">
+              <div class="ck-ws-console">
+                <div class="ck-ws-console-header">
+                  <span>Console Output</span>
+                  <button class="ck-log-clear" id="ckLogClear">Clear</button>
+                </div>
+                <div class="ck-ws-console-body" id="ckLogBody"></div>
+              </div>
+            </div>
+          </div>
+          <div class="ck-ws-progress" id="ckWsProgress" style="display:none">
+            <div class="ck-ws-progress-track"><div class="ck-ws-progress-fill" id="ckWsProgressFill"></div></div>
+            <span class="ck-ws-progress-label" id="ckWsProgressLabel"></span>
           </div>
         </div>
       </section>
@@ -1152,6 +1180,7 @@
               <button class="btn btn-secondary" id="ckAutoDetect" style="flex:1">Auto-wykryj</button>
               <button class="btn btn-primary" id="ckCloneRepo" style="flex:1">Klonuj z GitHub</button>
               <button class="btn btn-primary" id="ckInstallDeps" style="flex:1" disabled>Instaluj deps</button>
+              <button class="btn btn-secondary" id="ckDownloadModel" style="flex:1" disabled>Pobierz model</button>
             </div>
             <div class="ck-clone-progress" id="ckCloneProgress" style="display:none">
               <div class="ck-progress-bar-track"><div class="ck-progress-bar-fill" id="ckCloneProgressBar"></div></div>
@@ -1168,10 +1197,21 @@
           </div>
           <div class="ck-section-body" id="ckInputBody">
             <div class="control-group">
-              <label class="control-label">Folder / plik wejściowy</label>
+              <label class="control-label">Folder / plik wejsciowy</label>
               <div class="ck-path-row">
-                <input type="text" class="control-input" id="ckInputPath" placeholder="Folder z sekwencją lub plik wideo" readonly>
-                <button class="btn btn-ghost ck-btn-browse" id="ckBrowseInput">...</button>
+                <input type="text" class="control-input" id="ckInputPath" placeholder="Folder z sekwencja lub plik wideo" readonly>
+                <button class="btn btn-ghost ck-btn-browse" id="ckBrowseInput" title="Wybierz folder">Dir</button>
+                <button class="btn btn-ghost ck-btn-browse" id="ckBrowseInputVideo" title="Wybierz plik wideo">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><polygon points="10,8 16,12 10,16" fill="currentColor" stroke="none"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="ck-video-section" id="ckVideoSection" style="display:none">
+              <div class="ck-video-info" id="ckVideoInfo"></div>
+              <button class="btn btn-primary" id="ckExtractFrames" disabled style="width:100%">Ekstrahuj klatki do PNG</button>
+              <div class="ck-clone-progress" id="ckVideoProgress" style="display:none">
+                <div class="ck-progress-bar-track"><div class="ck-progress-bar-fill" id="ckVideoProgressBar"></div></div>
+                <span class="ck-progress-label" id="ckVideoProgressLabel">Ekstrakcja klatek...</span>
               </div>
             </div>
             <div class="control-group">
@@ -1272,6 +1312,10 @@
             <span>Wyniki</span>
           </div>
           <div class="ck-output-grid" id="ckOutputGrid"></div>
+          <button class="btn btn-ghost ck-btn-assemble" id="ckAssembleVideo" style="display:none;width:100%;margin-top:6px">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><polygon points="10,8 16,12 10,16" fill="currentColor" stroke="none"/></svg>
+            <span>Złóż Comp do wideo (MP4)</span>
+          </button>
         </div>
 
         <div class="control-group" style="margin-top:auto">

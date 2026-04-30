@@ -537,6 +537,47 @@ ipcMain.handle('ck-clone-repo', async (event, { targetDir }) => {
   });
 });
 
+ipcMain.handle('ck-download-model', async (event, { repoPath }) => {
+  const ckptDir = path.join(repoPath, 'CorridorKeyModule', 'checkpoints');
+  fs.mkdirSync(ckptDir, { recursive: true });
+
+  const scriptPath = path.join(ckptDir, '_download_model.py');
+  fs.writeFileSync(scriptPath, [
+    'import sys',
+    'from huggingface_hub import hf_hub_download',
+    'ckpt_dir = sys.argv[1]',
+    'result = hf_hub_download("nikopueringer/CorridorKey_v1.0", "CorridorKey_v1.0.safetensors", local_dir=ckpt_dir)',
+    'print("OK:", result)',
+  ].join('\n'));
+
+  return new Promise((resolve) => {
+    const proc = spawn('uv', ['run', 'python', scriptPath, ckptDir], {
+      cwd: repoPath,
+      timeout: 600000,
+    });
+    let stdout = '';
+    let stderr = '';
+    proc.stdout.on('data', d => {
+      const text = d.toString();
+      stdout += text;
+      mainWindow.webContents.send('ck-download-output', { text, type: 'stdout' });
+    });
+    proc.stderr.on('data', d => {
+      const text = d.toString();
+      stderr += text;
+      mainWindow.webContents.send('ck-download-output', { text, type: 'stderr' });
+    });
+    proc.on('close', (code) => {
+      try { fs.unlinkSync(scriptPath); } catch (_) {}
+      resolve({ code, stdout, stderr });
+    });
+    proc.on('error', (err) => {
+      try { fs.unlinkSync(scriptPath); } catch (_) {}
+      resolve({ code: -1, stdout, stderr: err.message });
+    });
+  });
+});
+
 ipcMain.handle('ck-check-dir-structure', async (event, dirPath) => {
   if (!dirPath || !fs.existsSync(dirPath)) return null;
   const entries = fs.readdirSync(dirPath);
@@ -557,6 +598,71 @@ ipcMain.handle('ck-read-dir', async (event, dirPath) => {
     const fullPath = path.join(dirPath, name);
     const stat = fs.statSync(fullPath);
     return { name, path: fullPath, isDir: stat.isDirectory(), size: stat.size };
+  });
+});
+
+ipcMain.handle('ck-video-info', async (event, { videoPath }) => {
+  return new Promise((resolve) => {
+    const proc = spawn(ffmpegPath, ['-i', videoPath]);
+    let stderr = '';
+    proc.stderr.on('data', d => stderr += d.toString());
+    proc.on('close', () => {
+      const durationMatch = stderr.match(/Duration:\s*(\d+):(\d+):(\d+\.\d+)/);
+      const resMatch = stderr.match(/(\d+)x(\d+)\s/);
+      const fpsMatch = stderr.match(/(\d+(?:\.\d+)?)\s*tbr/);
+      let durationSec = 0;
+      if (durationMatch) {
+        durationSec = parseInt(durationMatch[1]) * 3600 + parseInt(durationMatch[2]) * 60 + parseFloat(durationMatch[3]);
+      }
+      resolve({
+        duration: durationMatch ? durationMatch[0].replace('Duration: ', '') : null,
+        durationSec,
+        width: resMatch ? parseInt(resMatch[1]) : null,
+        height: resMatch ? parseInt(resMatch[2]) : null,
+        fps: fpsMatch ? parseFloat(fpsMatch[1]) : null,
+      });
+    });
+    proc.on('error', () => resolve(null));
+  });
+});
+
+ipcMain.handle('ck-extract-frames', async (event, { videoPath, outputDir, fps }) => {
+  const inputDir = path.join(outputDir, 'Input');
+  fs.mkdirSync(inputDir, { recursive: true });
+  const args = ['-i', videoPath, '-qscale:v', '2'];
+  if (fps) args.push('-r', String(fps));
+  args.push('-y', path.join(inputDir, 'frame_%06d.png'));
+
+  return new Promise((resolve) => {
+    const proc = spawn(ffmpegPath, args, { timeout: 600000 });
+    let stderr = '';
+    proc.stderr.on('data', d => {
+      const text = d.toString();
+      stderr += text;
+      const frameMatch = text.match(/frame=\s*(\d+)/);
+      if (frameMatch) {
+        mainWindow.webContents.send('ck-extract-progress', { frame: parseInt(frameMatch[1]) });
+      }
+    });
+    proc.on('close', (code) => resolve({ code, outputDir, stderr }));
+    proc.on('error', (err) => resolve({ code: -1, outputDir, stderr: err.message }));
+  });
+});
+
+ipcMain.handle('ck-assemble-video', async (event, { framesDir, savePath, fps }) => {
+  return new Promise((resolve) => {
+    const args = [
+      '-y', '-framerate', String(fps || 24),
+      '-i', path.join(framesDir, 'frame_%06d.png'),
+      '-c:v', 'libx264', '-pix_fmt', 'yuv420p',
+      '-preset', 'fast', '-crf', '18', '-movflags', '+faststart',
+      savePath
+    ];
+    const proc = spawn(ffmpegPath, args, { timeout: 600000 });
+    let stderr = '';
+    proc.stderr.on('data', d => stderr += d.toString());
+    proc.on('close', (code) => resolve({ code, savePath, stderr }));
+    proc.on('error', (err) => resolve({ code: -1, savePath, stderr: err.message }));
   });
 });
 
