@@ -66,7 +66,7 @@
     showValues: true,
     showGrid: true,
     showLegend: true,
-    fontSize: 16,
+    fontSize: 32,
     animDuration: 3,
     stagger: 0.08,
     easing: 'easeOut',
@@ -349,10 +349,23 @@
     if (!data.length) return;
 
     var hasLegend = st.showLegend && data.length > 2;
-    var cx = w * (hasLegend ? 0.38 : 0.5);
-    var cy = h * (st.title ? 0.54 : 0.5);
-    var maxRadius = hasLegend ? w * 0.32 : Math.min(w, h) * 0.38;
-    var radius = Math.min(maxRadius, h * 0.36);
+    var isPortrait = st.format === '9:16';
+
+    var cx, cy, radius;
+    if (isPortrait && hasLegend) {
+      cx = w * 0.5;
+      cy = h * (st.title ? 0.38 : 0.34);
+      radius = Math.min(w * 0.38, h * 0.22);
+    } else if (hasLegend) {
+      cx = w * 0.38;
+      cy = h * (st.title ? 0.54 : 0.5);
+      radius = Math.min(w * 0.32, h * 0.36);
+    } else {
+      cx = w * 0.5;
+      cy = h * (st.title ? 0.54 : 0.5);
+      radius = Math.min(w, h) * 0.38;
+      radius = Math.min(radius, h * 0.36);
+    }
     var innerRadius = radius * st.donutHole;
 
     var total = data.reduce(function (s, d) { return s + d.value; }, 0);
@@ -407,31 +420,59 @@
       ctx.fillText(formatNumber(total), cx, cy + st.fontSize * 0.5);
     }
 
-    if (st.showLegend && data.length > 2) {
-      var legendX = cx + radius + w * 0.06;
-      var legendY = h * 0.2;
-      var legendSpacing = Math.max(st.fontSize * 2, (h * 0.6) / data.length);
-      data.forEach(function (d, i) {
-        var lp = staggerProgress(progress, i, data.length);
-        ctx.globalAlpha = Math.min(1, lp * 2);
+    if (hasLegend) {
+      if (isPortrait) {
+        var legendTopY = cy + radius + h * 0.06;
+        var cols = Math.min(data.length, 2);
+        var colW = w / cols;
+        var rowH = st.fontSize * 2.2;
+        data.forEach(function (d, i) {
+          var col = i % cols;
+          var row = Math.floor(i / cols);
+          var lx = colW * col + colW * 0.08;
+          var ly = legendTopY + row * rowH;
+          var lp = staggerProgress(progress, i, data.length);
+          ctx.globalAlpha = Math.min(1, lp * 2);
 
-        ctx.fillStyle = getColor(i);
-        ctx.beginPath();
-        ctx.arc(legendX, legendY + i * legendSpacing, Math.max(st.fontSize * 0.4, 4), 0, Math.PI * 2);
-        ctx.fill();
+          ctx.fillStyle = getColor(i);
+          ctx.beginPath();
+          ctx.arc(lx + st.fontSize * 0.4, ly + st.fontSize * 0.3, Math.max(st.fontSize * 0.35, 4), 0, Math.PI * 2);
+          ctx.fill();
 
-        ctx.fillStyle = st.textColor;
-        ctx.font = '600 ' + Math.max(st.fontSize * 0.8, 10) + 'px "Manrope", system-ui, sans-serif';
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(d.label, legendX + st.fontSize, legendY + i * legendSpacing);
+          ctx.fillStyle = st.textColor;
+          ctx.font = '600 ' + Math.max(st.fontSize * 0.75, 9) + 'px "Manrope", system-ui, sans-serif';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'top';
+          ctx.fillText(d.label + '  ' + formatNumber(d.value), lx + st.fontSize, ly);
 
-        ctx.globalAlpha = 0.4;
-        ctx.font = '400 ' + Math.max(st.fontSize * 0.7, 9) + 'px "Manrope", system-ui, sans-serif';
-        ctx.fillText(formatNumber(d.value), legendX + st.fontSize, legendY + i * legendSpacing + st.fontSize * 0.9);
+          ctx.globalAlpha = 1;
+        });
+      } else {
+        var legendX = cx + radius + w * 0.06;
+        var legendY = h * 0.2;
+        var legendSpacing = Math.max(st.fontSize * 2, (h * 0.6) / data.length);
+        data.forEach(function (d, i) {
+          var lp = staggerProgress(progress, i, data.length);
+          ctx.globalAlpha = Math.min(1, lp * 2);
 
-        ctx.globalAlpha = 1;
-      });
+          ctx.fillStyle = getColor(i);
+          ctx.beginPath();
+          ctx.arc(legendX, legendY + i * legendSpacing, Math.max(st.fontSize * 0.4, 4), 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = st.textColor;
+          ctx.font = '600 ' + Math.max(st.fontSize * 0.8, 10) + 'px "Manrope", system-ui, sans-serif';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(d.label, legendX + st.fontSize, legendY + i * legendSpacing);
+
+          ctx.globalAlpha = 0.4;
+          ctx.font = '400 ' + Math.max(st.fontSize * 0.7, 9) + 'px "Manrope", system-ui, sans-serif';
+          ctx.fillText(formatNumber(d.value), legendX + st.fontSize, legendY + i * legendSpacing + st.fontSize * 0.9);
+
+          ctx.globalAlpha = 1;
+        });
+      }
     }
   }
 
