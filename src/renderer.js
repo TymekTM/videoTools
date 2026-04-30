@@ -2251,6 +2251,8 @@ function switchTool(toolId) {
     if (window.mapActivate) window.mapActivate();
   } else if (toolId === 'chart') {
     if (window.chartActivate) window.chartActivate();
+  } else if (toolId === 'notification') {
+    if (window.notificationActivate) window.notificationActivate();
   }
 }
 
@@ -2610,6 +2612,7 @@ function initNewspaper() {
     if (activeTool === 'newspaper') updatePreviewSize();
     else if (activeTool === 'chat') chatUpdatePreviewSize();
     else if (activeTool === 'typing') typingUpdatePreviewSize();
+    else if (activeTool === 'notification') { if (window.notificationUpdatePreviewSize) window.notificationUpdatePreviewSize(); }
   });
   ro.observe($('[data-tool="newspaper"] .preview-area'));
 
@@ -2617,6 +2620,7 @@ function initNewspaper() {
     if (activeTool === 'newspaper') updatePreviewSize();
     else if (activeTool === 'chat') chatUpdatePreviewSize();
     else if (activeTool === 'typing') typingUpdatePreviewSize();
+    else if (activeTool === 'notification') { if (window.notificationUpdatePreviewSize) window.notificationUpdatePreviewSize(); }
   });
 }
 
@@ -3928,6 +3932,7 @@ function init() {
   initTyping();
   if (window.initMapTool) window.initMapTool();
   if (window.initChartTool) window.initChartTool();
+  if (window.initNotificationTool) window.initNotificationTool();
 }
 
 document.addEventListener('DOMContentLoaded', init);

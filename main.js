@@ -328,29 +328,21 @@ ipcMain.handle('export-mov', async (event, { frames, savePath, fps, width, heigh
   const tmpDir = path.join(os.tmpdir(), `vt-export-${Date.now()}`);
   fs.mkdirSync(tmpDir, { recursive: true });
 
-  const pngBufs = [];
+  let idx = 0;
   for (const frame of frames) {
     const buf = Buffer.from(frame.data, 'base64');
     for (let d = 0; d < frame.duration; d++) {
-      pngBufs.push(buf);
+      fs.writeFileSync(path.join(tmpDir, `f_${String(idx).padStart(6, '0')}.png`), buf);
+      idx++;
     }
   }
 
-  for (let i = 0; i < pngBufs.length; i++) {
-    fs.writeFileSync(path.join(tmpDir, `f_${String(i).padStart(6, '0')}.png`), pngBufs[i]);
-  }
-
-  let concatContent = '';
-  for (let i = 0; i < pngBufs.length; i++) {
-    concatContent += `file 'f_${String(i).padStart(6, '0')}.png'\n`;
-  }
-  fs.writeFileSync(path.join(tmpDir, 'concat.txt'), concatContent);
-
   return new Promise((resolve, reject) => {
     const args = [
-      '-y', '-f', 'concat', '-safe', '0',
-      '-r', String(fps),
-      '-i', path.join(tmpDir, 'concat.txt'),
+      '-y',
+      '-f', 'image2',
+      '-framerate', String(fps),
+      '-i', path.join(tmpDir, 'f_%06d.png'),
       '-c:v', 'prores_ks',
       '-profile:v', '4444',
       '-pix_fmt', 'yuva444p10le',
@@ -372,29 +364,21 @@ ipcMain.handle('export-webm', async (event, { frames, savePath, fps, width, heig
   const tmpDir = path.join(os.tmpdir(), `vt-export-${Date.now()}`);
   fs.mkdirSync(tmpDir, { recursive: true });
 
-  const pngBufs = [];
+  let idx = 0;
   for (const frame of frames) {
     const buf = Buffer.from(frame.data, 'base64');
     for (let d = 0; d < frame.duration; d++) {
-      pngBufs.push(buf);
+      fs.writeFileSync(path.join(tmpDir, `f_${String(idx).padStart(6, '0')}.png`), buf);
+      idx++;
     }
   }
 
-  for (let i = 0; i < pngBufs.length; i++) {
-    fs.writeFileSync(path.join(tmpDir, `f_${String(i).padStart(6, '0')}.png`), pngBufs[i]);
-  }
-
-  let concatContent = '';
-  for (let i = 0; i < pngBufs.length; i++) {
-    concatContent += `file 'f_${String(i).padStart(6, '0')}.png'\n`;
-  }
-  fs.writeFileSync(path.join(tmpDir, 'concat.txt'), concatContent);
-
   return new Promise((resolve, reject) => {
     const args = [
-      '-y', '-f', 'concat', '-safe', '0',
-      '-r', String(fps),
-      '-i', path.join(tmpDir, 'concat.txt'),
+      '-y',
+      '-f', 'image2',
+      '-framerate', String(fps),
+      '-i', path.join(tmpDir, 'f_%06d.png'),
       '-c:v', 'libvpx-vp9',
       '-pix_fmt', 'yuva420p',
       '-auto-alt-ref', '0',

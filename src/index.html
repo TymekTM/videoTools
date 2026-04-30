@@ -932,7 +932,7 @@
         </div>
 
         <div class="control-group">
-          <label class="control-label">Lista powiadomie\u0144</label>
+          <label class="control-label">Lista powiadomień</label>
           <div class="notif-list" id="notifList"></div>
           <div id="notifEditFields"></div>
           <button class="btn btn-ghost notif-add-btn" id="notifAddCustom">
@@ -942,13 +942,18 @@
         </div>
 
         <div class="control-group">
-          <label class="control-label">Odst\u0119p <span class="control-value" id="notifAnimSpeedVal">800ms</span></label>
+          <label class="control-label">Odstęp <span class="control-value" id="notifAnimSpeedVal">800ms</span></label>
           <input type="range" class="control-range" id="notifAnimSpeed" min="200" max="2000" step="50" value="800">
         </div>
 
         <div class="control-group">
-          <label class="control-label">Max widocznych <span class="control-value" id="notifMaxVisibleVal">6</span></label>
-          <input type="range" class="control-range" id="notifMaxVisible" min="2" max="12" step="1" value="6">
+          <label class="control-label">Max widocznych <span class="control-value" id="notifMaxVisibleVal">5</span></label>
+          <input type="range" class="control-range" id="notifMaxVisible" min="2" max="12" step="1" value="5">
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Nakładka <span class="control-value" id="notifStackOverlapVal">0px</span></label>
+          <input type="range" class="control-range" id="notifStackOverlap" min="0" max="80" step="2" value="0">
         </div>
 
         <label class="control-checkbox"><input type="checkbox" id="notifFadeOut" checked> Fade-out starych</label>
