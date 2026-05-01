@@ -142,7 +142,7 @@ const CK = {
     ipcRenderer.on('ck-clone-output', (_e, d) => this.appendLog(d.text, d.type));
     ipcRenderer.on('ck-download-output', (_e, d) => this.appendLog(d.text, d.type));
     ipcRenderer.on('ck-extract-progress', (_e, d) => {
-      this.els.videoProgressLabel.textContent = `Ekstrahowano ${d.frame} klatek...`;
+      this.els.videoProgressLabel.textContent = t('ckFramesExtractedProgress').replace('{n}', d.frame);
     });
   },
 
@@ -189,7 +189,7 @@ const CK = {
 
       this.updateSteps();
     } catch (err) {
-      this.setStatus('error', 'Blad skanowania');
+      this.setStatus('error', t('ckErrorScan'));
     }
   },
 
@@ -198,16 +198,16 @@ const CK = {
     if (!p) return;
     const hasClipMgr = fs.existsSync(path.join(p, 'clip_manager.py'));
     if (!hasClipMgr) {
-      this.showNote(this.els.setupNote, 'Brak clip_manager.py - to nie jest repo CorridorKey.', 'error');
+      this.showNote(this.els.setupNote, t('ckNotCkRepo'), 'error');
       return;
     }
     const hasUvLock = fs.existsSync(path.join(p, 'uv.lock'));
     const ckptDir = path.join(p, 'CorridorKeyModule', 'checkpoints');
     const hasModel = fs.existsSync(ckptDir) && fs.readdirSync(ckptDir).some(f => f.endsWith('.safetensors') || f.endsWith('.pth'));
 
-    let msg = 'Repozytorium wykryte.';
-    if (!hasUvLock) msg += ' Wymaga instalacji zaleznosci.';
-    if (!hasModel) msg += ' Model nie pobrany (~300MB).';
+    let msg = t('ckRepoDetected');
+    if (!hasUvLock) msg += t('ckRepoRequiresDeps');
+    if (!hasModel) msg += t('ckModelNotDownloaded');
     this.showNote(this.els.setupNote, msg, hasUvLock && hasModel ? 'ok' : 'warn');
     this.els.installDeps.disabled = false;
     this.els.downloadModel.disabled = hasModel;
@@ -240,9 +240,9 @@ const CK = {
       this.setStepState('ckStepProcess', '');
     }
 
-    if (setupDone && inputReady) this.setStatus('ready', 'Gotowy');
-    else if (setupDone) this.setStatus('warning', 'Wybierz input');
-    else this.setStatus('error', 'Setup wymagany');
+    if (setupDone && inputReady) this.setStatus('ready', t('ckReady'));
+    else if (setupDone) this.setStatus('warning', t('ckSelectInput'));
+    else this.setStatus('error', t('ckSetupRequired'));
   },
 
   setStatus(type, text) {
@@ -339,7 +339,7 @@ const CK = {
 
     idle.style.display = 'none';
     content.style.display = '';
-    infoBar.textContent = `${files.length} klatek | ${path.basename(dirPath)}`;
+    infoBar.textContent = `${files.length} ${t('ckFrames')} | ${path.basename(dirPath)}`;
     grid.innerHTML = '';
     for (const f of this.pickSamples(files, 8)) {
       const url = 'file:///' + path.join(dirPath, f).replace(/\\/g, '/');
@@ -361,7 +361,7 @@ const CK = {
     document.getElementById('ckOutputEmpty').style.display = 'none';
     const content = document.getElementById('ckWsOutputContent');
     content.style.display = '';
-    document.getElementById('ckOutputInfoBar').textContent = `Comp | ${files.length} klatek`;
+    document.getElementById('ckOutputInfoBar').textContent = `Comp | ${files.length} ${t('ckFrames')}`;
 
     const grid = document.getElementById('ckOutputGrid');
     grid.innerHTML = '';
@@ -388,14 +388,14 @@ const CK = {
     if (!info) { this.els.videoSection.style.display = 'none'; return; }
     this.videoInfo = info;
     const approxFrames = info.durationSec && info.fps ? Math.round(info.durationSec * info.fps) : '?';
-    this.els.videoInfo.textContent = `${info.width || '?'}x${info.height || '?'} | ${info.duration || '?'} | ${info.fps || '?'} fps | ~${approxFrames} klatek`;
+    this.els.videoInfo.textContent = `${info.width || '?'}x${info.height || '?'} | ${info.duration || '?'} | ${info.fps || '?'} fps | ~${approxFrames} ${t('ckFrames')}`;
     this.els.videoSection.style.display = 'flex';
     this.els.extractFrames.disabled = false;
     this.els.organizeInput.disabled = !this.repoPath;
 
     document.getElementById('ckWsIdle').style.display = 'none';
     document.getElementById('ckWsInputContent').style.display = '';
-    document.getElementById('ckInputInfoBar').textContent = `Wideo: ${path.basename(videoPath)}`;
+    document.getElementById('ckInputInfoBar').textContent = `${t('ckVideoLabel')} ${path.basename(videoPath)}`;
     document.getElementById('ckInputGrid').innerHTML = '';
     this.switchTab('input');
   },
@@ -407,8 +407,8 @@ const CK = {
     this.els.videoProgress.style.display = 'block';
     this.els.videoProgressBar.style.width = '100%';
     this.els.videoProgressBar.style.animation = 'ck-indeterminate 1.5s infinite';
-    this.els.videoProgressLabel.textContent = 'Ekstrakcja klatek...';
-    this.showWsProgress('Ekstrakcja klatek...');
+    this.els.videoProgressLabel.textContent = t('ckExtractingFrames');
+    this.showWsProgress(t('ckExtractingFrames'));
 
     const videoName = path.basename(this.videoPath, path.extname(this.videoPath));
     const outputDir = path.join(path.dirname(this.videoPath), videoName + '_frames');
@@ -424,11 +424,11 @@ const CK = {
         this.loadInputThumbnails();
         this.els.organizeInput.disabled = !this.repoPath;
       } else {
-        this.appendLog('BLAD: ' + (result.stderr || '').slice(0, 200), 'stderr');
+        this.appendLog(t('ckErrorLabel') + (result.stderr || '').slice(0, 200), 'stderr');
         this.els.extractFrames.disabled = false;
       }
     } catch (err) {
-      this.appendLog('Blad: ' + err.message, 'stderr');
+      this.appendLog(t('ckErrorLabel') + err.message, 'stderr');
       this.els.extractFrames.disabled = false;
     } finally {
       this.running = false;
@@ -440,8 +440,8 @@ const CK = {
   },
 
   organizeInput() {
-    if (!this.inputPath) { this.showNote(this.els.inputInfo, 'Wybierz materiał wejściowy.', 'err'); return; }
-    if (!this.repoPath) { this.showNote(this.els.inputInfo, 'Najpierw ustaw repo CorridorKey (Krok 1).', 'err'); return; }
+    if (!this.inputPath) { this.showNote(this.els.inputInfo, t('ckSelectInputFirst'), 'err'); return; }
+    if (!this.repoPath) { this.showNote(this.els.inputInfo, t('ckSetupRepoFirst'), 'err'); return; }
 
     try {
       const clipsDir = path.join(this.repoPath, 'ClipsForInference');
@@ -483,25 +483,25 @@ const CK = {
       }
 
       this.shotDir = shotDir;
-      this.showNote(this.els.inputInfo, `Przygotowano: ${shotName} → ClipsForInference/${shotName}`, 'ok');
+      this.showNote(this.els.inputInfo, `${t('ckInputPrepared')} ${shotName} → ClipsForInference/${shotName}`, 'ok');
     } catch (err) {
-      this.appendLog('Blad organizacji: ' + err.message, 'stderr');
-      this.showNote(this.els.inputInfo, 'Blad: ' + err.message, 'err');
+      this.appendLog(t('ckOrganizeError') + err.message, 'stderr');
+      this.showNote(this.els.inputInfo, t('ckErrorLabel') + err.message, 'err');
     }
     this.updateSteps();
   },
 
   async generateAlphas(method) {
     if (!this.repoPath || this.running) {
-      if (!this.repoPath) this.appendLog('Brak repo — ustaw CorridorKey (Krok 1).', 'stderr');
+      if (!this.repoPath) this.appendLog(t('ckNoCkRepo'), 'stderr');
       return;
     }
     this.running = true;
     this.updateSteps();
-    this.showWsProgress(`Generowanie Alpha (${method})...`);
-    this.showSidebarProgress(`Generowanie Alpha (${method})...`);
-    this.setStatus('scanning', 'Alpha...');
-    this.appendLog(`Generowanie Alpha (${method})...`, 'stdout');
+    this.showWsProgress(t('ckGeneratingAlpha').replace('{method}', method));
+    this.showSidebarProgress(t('ckGeneratingAlpha').replace('{method}', method));
+    this.setStatus('scanning', t('ckAlphaScanning'));
+    this.appendLog(t('ckGeneratingAlpha').replace('{method}', method), 'stdout');
 
     const device = this.getActiveBtnValue(this.els.deviceGroup) || 'auto';
     try {
@@ -515,8 +515,8 @@ const CK = {
       } else {
         const weightsDir = path.join(this.repoPath, 'gvm_core', 'weights');
         if (!fs.existsSync(path.join(weightsDir, 'vae', 'config.json'))) {
-          this.appendLog('Brak wag GVM — pobierz wagi do gvm_core/weights/{vae,scheduler,unet}/', 'stderr');
-          this.showNote(this.els.alphaInfo, 'Brak wag GVM. Sprawdz instrukcje.', 'err');
+          this.appendLog(t('ckMissingGvmWeights'), 'stderr');
+          this.showNote(this.els.alphaInfo, t('ckMissingGvmWeightsShort'), 'err');
           this.running = false;
           this.hideWsProgress();
           this.hideSidebarProgress();
@@ -532,20 +532,20 @@ const CK = {
 
       const hasError = result.stderr && /ERROR/i.test(result.stderr);
       if (result.code === 0 && !hasError) {
-        this.setStatus('ready', 'Alpha gotowe');
-        if (this.els.alphaInfo) this.showNote(this.els.alphaInfo, 'Alpha wygenerowane.', 'ok');
-        this.appendLog('Alpha wygenerowane pomyslnie.', 'stdout');
+        this.setStatus('ready', t('ckAlphaReady'));
+        if (this.els.alphaInfo) this.showNote(this.els.alphaInfo, t('ckAlphaGenerated'), 'ok');
+        this.appendLog(t('ckAlphaGenOk'), 'stdout');
       } else {
-        this.setStatus('error', 'Blad');
+        this.setStatus('error', t('ckError'));
         const errMsg = hasError
           ? result.stderr.split('\n').filter(l => /ERROR/i.test(l)).join('\n')
           : result.stderr;
-        this.appendLog('BLAD: ' + errMsg, 'stderr');
-        if (this.els.alphaInfo) this.showNote(this.els.alphaInfo, 'Blad generowania Alpha.', 'err');
+        this.appendLog(t('ckErrorLabel') + errMsg, 'stderr');
+        if (this.els.alphaInfo) this.showNote(this.els.alphaInfo, t('ckAlphaError'), 'err');
       }
     } catch (err) {
-      this.setStatus('error', 'Blad');
-      this.appendLog('Blad: ' + err.message, 'stderr');
+      this.setStatus('error', t('ckError'));
+      this.appendLog(t('ckErrorLabel') + err.message, 'stderr');
     } finally {
       this.running = false;
       this.hideWsProgress();
@@ -562,19 +562,19 @@ const CK = {
     this.els.cloneProgress.style.display = 'block';
     this.els.cloneProgressBar.style.width = '100%';
     this.els.cloneProgressBar.style.animation = 'ck-indeterminate 1.5s infinite';
-    this.els.cloneProgressLabel.textContent = 'Klonowanie...';
-    this.showWsProgress('Klonowanie repozytorium...');
+    this.els.cloneProgressLabel.textContent = t('ckCloning');
+    this.showWsProgress(t('ckCloningRepo'));
     try {
       const result = await ipcRenderer.invoke('ck-clone-repo', { targetDir });
       if (result.code === 0) {
         this.els.repoPath.value = result.destPath;
         this.repoPath = result.destPath;
-        this.showNote(this.els.setupNote, 'Sklonowano. Zainstaluj deps.', 'ok');
+        this.showNote(this.els.setupNote, t('ckClonedOk'), 'ok');
         this.validateRepo();
       } else {
-        this.appendLog('BLAD: ' + (result.stderr || ''), 'stderr');
+        this.appendLog(t('ckErrorLabel') + (result.stderr || ''), 'stderr');
       }
-    } catch (err) { this.appendLog('Blad: ' + err.message, 'stderr'); }
+    } catch (err) { this.appendLog(t('ckErrorLabel') + err.message, 'stderr'); }
     finally {
       this.running = false;
       this.els.cloneProgressBar.style.animation = '';
@@ -588,58 +588,58 @@ const CK = {
     if (!this.repoPath || this.running) return;
     this.running = true;
     this.els.downloadModel.disabled = true;
-    this.showWsProgress('Pobieranie modelu (~300MB)...');
+    this.showWsProgress(t('ckDownloadingModel'));
     try {
       const result = await ipcRenderer.invoke('ck-download-model', { repoPath: this.repoPath });
       if (result.code === 0) {
-        this.showNote(this.els.setupNote, 'Model pobrany.', 'ok');
+        this.showNote(this.els.setupNote, t('ckModelDownloaded'), 'ok');
         this.scanSystem();
       } else {
-        this.appendLog('BLAD: ' + (result.stderr || ''), 'stderr');
+        this.appendLog(t('ckErrorLabel') + (result.stderr || ''), 'stderr');
         this.els.downloadModel.disabled = false;
       }
-    } catch (err) { this.appendLog('Blad: ' + err.message, 'stderr'); this.els.downloadModel.disabled = false; }
+    } catch (err) { this.appendLog(t('ckErrorLabel') + err.message, 'stderr'); this.els.downloadModel.disabled = false; }
     finally { this.running = false; this.hideWsProgress(); this.updateSteps(); }
   },
 
   async installDeps() {
     if (!this.repoPath || this.running) return;
     this.running = true;
-    this.showWsProgress('Instalacja zaleznosci...');
+    this.showWsProgress(t('ckInstallingDeps'));
     try {
       const result = await ipcRenderer.invoke('ck-run-install', { repoPath: this.repoPath });
       if (result.code === 0) {
-        this.showNote(this.els.setupNote, 'Zaleznosci zainstalowane.', 'ok');
+        this.showNote(this.els.setupNote, t('ckDepsInstalled'), 'ok');
         this.scanSystem();
       } else {
-        this.showNote(this.els.setupNote, 'Blad instalacji.', 'error');
-        this.appendLog('BLAD: ' + result.stderr, 'stderr');
+        this.showNote(this.els.setupNote, t('ckDepsError'), 'error');
+        this.appendLog(t('ckErrorLabel') + result.stderr, 'stderr');
       }
-    } catch (err) { this.appendLog('Blad: ' + err.message, 'stderr'); }
+    } catch (err) { this.appendLog(t('ckErrorLabel') + err.message, 'stderr'); }
     finally { this.running = false; this.hideWsProgress(); this.updateSteps(); }
   },
 
   async runInference() {
     if (!this.repoPath) {
-      this.showNote(this.els.inputInfo, 'Najpierw ustaw repo CorridorKey (Krok 1).', 'err');
-      this.appendLog('Nie mozna uruchomic inference — brak repo CorridorKey.', 'stderr');
+      this.showNote(this.els.inputInfo, t('ckSetupRepoFirst'), 'err');
+      this.appendLog(t('ckNoInferenceWithoutRepo'), 'stderr');
       return;
     }
     if (!this.shotDir) {
-      this.showNote(this.els.inputInfo, 'Najpierw przygotuj materiał wejściowy (Krok 2).', 'err');
-      this.appendLog('Nie mozna uruchomic inference — brak przygotowanego shotu. Kliknij "Przygotuj do inference" w Kroku 2.', 'stderr');
+      this.showNote(this.els.inputInfo, t('ckPrepareInputFirst'), 'err');
+      this.appendLog(t('ckNoInferenceWithoutInput'), 'stderr');
       return;
     }
     if (this.running) {
-      this.appendLog('Inna operacja w toku, poczekaj...', 'stderr');
+      this.appendLog(t('ckOperationRunning'), 'stderr');
       return;
     }
     this.running = true;
     this.updateSteps();
-    this.setStatus('scanning', 'Inference...');
-    this.showWsProgress('Inference w toku...');
-    this.showSidebarProgress('Inference w toku...');
-    this.appendLog('Uruchamiam inference...', 'stdout');
+    this.setStatus('scanning', t('ckInferenceLabel'));
+    this.showWsProgress(t('ckInferenceRunning'));
+    this.showSidebarProgress(t('ckInferenceRunning'));
+    this.appendLog(t('ckInferenceStarting'), 'stdout');
 
     const device = this.getActiveBtnValue(this.els.deviceGroup) || 'auto';
     try {
@@ -650,24 +650,24 @@ const CK = {
       });
       const hasError = result.stderr && /ERROR/i.test(result.stderr);
       if (result.code === 0 && !hasError) {
-        this.setStatus('ready', 'Zakonczono');
+        this.setStatus('ready', t('ckFinished'));
         this.hideWsProgress();
         this.hideSidebarProgress();
-        this.appendLog('Inference zakonczona pomyslnie!', 'stdout');
+        this.appendLog(t('ckInferenceDone'), 'stdout');
         this.scanOutputDir();
         this.loadOutputThumbnails();
       } else {
-        this.setStatus('error', 'Blad');
-        this.showWsProgress('Blad inference.');
-        this.showSidebarProgress('Blad inference.');
+        this.setStatus('error', t('ckError'));
+        this.showWsProgress(t('ckInferenceError'));
+        this.showSidebarProgress(t('ckInferenceError'));
         const errMsg = hasError
           ? result.stderr.split('\n').filter(l => /ERROR/i.test(l)).join('\n')
           : result.stderr;
-        this.appendLog('BLAD: ' + errMsg, 'stderr');
+        this.appendLog(t('ckErrorLabel') + errMsg, 'stderr');
       }
     } catch (err) {
-      this.setStatus('error', 'Blad');
-      this.appendLog('Blad: ' + err.message, 'stderr');
+      this.setStatus('error', t('ckError'));
+      this.appendLog(t('ckErrorLabel') + err.message, 'stderr');
     } finally {
       this.running = false;
       this.hideSidebarProgress();
@@ -691,11 +691,11 @@ const CK = {
   renderOutputs(dirs) {
     this.els.outputSection.style.display = 'block';
     this.els.outputGrid.innerHTML = '';
-    const labels = { 'Matte': 'Alpha Matte (EXR)', 'FG': 'Foreground (EXR)', 'Processed': 'Premultiplied RGBA (EXR)', 'Comp': 'Preview Composite (PNG)' };
+    const labels = t('ckOutputLabels');
     for (const dir of dirs) {
       const card = document.createElement('div');
       card.className = 'ck-output-card';
-      card.innerHTML = `<div class="ck-output-card-label">${labels[dir.name] || dir.name}</div><div class="ck-output-card-path">${dir.path}</div><button class="btn btn-ghost ck-open-dir">Otworz</button>`;
+      card.innerHTML = `<div class="ck-output-card-label">${labels[dir.name] || dir.name}</div><div class="ck-output-card-path">${dir.path}</div><button class="btn btn-ghost ck-open-dir">${t('ckOpenDir')}</button>`;
       card.querySelector('.ck-open-dir').addEventListener('click', () => require('child_process').exec(`explorer "${dir.path}"`));
       this.els.outputGrid.appendChild(card);
     }
@@ -704,27 +704,27 @@ const CK = {
 
   async assembleVideo() {
     const compDir = this.findOutputDir('Comp');
-    if (!compDir) { this.appendLog('Brak katalogu Comp.', 'stderr'); return; }
+    if (!compDir) { this.appendLog(t('ckNoCompDir'), 'stderr'); return; }
     const saveResult = await ipcRenderer.invoke('save-dialog', {
       defaultName: path.basename(this.shotDir || 'output') + '_comp.mp4',
       filters: [{ name: 'MP4', extensions: ['mp4'] }]
     });
     if (!saveResult) return;
     this.running = true;
-    this.showWsProgress('Składanie wideo...');
-    this.showSidebarProgress('Składanie wideo...');
-    this.appendLog('Składanie wideo z Comp...', 'stdout');
+    this.showWsProgress(t('ckAssemblingVideo'));
+    this.showSidebarProgress(t('ckAssemblingVideo'));
+    this.appendLog(t('ckAssemblingFromComp'), 'stdout');
     try {
       const result = await ipcRenderer.invoke('ck-assemble-video', {
         framesDir: compDir, savePath: saveResult, fps: this.videoInfo ? this.videoInfo.fps : 24,
       });
       if (result.code === 0) {
-        this.appendLog('Wideo zapisane: ' + saveResult, 'stdout');
+        this.appendLog(t('ckVideoSaved') + saveResult, 'stdout');
         require('child_process').exec(`explorer "${path.dirname(saveResult)}"`);
       } else {
-        this.appendLog('BLAD: ' + result.stderr, 'stderr');
+        this.appendLog(t('ckErrorLabel') + result.stderr, 'stderr');
       }
-    } catch (err) { this.appendLog('Blad: ' + err.message, 'stderr'); }
+    } catch (err) { this.appendLog(t('ckErrorLabel') + err.message, 'stderr'); }
     finally { this.running = false; this.hideWsProgress(); this.hideSidebarProgress(); this.updateSteps(); }
   }
 };

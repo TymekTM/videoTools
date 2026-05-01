@@ -29,24 +29,27 @@
     return Math.min(w * 0.42, 420);
   }
 
-  var TIME_LABELS = ['teraz', '1 min temu', '2 min temu', '3 min temu', '5 min temu', '7 min temu', '10 min temu', '15 min temu', '20 min temu', '30 min temu', '45 min temu', '1 godz. temu'];
+  function getTimeLabels() {
+    return [t('notifTimeNow'), '1 ' + t('notifTimeMinAgo'), '2 ' + t('notifTimeMinAgo'), '3 ' + t('notifTimeMinAgo'), '5 ' + t('notifTimeMinAgo'), '7 ' + t('notifTimeMinAgo'), '10 ' + t('notifTimeMinAgo'), '15 ' + t('notifTimeMinAgo'), '20 ' + t('notifTimeMinAgo'), '30 ' + t('notifTimeMinAgo'), '45 ' + t('notifTimeMinAgo'), t('notifTimeHourAgo')];
+  }
+  var TIME_LABELS = getTimeLabels();
 
   var PRESETS = {
-    'ig-follow': { type: 'push', appName: 'Instagram', title: 'Jan Kowalski', message: 'zaobserwowa\u0142 Ci\u0119!', accentColor: '#E1306C' },
-    'ig-like': { type: 'push', appName: 'Instagram', title: 'Jan Kowalski', message: 'polubi\u0142 Twoj\u0105 publikacj\u0119.', accentColor: '#E1306C' },
-    'ig-comment': { type: 'push', appName: 'Instagram', title: 'Anna Nowak', message: 'skomentowa\u0142a: \u015Awietne zdj\u0119cie!', accentColor: '#E1306C' },
-    'ig-dm': { type: 'push', appName: 'Instagram', title: 'Piotr Wi\u015Bniewski', message: 'Wys\u0142a\u0142 Ci wiadomo\u015B\u0107.', accentColor: '#E1306C' },
-    'x-rt': { type: 'push', appName: 'X', title: '@user123', message: 'podbi\u0142 Tw\u00f3j tweet', accentColor: '#1DA1F2' },
-    'x-like': { type: 'push', appName: 'X', title: '@janek_dev', message: 'polubi\u0142 Tw\u00f3j tweet', accentColor: '#1DA1F2' },
-    'x-mention': { type: 'push', appName: 'X', title: '@techgirl', message: 'wspomnia\u0142a o Tobie w tweecie', accentColor: '#1DA1F2' },
-    'tt-follow': { type: 'push', appName: 'TikTok', title: 'kreatywny_user', message: 'zaobserwowa\u0142 Ci\u0119!', accentColor: '#000000' },
-    'sms': { type: 'sms', appName: 'Wiadomo\u015Bci', title: 'Mama', message: 'Kiedy przychodzisz na obiad?', accentColor: '#34C759' },
-    'whatsapp': { type: 'push', appName: 'WhatsApp', title: 'Kamil', message: 'Grasz dzi\u015B wieczorem?', accentColor: '#25D366' },
-    'email': { type: 'email', appName: 'Mail', title: 'Newsletter Tygodniowy', message: '10 narz\u0119dzi kt\u00f3re zmieni\u0105 Tw\u00f3j workflow...', accentColor: '#007AFF' },
-    'snapchat': { type: 'push', appName: 'Snapchat', title: 'ola_snap', message: 'wys\u0142a\u0142a Ci Snapa!', accentColor: '#FFFC00' },
-    'telegram': { type: 'push', appName: 'Telegram', title: 'Grupa Projektowa', message: 'Deadline przesuni\u0119ty na pi\u0105tek', accentColor: '#0088CC' },
-    'youtube': { type: 'push', appName: 'YouTube', title: 'Kana\u0142 X', message: 'opublikowa\u0142 nowy film', accentColor: '#FF0000' },
-    'linkedin': { type: 'push', appName: 'LinkedIn', title: 'Anna Kowalska', message: 'zaprosi\u0142a Ci\u0119 do sieci', accentColor: '#0A66C2' }
+    'ig-follow': { type: 'push', appName: 'Instagram', title: t('notifPresetIgFollowTitle'), message: t('notifPresetIgFollowMsg'), accentColor: '#E1306C' },
+    'ig-like': { type: 'push', appName: 'Instagram', title: t('notifPresetIgLikeTitle'), message: t('notifPresetIgLikeMsg'), accentColor: '#E1306C' },
+    'ig-comment': { type: 'push', appName: 'Instagram', title: t('notifPresetIgCommentTitle'), message: t('notifPresetIgCommentMsg'), accentColor: '#E1306C' },
+    'ig-dm': { type: 'push', appName: 'Instagram', title: t('notifPresetIgDmTitle'), message: t('notifPresetIgDmMsg'), accentColor: '#E1306C' },
+    'x-rt': { type: 'push', appName: 'X', title: t('notifPresetXRtTitle'), message: t('notifPresetXRtMsg'), accentColor: '#1DA1F2' },
+    'x-like': { type: 'push', appName: 'X', title: t('notifPresetXLikeTitle'), message: t('notifPresetXLikeMsg'), accentColor: '#1DA1F2' },
+    'x-mention': { type: 'push', appName: 'X', title: t('notifPresetXMentionTitle'), message: t('notifPresetXMentionMsg'), accentColor: '#1DA1F2' },
+    'tt-follow': { type: 'push', appName: 'TikTok', title: t('notifPresetTtFollowTitle'), message: t('notifPresetTtFollowMsg'), accentColor: '#000000' },
+    'sms': { type: 'sms', appName: 'Wiadomo\u015Bci', title: t('notifPresetSmsTitle'), message: t('notifPresetSmsMsg'), accentColor: '#34C759' },
+    'whatsapp': { type: 'push', appName: 'WhatsApp', title: t('notifPresetWhatsappTitle'), message: t('notifPresetWhatsappMsg'), accentColor: '#25D366' },
+    'email': { type: 'email', appName: 'Mail', title: t('notifPresetEmailTitle'), message: t('notifPresetEmailMsg'), accentColor: '#007AFF' },
+    'snapchat': { type: 'push', appName: 'Snapchat', title: t('notifPresetSnapchatTitle'), message: t('notifPresetSnapchatMsg'), accentColor: '#FFFC00' },
+    'telegram': { type: 'push', appName: 'Telegram', title: t('notifPresetTelegramTitle'), message: t('notifPresetTelegramMsg'), accentColor: '#0088CC' },
+    'youtube': { type: 'push', appName: 'YouTube', title: t('notifPresetYoutubeTitle'), message: t('notifPresetYoutubeMsg'), accentColor: '#FF0000' },
+    'linkedin': { type: 'push', appName: 'LinkedIn', title: t('notifPresetLinkedinTitle'), message: t('notifPresetLinkedinMsg'), accentColor: '#0A66C2' }
   };
 
   var st = {
@@ -96,7 +99,7 @@
   function autoAssignTimes() {
     var count = st.notifications.length;
     st.notifications.forEach(function (n, i) {
-      n.time = i < TIME_LABELS.length ? TIME_LABELS[i] : (i + ' min temu');
+      n.time = i < TIME_LABELS.length ? TIME_LABELS[i] : (i + ' ' + t('notifTimeMinAgo'));
     });
   }
 
@@ -258,7 +261,7 @@
     var dm = getDesignDims();
 
     if (!st.notifications.length) {
-      canvas.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#555;font-family:system-ui,sans-serif;font-size:14px;' + CHECKER + '">Dodaj powiadomienia</div>';
+      canvas.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#555;font-family:system-ui,sans-serif;font-size:14px;' + CHECKER + '">' + t('notifAddNotifications') + '</div>';
       return;
     }
 
@@ -414,7 +417,7 @@
       if (!active) $('#notifExportBarFill').style.width = '0%';
     };
 
-    setExporting(true, 'Przygotowuj\u0119...', 0);
+    setExporting(true, t('notifPreparing'), 0);
 
     var html = buildOffscreenHtml({
       width: w, height: h,
@@ -436,7 +439,7 @@
     });
 
     await ipcRenderer.invoke('bg-load-html', { html: html, width: w, height: h });
-    setExporting(true, 'Renderowanie klatek...', 5);
+    setExporting(true, t('notifRenderingFrames'), 5);
 
     var frames = [];
     for (var i = 0; i < totalFrames; i++) {
@@ -454,13 +457,13 @@
 
       if (i % 5 === 0) {
         var pct = 5 + Math.round((i / totalFrames) * 80);
-        setExporting(true, 'Klatka ' + (i + 1) + '/' + totalFrames, pct);
+        setExporting(true, t('notifFrame') + ' ' + (i + 1) + '/' + totalFrames, pct);
       }
     }
 
     frames.push({ data: frames[frames.length - 1].data, duration: Math.round(fps * 1.5) });
 
-    setExporting(true, 'Koduj\u0119 ' + ext.toUpperCase() + '...', 90);
+    setExporting(true, t('notifEncoding') + ' ' + ext.toUpperCase() + '...', 90);
     await ipcRenderer.invoke(ipcMethod, { frames: frames, savePath: savePath, fps: fps, width: w, height: h });
     await ipcRenderer.invoke('bg-cleanup');
 
@@ -480,8 +483,8 @@
     st.notifications.push({
       type: 'push',
       appName: 'App',
-      title: 'Tytu\u0142',
-      message: 'Tre\u015B\u0107 powiadomienia',
+      title: t('notifDefaultTitle'),
+      message: t('notifDefaultMessage'),
       accentColor: '#6366f1'
     });
     autoAssignTimes();
@@ -552,7 +555,7 @@
       var moveUp = document.createElement('button');
       moveUp.className = 'notif-list-move';
       moveUp.innerHTML = '\u25B2';
-      moveUp.title = 'W g\u00f3r\u0119';
+      moveUp.title = t('notifMoveUp');
       (function (idx) {
         moveUp.addEventListener('click', function () { moveNotification(idx, -1); });
       })(i);
@@ -560,7 +563,7 @@
       var moveDown = document.createElement('button');
       moveDown.className = 'notif-list-move';
       moveDown.innerHTML = '\u25BC';
-      moveDown.title = 'W d\u00f3\u0142';
+      moveDown.title = t('notifMoveDown');
       (function (idx) {
         moveDown.addEventListener('click', function () { moveNotification(idx, 1); });
       })(i);
@@ -568,7 +571,7 @@
       var del = document.createElement('button');
       del.className = 'notif-list-del';
       del.innerHTML = '\u00D7';
-      del.title = 'Usu\u0144';
+      del.title = t('notifDelete');
       (function (idx) {
         del.addEventListener('click', function () { removeNotification(idx); });
       })(i);
@@ -591,7 +594,7 @@
     if (!fields) return;
 
     if (!st.notifications.length) {
-      fields.innerHTML = '<div style="font-size:11px;color:var(--text-dim);padding:8px;text-align:center">Brak powiadomie\u0144</div>';
+      fields.innerHTML = '<div style="font-size:11px;color:var(--text-dim);padding:8px;text-align:center">' + t('notifNoNotifications') + '</div>';
       return;
     }
 
@@ -611,7 +614,7 @@
       appNameInput.type = 'text';
       appNameInput.className = 'control-input notif-edit-input';
       appNameInput.value = n.appName;
-      appNameInput.placeholder = 'Nazwa appki';
+      appNameInput.placeholder = t('notifPlaceholderAppName');
       (function (idx, inp) {
         inp.addEventListener('input', function () {
           st.notifications[idx].appName = inp.value;
@@ -623,7 +626,7 @@
       titleInput.type = 'text';
       titleInput.className = 'control-input notif-edit-input';
       titleInput.value = n.title;
-      titleInput.placeholder = 'Tytu\u0142';
+      titleInput.placeholder = t('notifPlaceholderTitle');
       (function (idx, inp) {
         inp.addEventListener('input', function () {
           st.notifications[idx].title = inp.value;
@@ -635,7 +638,7 @@
       msgInput.type = 'text';
       msgInput.className = 'control-input notif-edit-input';
       msgInput.value = n.message;
-      msgInput.placeholder = 'Tre\u015B\u0107';
+      msgInput.placeholder = t('notifPlaceholderMessage');
       (function (idx, inp) {
         inp.addEventListener('input', function () {
           st.notifications[idx].message = inp.value;
@@ -647,7 +650,7 @@
       timeInput.type = 'text';
       timeInput.className = 'control-input notif-edit-input';
       timeInput.value = n.time;
-      timeInput.placeholder = 'Czas';
+      timeInput.placeholder = t('notifPlaceholderTime');
       (function (idx, inp) {
         inp.addEventListener('input', function () {
           st.notifications[idx].time = inp.value;

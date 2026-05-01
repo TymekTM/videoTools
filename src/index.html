@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="pl" data-lang="pl">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,6 +16,8 @@
   <link rel="stylesheet" href="notification.css">
   <link rel="stylesheet" href="corridorkey.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="i18n.js"></script>
+  <script>document.documentElement.lang = currentLang();</script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
@@ -80,10 +82,11 @@
         </button>
       </div>
       <div class="tool-nav-bottom">
-        <button class="tool-nav-btn theme-toggle-nav" id="themeToggleNav" title="Zmień motyw">
+        <button class="tool-nav-btn theme-toggle-nav" id="themeToggleNav" data-i18n-title="themeToggle" title="Zmień motyw">
           <svg class="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
           <svg class="icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
         </button>
+        <button class="tool-nav-btn" id="langToggleNav" title="Language / Język" style="font-size:10px;font-weight:700;letter-spacing:0.05em;color:var(--text-dim)">PL</button>
         <div class="tool-nav-res" id="globalResInfo">1920x1080</div>
       </div>
     </nav>
@@ -99,22 +102,22 @@
 
       <aside class="sidebar">
         <div class="sidebar-header">
-          <span class="sidebar-title">News Mockup</span>
+          <span class="sidebar-title" data-i18n="navNewspaper">News Mockup</span>
           <span class="slide-counter" id="slideCounter">— / —</span>
         </div>
 
         <div class="control-group">
-          <label class="control-label">Słowo kluczowe</label>
-          <input type="text" class="control-input" id="keywordInput" value="SZTUKA" placeholder="Wpisz słowo...">
+          <label class="control-label" data-i18n="newsKeyword">Słowo kluczowe</label>
+          <input type="text" class="control-input" id="keywordInput" value="SZTUKA" placeholder="Wpisz słowo..." data-i18n-placeholder="newsKeywordPlaceholder">
         </div>
 
         <div class="control-group">
-          <label class="control-label">Prędkość <span class="control-value" id="speedValue">0.8s</span></label>
+          <label class="control-label" data-i18n-label="newsSpeed">Prędkość <span class="control-value" id="speedValue">0.8s</span></label>
           <input type="range" class="control-range" id="speedRange" min="100" max="1000" step="50" value="800" data-default="800">
         </div>
 
         <div class="control-group">
-          <label class="control-label">Highlight</label>
+          <label class="control-label" data-i18n="newsHighlight">Highlight</label>
           <div class="custom-highlight-row">
             <input type="color" class="control-color" id="colorAccent" value="#facc15">
             <div class="custom-highlight-preview" id="accentPreview">SZTUKA</div>
@@ -122,7 +125,7 @@
         </div>
 
         <div class="control-group">
-          <label class="control-label">Format</label>
+          <label class="control-label" data-i18n="newsFormat">Format</label>
           <div class="control-btn-group" id="formatGroup">
             <button class="control-btn active" data-format="16:9">16:9</button>
             <button class="control-btn" data-format="9:16">9:16</button>
@@ -131,7 +134,7 @@
         </div>
 
         <div class="control-group">
-          <label class="control-label">Rozdzielczość</label>
+          <label class="control-label" data-i18n="newsResolution">Rozdzielczość</label>
           <select class="control-select" id="resolutionSelect">
             <option value="720p">720p</option>
             <option value="1080p" selected>1080p</option>
@@ -142,57 +145,57 @@
         <div class="custom-section collapsed">
           <div class="custom-header" id="customToggle">
             <span class="custom-header-arrow">&#9660;</span>
-            <span>Customizacja</span>
+            <span data-i18n="newsCustomization">Customizacja</span>
           </div>
           <div class="custom-body" id="customBody">
             <div class="custom-group">
-              <label class="custom-label">Nagłówek</label>
-              <input type="text" class="control-input" id="customHeadline" placeholder="Losowy lorem ipsum">
+              <label class="custom-label" data-i18n="newsHeadline">Nagłówek</label>
+              <input type="text" class="control-input" id="customHeadline" placeholder="Losowy lorem ipsum" data-i18n-placeholder="newsHeadlinePlaceholder">
             </div>
             <div class="custom-group">
-              <label class="custom-label">Lead (1. akapit)</label>
-              <textarea class="control-textarea" id="customLead" rows="2" placeholder="Losowy lorem ipsum"></textarea>
+              <label class="custom-label" data-i18n="newsLead">Lead (1. akapit)</label>
+              <textarea class="control-textarea" id="customLead" rows="2" placeholder="Losowy lorem ipsum" data-i18n-placeholder="newsLeadPlaceholder"></textarea>
             </div>
             <div class="custom-group">
-              <label class="custom-label">Zoom <span class="control-value" id="zoomVal">2.0x</span></label>
+              <label class="custom-label" data-i18n-label="newsZoom">Zoom <span class="control-value" id="zoomVal">2.0x</span></label>
               <input type="range" class="control-range" id="zoomRange" min="2" max="5" step="0.1" value="2.0" data-default="2.0">
             </div>
             <div class="custom-group">
-              <label class="custom-label">Offset X <span class="control-value" id="offXVal">0</span></label>
+              <label class="custom-label" data-i18n-label="newsOffsetX">Offset X <span class="control-value" id="offXVal">0</span></label>
               <input type="range" class="control-range" id="offXRange" min="-300" max="300" step="5" value="0" data-default="0">
             </div>
             <div class="custom-group">
-              <label class="custom-label">Offset Y <span class="control-value" id="offYVal">0</span></label>
+              <label class="custom-label" data-i18n-label="newsOffsetY">Offset Y <span class="control-value" id="offYVal">0</span></label>
               <input type="range" class="control-range" id="offYRange" min="-300" max="300" step="5" value="0" data-default="0">
             </div>
             <div class="custom-group">
-              <label class="custom-label">Skala czcionki <span class="control-value" id="fontScaleVal">100%</span></label>
+              <label class="custom-label" data-i18n-label="newsFontScale">Skala czcionki <span class="control-value" id="fontScaleVal">100%</span></label>
               <input type="range" class="control-range" id="fontScaleRange" min="80" max="140" step="5" value="100" data-default="100">
             </div>
             <div class="custom-group">
-              <label class="custom-label">Line-height <span class="control-value" id="lineHVal">1.72</span></label>
+              <label class="custom-label" data-i18n-label="newsLineHeight">Line-height <span class="control-value" id="lineHVal">1.72</span></label>
               <input type="range" class="control-range" id="lineHRange" min="1.0" max="2.5" step="0.05" value="1.72" data-default="1.72">
             </div>
             <div class="custom-group">
-              <label class="custom-label">Winieta moc <span class="control-value" id="vignetteVal">70%</span></label>
+              <label class="custom-label" data-i18n-label="newsVignetteStrength">Winieta moc <span class="control-value" id="vignetteVal">70%</span></label>
               <input type="range" class="control-range" id="vignetteRange" min="0" max="100" step="5" value="70" data-default="70">
             </div>
             <div class="custom-group">
-              <label class="custom-label">Winieta rozmiar <span class="control-value" id="vignetteSizeVal">60%</span></label>
+              <label class="custom-label" data-i18n-label="newsVignetteSize">Winieta rozmiar <span class="control-value" id="vignetteSizeVal">60%</span></label>
               <input type="range" class="control-range" id="vignetteSizeRange" min="20" max="80" step="5" value="60" data-default="60">
             </div>
             <div class="custom-group">
-              <label class="custom-label">Winieta rozmycie <span class="control-value" id="vignetteSpreadVal">70%</span></label>
+              <label class="custom-label" data-i18n-label="newsVignetteBlur">Winieta rozmycie <span class="control-value" id="vignetteSpreadVal">70%</span></label>
               <input type="range" class="control-range" id="vignetteSpreadRange" min="10" max="80" step="5" value="70" data-default="70">
             </div>
             <div class="custom-group">
-              <label class="custom-label">Przejście <span class="control-value" id="transitionVal">120ms</span></label>
+              <label class="custom-label" data-i18n-label="newsTransition">Przejście <span class="control-value" id="transitionVal">120ms</span></label>
               <input type="range" class="control-range" id="transitionRange" min="0" max="500" step="10" value="120" data-default="120">
             </div>
             <div class="custom-group">
-              <label class="custom-label">Animacja <span class="control-value" id="animPresetVal">Brak</span></label>
+              <label class="custom-label" data-i18n-label="newsAnimation">Animacja <span class="control-value" id="animPresetVal">Brak</span></label>
               <select class="control-select" id="animPresetSelect">
-                <option value="none">Brak</option>
+                <option value="none" data-i18n="newsAnimNone">Brak</option>
                 <option value="zoomIn">Zoom In</option>
                 <option value="zoomOut">Zoom Out</option>
                 <option value="panLeft">Pan ◀</option>
@@ -206,14 +209,14 @@
               </select>
             </div>
             <div class="custom-group" id="animIntensityGroup" style="display:none">
-              <label class="custom-label">Moc animacji <span class="control-value" id="animIntensityVal">100%</span></label>
+              <label class="custom-label" data-i18n-label="newsAnimIntensity">Moc animacji <span class="control-value" id="animIntensityVal">100%</span></label>
               <input type="range" class="control-range" id="animIntensityRange" min="0" max="300" step="10" value="100" data-default="100">
             </div>
           </div>
         </div>
 
         <div class="control-group">
-          <label class="control-label">Szablony stron</label>
+          <label class="control-label" data-i18n="newsTemplates">Szablony stron</label>
           <div class="template-toggles" id="templateToggles"></div>
         </div>
 
@@ -231,17 +234,17 @@
               <path d="M1 10h2l3-6h2l3 6h2"/>
               <path d="M1 4h2l3 6h2l3-6h2"/>
             </svg>
-            <span>Losuj</span>
+            <span data-i18n="newsShuffle">Losuj</span>
           </button>
         </div>
 
         <div class="control-actions">
           <button class="btn btn-primary" id="btnExportMp4" style="flex:1">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-            <span>Eksportuj MP4</span>
+            <span data-i18n="newsExportMp4">Eksportuj MP4</span>
           </button>
           <div class="custom-group" style="flex:none;width:80px">
-            <label class="custom-label" style="font-size:10px">Czas (s)</label>
+            <label class="custom-label" style="font-size:10px" data-i18n="newsExportDuration">Czas (s)</label>
             <input type="number" class="control-input" id="exportDuration" value="30" min="5" max="600" style="padding:4px 6px;text-align:center">
           </div>
         </div>
@@ -249,7 +252,7 @@
         <div class="control-actions">
           <button class="btn btn-secondary" id="btnBatchExport" style="flex:1">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="8" height="6" rx="1"/><rect x="14" y="2" width="8" height="6" rx="1"/><rect x="8" y="10" width="8" height="6" rx="1"/></svg>
-            <span>Batch 16:9 + 9:16 + 1:1</span>
+            <span data-i18n="newsBatchExport">Batch 16:9 + 9:16 + 1:1</span>
           </button>
         </div>
 
@@ -274,11 +277,11 @@
 
       <aside class="sidebar">
         <div class="sidebar-header">
-          <span class="sidebar-title">Fake Chat</span>
+          <span class="sidebar-title" data-i18n="chatTitle">Fake Chat</span>
         </div>
 
         <div class="control-group">
-          <label class="control-label">Platforma</label>
+          <label class="control-label" data-i18n="chatPlatform">Platforma</label>
           <div class="control-btn-group chat-platform-grid" id="chatPlatformGroup">
             <button class="control-btn active" data-platform="imessage">iMessage</button>
             <button class="control-btn" data-platform="whatsapp">WhatsApp</button>
@@ -290,31 +293,31 @@
 
         <div class="chat-custom-theme" id="chatCustomTheme" style="display:none">
           <div class="custom-group">
-            <label class="custom-label">Tło czatu</label>
+            <label class="custom-label" data-i18n="chatCustomBg">Tło czatu</label>
             <input type="color" class="control-color" id="chatCustomBg" value="#1a1a2e">
           </div>
           <div class="custom-group">
-            <label class="custom-label">Tło nagłówka</label>
+            <label class="custom-label" data-i18n="chatCustomHeaderBg">Tło nagłówka</label>
             <input type="color" class="control-color" id="chatCustomHeaderBg" value="#16213e">
           </div>
           <div class="custom-row">
             <div class="custom-color">
-              <label class="custom-label">Dymek L</label>
+              <label class="custom-label" data-i18n="chatCustomBubbleL">Dymek L</label>
               <input type="color" class="control-color" id="chatCustomBubbleL" value="#2a2a4a">
             </div>
             <div class="custom-color">
-              <label class="custom-label">Dymek P</label>
+              <label class="custom-label" data-i18n="chatCustomBubbleR">Dymek P</label>
               <input type="color" class="control-color" id="chatCustomBubbleR" value="#6366f1">
             </div>
           </div>
           <div class="custom-group">
-            <label class="custom-label">Kolor tekstu</label>
+            <label class="custom-label" data-i18n="chatCustomTextColor">Kolor tekstu</label>
             <input type="color" class="control-color" id="chatCustomText" value="#e4e4e7">
           </div>
         </div>
 
         <div class="control-group">
-          <label class="control-label">Format</label>
+          <label class="control-label" data-i18n="chatFormat">Format</label>
           <div class="control-btn-group" id="chatFormatGroup">
             <button class="control-btn active" data-format="16:9">16:9</button>
             <button class="control-btn" data-format="9:16">9:16</button>
@@ -323,7 +326,7 @@
         </div>
 
         <div class="control-group">
-          <label class="control-label">Rozdzielczość</label>
+          <label class="control-label" data-i18n="chatResolution">Rozdzielczość</label>
           <select class="control-select" id="chatResolutionSelect">
             <option value="720p">720p</option>
             <option value="1080p" selected>1080p</option>
@@ -332,12 +335,12 @@
         </div>
 
         <div class="control-group">
-          <label class="control-label">Skala wiadomości <span id="chatScaleVal">100%</span></label>
+          <label class="control-label" data-i18n-label="chatMsgScale">Skala wiadomości <span id="chatScaleVal">100%</span></label>
           <input type="range" class="control-range" id="chatScaleRange" min="50" max="300" step="5" value="100" data-default="100">
         </div>
 
         <div class="chat-contacts">
-          <label class="control-label">Osoby</label>
+          <label class="control-label" data-i18n="chatContacts">Osoby</label>
           <div class="chat-contact-row">
             <div class="chat-contact-item">
               <div class="chat-avatar-upload" id="chatAvatar1Wrap" title="Upload avatar">
@@ -345,7 +348,7 @@
                 <span class="chat-avatar-initial" id="chatAvatar1Initial">J</span>
                 <input type="file" class="chat-avatar-file" id="chatAvatar1File" accept="image/*">
               </div>
-              <input type="text" class="control-input chat-contact-input" id="chatContact1Name" value="Jan" placeholder="Imię">
+              <input type="text" class="control-input chat-contact-input" id="chatContact1Name" value="Jan" placeholder="Imię" data-i18n-placeholder="chatContactPlaceholder">
               <input type="color" class="control-color chat-contact-color" id="chatContact1Color" value="#007AFF">
             </div>
           </div>
@@ -356,25 +359,25 @@
                 <span class="chat-avatar-initial" id="chatAvatar2Initial">A</span>
                 <input type="file" class="chat-avatar-file" id="chatAvatar2File" accept="image/*">
               </div>
-              <input type="text" class="control-input chat-contact-input" id="chatContact2Name" value="Anna" placeholder="Imię">
+              <input type="text" class="control-input chat-contact-input" id="chatContact2Name" value="Anna" placeholder="Imię" data-i18n-placeholder="chatContactPlaceholder">
               <input type="color" class="control-color chat-contact-color" id="chatContact2Color" value="#34C759">
             </div>
           </div>
         </div>
 
         <div class="chat-anim-controls">
-          <label class="control-label">Animacja</label>
+          <label class="control-label" data-i18n="chatAnimation">Animacja</label>
           <div class="control-btn-group" id="chatAnimSpeedGroup">
-            <button class="control-btn" data-speed="0">Wył.</button>
-            <button class="control-btn active" data-speed="600">Szybka</button>
-            <button class="control-btn" data-speed="1200">Normal</button>
-            <button class="control-btn" data-speed="2200">Wolna</button>
+            <button class="control-btn" data-speed="0" data-i18n="chatAnimOff">Wył.</button>
+            <button class="control-btn active" data-speed="600" data-i18n="chatAnimFast">Szybka</button>
+            <button class="control-btn" data-speed="1200" data-i18n="chatAnimNormal">Normal</button>
+            <button class="control-btn" data-speed="2200" data-i18n="chatAnimSlow">Wolna</button>
           </div>
-          <label class="control-checkbox"><input type="checkbox" id="chatHideTime"> Ukryj godzinę</label>
+          <label class="control-checkbox" data-i18n="chatHideTime"><input type="checkbox" id="chatHideTime"> Ukryj godzinę</label>
         </div>
 
         <div class="control-group">
-          <label class="control-label">Wiadomości</label>
+          <label class="control-label" data-i18n="chatMessages">Wiadomości</label>
           <div class="chat-messages-list" id="chatMessagesList"></div>
         </div>
 
@@ -383,7 +386,7 @@
             <option value="0">Jan</option>
             <option value="1">Anna</option>
           </select>
-          <input type="text" class="control-input chat-add-text" id="chatAddText" placeholder="Wpisz wiadomość...">
+          <input type="text" class="control-input chat-add-text" id="chatAddText" placeholder="Wpisz wiadomość..." data-i18n-placeholder="chatMsgPlaceholder">
           <button class="btn btn-primary chat-add-btn" id="chatAddBtn">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 1v12M1 7h12"/></svg>
           </button>
@@ -397,19 +400,19 @@
         <div class="control-actions" style="margin-top:auto;flex-wrap:wrap">
           <button class="btn btn-ghost" id="chatClearBtn" style="flex:1">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h10M5 4V2.5A.5.5 0 015.5 2h3a.5.5 0 01.5.5V4M11 4v7.5a1.5 1.5 0 01-1.5 1.5h-5A1.5 1.5 0 013 11.5V4"/></svg>
-            <span>Wyczyść</span>
+            <span data-i18n="chatClear">Wyczyść</span>
           </button>
           <button class="btn btn-secondary" id="chatPreviewAnimBtn" style="flex:1">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3,1 12,7 3,13" fill="currentColor"/></svg>
-            <span>Podgląd</span>
+            <span data-i18n="chatPreview">Podgląd</span>
           </button>
           <button class="btn btn-primary" id="chatExportBtn" style="flex:1">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 10v2a1 1 0 001 1h8a1 1 0 001-1v-2M7 2v8M4 5l3-3 3 3"/></svg>
-            <span>PNG</span>
+            <span data-i18n="chatExportPng">PNG</span>
           </button>
           <button class="btn btn-secondary" id="chatExportMp4Btn" style="flex:1">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-            <span>MP4</span>
+            <span data-i18n="chatExportMp4">MP4</span>
           </button>
         </div>
       </aside>
@@ -425,11 +428,11 @@
 
       <aside class="sidebar">
         <div class="sidebar-header">
-          <span class="sidebar-title">Typing Animation</span>
+          <span class="sidebar-title" data-i18n="typingTitle">Typing Animation</span>
         </div>
 
         <div class="control-group">
-          <label class="control-label">Motyw</label>
+          <label class="control-label" data-i18n="typingTheme">Motyw</label>
           <div class="control-btn-group" id="typingThemeGroup">
             <button class="control-btn active" data-theme="editor">Editor</button>
             <button class="control-btn" data-theme="terminal">Terminal</button>
@@ -440,12 +443,12 @@
         </div>
 
         <div class="control-group" id="typingThemeFields" style="display:none">
-          <label class="control-label">Ustawienia motywu</label>
+          <label class="control-label" data-i18n="typingThemeSettings">Ustawienia motywu</label>
           <div id="typingThemeFieldsInner"></div>
         </div>
 
         <div class="control-group">
-          <label class="control-label">Format</label>
+          <label class="control-label" data-i18n="typingFormat">Format</label>
           <div class="control-btn-group" id="typingFormatGroup">
             <button class="control-btn active" data-format="16:9">16:9</button>
             <button class="control-btn" data-format="9:16">9:16</button>
@@ -454,7 +457,7 @@
         </div>
 
         <div class="control-group">
-          <label class="control-label">Rozdzielczość</label>
+          <label class="control-label" data-i18n="typingResolution">Rozdzielczość</label>
           <select class="control-select" id="typingResolutionSelect">
             <option value="720p">720p</option>
             <option value="1080p" selected>1080p</option>
@@ -463,57 +466,57 @@
         </div>
 
         <div class="control-group">
-          <label class="control-label">Sekwencje</label>
+          <label class="control-label" data-i18n="typingSequences">Sekwencje</label>
           <div class="typing-seq-list" id="typingSeqList"></div>
           <div class="typing-seq-add" id="typingSeqAdd">
-            <button class="typing-seq-add-btn" data-add="type">+ Tekst</button>
-            <button class="typing-seq-add-btn" data-add="delete">+ Usuń</button>
-            <button class="typing-seq-add-btn" data-add="pause">+ Pauza</button>
-            <button class="typing-seq-add-btn" data-add="newline">+ Linia</button>
+            <button class="typing-seq-add-btn" data-add="type" data-i18n="typingAddText">+ Tekst</button>
+            <button class="typing-seq-add-btn" data-add="delete" data-i18n="typingAddDelete">+ Usuń</button>
+            <button class="typing-seq-add-btn" data-add="pause" data-i18n="typingAddPause">+ Pauza</button>
+            <button class="typing-seq-add-btn" data-add="newline" data-i18n="typingAddNewline">+ Linia</button>
           </div>
         </div>
 
         <div class="control-group">
-          <label class="control-label">Prędkość pisania <span class="control-value" id="typingSpeedVal">80ms</span></label>
+          <label class="control-label" data-i18n-label="typingTypeSpeed">Prędkość pisania <span class="control-value" id="typingSpeedVal">80ms</span></label>
           <input type="range" class="control-range" id="typingSpeed" min="20" max="300" step="5" value="80" data-default="80">
         </div>
 
         <div class="control-group">
-          <label class="control-label">Prędkość usuwania <span class="control-value" id="typingDelSpeedVal">40ms</span></label>
+          <label class="control-label" data-i18n-label="typingDelSpeed">Prędkość usuwania <span class="control-value" id="typingDelSpeedVal">40ms</span></label>
           <input type="range" class="control-range" id="typingDelSpeed" min="10" max="200" step="5" value="40" data-default="40">
         </div>
 
         <div class="control-group">
-          <label class="control-label">Font size <span class="control-value" id="typingFontSizeVal">20px</span></label>
+          <label class="control-label" data-i18n-label="typingFontSize">Font size <span class="control-value" id="typingFontSizeVal">20px</span></label>
           <input type="range" class="control-range" id="typingFontSize" min="10" max="40" step="1" value="20" data-default="20">
         </div>
 
         <div class="custom-row">
           <div class="custom-color">
-            <label class="custom-label">Tło</label>
+            <label class="custom-label" data-i18n="typingBg">Tło</label>
             <input type="color" class="control-color" id="typingBgColor" value="#1e1e2e">
           </div>
           <div class="custom-color">
-            <label class="custom-label">Tekst</label>
+            <label class="custom-label" data-i18n="typingText">Tekst</label>
             <input type="color" class="control-color" id="typingTextColor" value="#cdd6f4">
           </div>
           <div class="custom-color">
-            <label class="custom-label">Kursor</label>
+            <label class="custom-label" data-i18n="typingCursor">Kursor</label>
             <input type="color" class="control-color" id="typingCursorColor" value="#f5e0dc">
           </div>
         </div>
 
         <div class="control-group">
-          <label class="control-label">Start delay <span class="control-value" id="typingStartDelayVal">500ms</span></label>
+          <label class="control-label" data-i18n-label="typingStartDelay">Start delay <span class="control-value" id="typingStartDelayVal">500ms</span></label>
           <input type="range" class="control-range" id="typingStartDelay" min="0" max="3000" step="100" value="500" data-default="500">
         </div>
 
         <div class="control-group">
-          <label class="control-label">End delay <span class="control-value" id="typingEndDelayVal">1500ms</span></label>
+          <label class="control-label" data-i18n-label="typingEndDelay">End delay <span class="control-value" id="typingEndDelayVal">1500ms</span></label>
           <input type="range" class="control-range" id="typingEndDelay" min="0" max="5000" step="100" value="1500" data-default="1500">
         </div>
 
-        <label class="control-checkbox"><input type="checkbox" id="typingCursorBlink" checked> Migotanie kursora</label>
+        <label class="control-checkbox" data-i18n="typingCursorBlink"><input type="checkbox" id="typingCursorBlink" checked> Migotanie kursora</label>
 
         <div class="control-actions">
           <button class="btn btn-primary" id="typingPlayBtn">
@@ -529,7 +532,7 @@
         <div class="control-actions">
           <button class="btn btn-primary" id="typingExportMp4Btn" style="flex:1">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-            <span>Eksportuj MP4</span>
+            <span data-i18n="typingExportMp4">Eksportuj MP4</span>
           </button>
         </div>
 
@@ -550,11 +553,11 @@
 
       <aside class="sidebar">
         <div class="sidebar-header">
-          <span class="sidebar-title">Map Travel</span>
+          <span class="sidebar-title" data-i18n="mapTitle">Map Travel</span>
         </div>
 
         <div class="control-group">
-          <label class="control-label">Style mapy</label>
+          <label class="control-label" data-i18n="mapStyle">Style mapy</label>
           <div class="control-btn-group" id="mapStyleGroup">
             <button class="control-btn active" data-style="dark">Dark</button>
             <button class="control-btn" data-style="light">Light</button>
@@ -563,7 +566,7 @@
         </div>
 
         <div class="control-group">
-          <label class="control-label">Transport</label>
+          <label class="control-label" data-i18n="mapTransport">Transport</label>
           <div class="control-btn-group" id="mapTransportGroup">
             <button class="control-btn" data-transport="car">Car</button>
             <button class="control-btn active" data-transport="plane">Plane</button>
@@ -573,27 +576,27 @@
         </div>
 
         <div class="control-group">
-          <label class="control-label">Punkty trasy <span class="control-value" style="font-size:10px;text-transform:none">kliknij mapę by ustawić</span></label>
+          <label class="control-label" data-i18n-label="mapWaypoints">Punkty trasy <span class="control-value" style="font-size:10px;text-transform:none" data-i18n="mapWaypointsHint">kliknij mapę by ustawić</span></label>
           <div class="map-waypoints-list" id="mapWaypointsList"></div>
           <button class="btn btn-ghost map-add-wp-btn" id="mapAddWaypoint">
             <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 1v12M1 7h12"/></svg>
-            <span>Dodaj punkt</span>
+            <span data-i18n="mapAddWaypoint">Dodaj punkt</span>
           </button>
         </div>
 
         <div class="control-group">
-          <label class="control-label">Trasa</label>
+          <label class="control-label" data-i18n="mapRoute">Trasa</label>
           <div class="map-route-row">
             <input type="color" class="control-color map-route-color" id="mapRouteColor" value="#6366f1">
             <div class="custom-group" style="flex:1">
-              <label class="custom-label">Grubość <span class="control-value" id="mapRouteWidthVal">4</span></label>
+              <label class="custom-label" data-i18n-label="mapRouteWidth">Grubość <span class="control-value" id="mapRouteWidthVal">4</span></label>
               <input type="range" class="control-range" id="mapRouteWidth" min="1" max="10" step="1" value="4">
             </div>
           </div>
         </div>
 
         <div class="control-group">
-          <label class="control-label">Pojazd</label>
+          <label class="control-label" data-i18n="mapVehicle">Pojazd</label>
           <div class="map-vehicle-row">
             <div class="map-vehicle-preview" id="mapVehiclePreview"></div>
             <label class="btn btn-ghost map-vehicle-upload">
@@ -605,28 +608,28 @@
         </div>
 
         <div class="control-group">
-          <label class="control-label">Kamera</label>
+          <label class="control-label" data-i18n="mapCamera">Kamera</label>
           <div class="control-btn-group" id="mapCameraGroup">
             <button class="control-btn active" data-camera="follow">Follow</button>
             <button class="control-btn" data-camera="overview">Overview</button>
           </div>
         </div>
 
-        <label class="control-checkbox"><input type="checkbox" id="mapEasingToggle" checked> Ease-in/out</label>
-        <label class="control-checkbox"><input type="checkbox" id="mapLabelsToggle" checked> Etykiety miast</label>
+        <label class="control-checkbox" data-i18n="mapEasing"><input type="checkbox" id="mapEasingToggle" checked> Ease-in/out</label>
+        <label class="control-checkbox" data-i18n="mapCityLabels"><input type="checkbox" id="mapLabelsToggle" checked> Etykiety miast</label>
 
         <div class="control-group">
-          <label class="control-label">Czas <span class="control-value" id="mapDurationVal">5s</span></label>
+          <label class="control-label" data-i18n-label="mapDuration">Czas <span class="control-value" id="mapDurationVal">5s</span></label>
           <input type="range" class="control-range" id="mapDuration" min="1" max="30" step="0.5" value="5">
         </div>
 
         <div class="control-group">
-          <label class="control-label">Zoom <span class="control-value" id="mapZoomVal">5</span></label>
+          <label class="control-label" data-i18n-label="mapZoom">Zoom <span class="control-value" id="mapZoomVal">5</span></label>
           <input type="range" class="control-range" id="mapZoom" min="2" max="18" step="1" value="5">
         </div>
 
         <div class="control-group">
-          <label class="control-label">Format</label>
+          <label class="control-label" data-i18n="mapFormat">Format</label>
           <div class="control-btn-group" id="mapFormatGroup">
             <button class="control-btn active" data-format="16:9">16:9</button>
             <button class="control-btn" data-format="9:16">9:16</button>
@@ -635,7 +638,7 @@
         </div>
 
         <div class="control-group">
-          <label class="control-label">Rozdzielczość</label>
+          <label class="control-label" data-i18n="mapResolution">Rozdzielczość</label>
           <select class="control-select" id="mapResolutionSelect">
             <option value="720p">720p</option>
             <option value="1080p" selected>1080p</option>
@@ -646,18 +649,18 @@
         <div class="control-actions">
           <button class="btn btn-primary" id="mapPlayBtn">
             <svg width="14" height="14" viewBox="0 0 14 14"><polygon points="2,0 14,7 2,14" fill="currentColor"/></svg>
-            <span>Podgląd</span>
+            <span data-i18n="mapPreview">Podgląd</span>
           </button>
           <button class="btn btn-secondary" id="mapStopBtn">
             <svg width="14" height="14" viewBox="0 0 14 14"><rect x="1" y="1" width="12" height="12" rx="2" fill="currentColor"/></svg>
-            <span>Stop</span>
+            <span data-i18n="mapStop">Stop</span>
           </button>
         </div>
 
         <div class="control-actions">
           <button class="btn btn-primary" id="mapExportBtn" style="flex:1">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-            <span>Eksportuj MP4</span>
+            <span data-i18n="mapExportMp4">Eksportuj MP4</span>
           </button>
         </div>
 
@@ -681,11 +684,11 @@
 
       <aside class="sidebar">
         <div class="sidebar-header">
-          <span class="sidebar-title">Animated Charts</span>
+          <span class="sidebar-title" data-i18n="chartTitle">Animated Charts</span>
         </div>
 
         <div class="control-group">
-          <label class="control-label">Typ wykresu</label>
+          <label class="control-label" data-i18n="chartType">Typ wykresu</label>
           <div class="control-btn-group chart-type-grid" id="chartTypeGroup">
             <button class="control-btn active" data-type="bar">Bar</button>
             <button class="control-btn" data-type="line">Line</button>
@@ -696,17 +699,17 @@
         </div>
 
         <div class="control-group">
-          <label class="control-label">Tytuł</label>
-          <input type="text" class="control-input" id="chartTitle" placeholder="Opcjonalny tytuł...">
+          <label class="control-label" data-i18n="chartTitleLabel">Tytuł</label>
+          <input type="text" class="control-input" id="chartTitle" placeholder="Opcjonalny tytuł..." data-i18n-placeholder="chartTitlePlaceholder">
         </div>
 
         <div class="control-group">
-          <label class="control-label">Podtytuł</label>
-          <input type="text" class="control-input" id="chartSubtitle" placeholder="Opcjonalny podtytuł...">
+          <label class="control-label" data-i18n="chartSubtitleLabel">Podtytuł</label>
+          <input type="text" class="control-input" id="chartSubtitle" placeholder="Opcjonalny podtytuł..." data-i18n-placeholder="chartSubtitlePlaceholder">
         </div>
 
         <div class="control-group">
-          <label class="control-label">Paleta kolorów</label>
+          <label class="control-label" data-i18n="chartPalette">Paleta kolorów</label>
           <div class="control-btn-group chart-palette-grid" id="chartPaletteGroup">
             <button class="control-btn active" data-palette="vivid">Vivid</button>
             <button class="control-btn" data-palette="warm">Warm</button>
@@ -717,20 +720,20 @@
         </div>
 
         <div class="control-group" data-chart-options="data">
-          <label class="control-label">Dane</label>
+          <label class="control-label" data-i18n="chartData">Dane</label>
           <div class="chart-data-list" id="chartDataList"></div>
           <button class="btn btn-ghost chart-add-data-btn" id="chartAddDataBtn">
             <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 1v12M1 7h12"/></svg>
-            <span>Dodaj wiersz</span>
+            <span data-i18n="chartAddRow">Dodaj wiersz</span>
           </button>
         </div>
 
         <div class="control-group" data-chart-options="counter" style="display:none">
-          <label class="control-label">Counter</label>
+          <label class="control-label" data-i18n="chartCounter">Counter</label>
           <div class="chart-counter-fields">
             <div class="chart-counter-row">
-              <input type="number" class="control-input chart-counter-input" id="chartCounterFrom" value="0" placeholder="Od">
-              <input type="number" class="control-input chart-counter-input" id="chartCounterTo" value="1000000" placeholder="Do">
+              <input type="number" class="control-input chart-counter-input" id="chartCounterFrom" value="0" placeholder="Od" data-i18n-placeholder="chartCounterFrom">
+              <input type="number" class="control-input chart-counter-input" id="chartCounterTo" value="1000000" placeholder="Do" data-i18n-placeholder="chartCounterTo">
             </div>
             <div class="chart-counter-row">
               <input type="text" class="control-input chart-counter-input" id="chartCounterPrefix" value="" placeholder="Prefix ($)">
@@ -741,63 +744,63 @@
         </div>
 
         <div class="control-group" data-chart-options="gauge" style="display:none">
-          <label class="control-label">Gauge</label>
+          <label class="control-label" data-i18n="chartGauge">Gauge</label>
           <div class="chart-gauge-fields">
             <div class="chart-counter-row">
-              <label class="custom-label">Wartość <span class="control-value" id="chartGaugeValueVal">72%</span></label>
+              <label class="custom-label" data-i18n-label="chartGaugeValue">Wartość <span class="control-value" id="chartGaugeValueVal">72%</span></label>
               <input type="range" class="control-range" id="chartGaugeValue" min="0" max="100" step="1" value="72">
             </div>
-            <input type="text" class="control-input" id="chartGaugeLabel" value="Performance" placeholder="Etykieta">
+            <input type="text" class="control-input" id="chartGaugeLabel" value="Performance" placeholder="Etykieta" data-i18n-placeholder="chartGaugeLabel">
           </div>
         </div>
 
         <div class="control-group" data-chart-options="barline" style="display:none">
-          <label class="control-label">Opcje Bar / Line</label>
+          <label class="control-label" data-i18n="chartBarLineOptions">Opcje Bar / Line</label>
           <div data-chart-options="bar">
             <div class="custom-group">
-              <label class="custom-label">Zaokrąglenie <span class="control-value" id="chartBarRadiusVal">6</span></label>
+              <label class="custom-label" data-i18n-label="chartBarRadius">Zaokrąglenie <span class="control-value" id="chartBarRadiusVal">6</span></label>
               <input type="range" class="control-range" id="chartBarRadius" min="0" max="20" step="1" value="6">
             </div>
           </div>
           <div data-chart-options="line">
             <div class="custom-group">
-              <label class="custom-label">Grubość linii <span class="control-value" id="chartLineWidthVal">3</span></label>
+              <label class="custom-label" data-i18n-label="chartLineWidth">Grubość linii <span class="control-value" id="chartLineWidthVal">3</span></label>
               <input type="range" class="control-range" id="chartLineWidth" min="1" max="8" step="1" value="3">
             </div>
-            <label class="control-checkbox"><input type="checkbox" id="chartSmoothToggle" checked> Wygładzona linia</label>
+            <label class="control-checkbox" data-i18n="chartSmoothLine"><input type="checkbox" id="chartSmoothToggle" checked> Wygładzona linia</label>
           </div>
         </div>
 
         <div class="control-group" data-chart-options="pie">
           <div class="custom-group">
-            <label class="custom-label">Otwór donut <span class="control-value" id="chartDonutHoleVal">60%</span></label>
+            <label class="custom-label" data-i18n-label="chartDonutHole">Otwór donut <span class="control-value" id="chartDonutHoleVal">60%</span></label>
             <input type="range" class="control-range" id="chartDonutHole" min="0" max="0.9" step="0.05" value="0.6">
           </div>
         </div>
 
         <div class="custom-row">
           <div class="custom-color">
-            <label class="custom-label">Tło</label>
+            <label class="custom-label" data-i18n="chartBg">Tło</label>
             <input type="color" class="control-color" id="chartBgColor" value="#1a1a2e">
           </div>
           <div class="custom-color">
-            <label class="custom-label">Tekst</label>
+            <label class="custom-label" data-i18n="chartText">Tekst</label>
             <input type="color" class="control-color" id="chartTextColor" value="#e4e4e7">
           </div>
         </div>
 
         <div class="control-group">
-          <label class="control-label">Animacja</label>
+          <label class="control-label" data-i18n="chartAnimation">Animacja</label>
           <div class="custom-group">
-            <label class="custom-label">Czas <span class="control-value" id="chartAnimDurationVal">3s</span></label>
+            <label class="custom-label" data-i18n-label="chartAnimDuration">Czas <span class="control-value" id="chartAnimDurationVal">3s</span></label>
             <input type="range" class="control-range" id="chartAnimDuration" min="0.5" max="10" step="0.5" value="3">
           </div>
           <div class="custom-group">
-            <label class="custom-label">Stagger <span class="control-value" id="chartStaggerVal">8%</span></label>
+            <label class="custom-label" data-i18n-label="chartStagger">Stagger <span class="control-value" id="chartStaggerVal">8%</span></label>
             <input type="range" class="control-range" id="chartStagger" min="0" max="0.3" step="0.01" value="0.08">
           </div>
           <div class="custom-group">
-            <label class="custom-label">Easing</label>
+            <label class="custom-label" data-i18n="chartEasing">Easing</label>
             <select class="control-select" id="chartEasingSelect">
               <option value="easeOut">Ease Out</option>
               <option value="easeInOut">Ease In-Out</option>
@@ -810,20 +813,20 @@
         </div>
 
         <div class="control-group">
-          <label class="custom-label">Font size <span class="control-value" id="chartFontSizeVal">32px</span></label>
+          <label class="custom-label" data-i18n-label="chartFontSize">Font size <span class="control-value" id="chartFontSizeVal">32px</span></label>
           <input type="range" class="control-range" id="chartFontSize" min="16" max="64" step="2" value="32">
         </div>
 
         <div class="chart-toggles">
-          <label class="control-checkbox"><input type="checkbox" id="chartLabelsToggle" checked> Etykiety</label>
-          <label class="control-checkbox"><input type="checkbox" id="chartValuesToggle" checked> Wartości</label>
-          <label class="control-checkbox"><input type="checkbox" id="chartGridToggle" checked> Siatka</label>
-          <label class="control-checkbox"><input type="checkbox" id="chartLegendToggle" checked> Legenda</label>
-          <label class="control-checkbox"><input type="checkbox" id="chartCustomColorsToggle"> Custom kolory</label>
+          <label class="control-checkbox" data-i18n="chartLabels"><input type="checkbox" id="chartLabelsToggle" checked> Etykiety</label>
+          <label class="control-checkbox" data-i18n="chartValues"><input type="checkbox" id="chartValuesToggle" checked> Wartości</label>
+          <label class="control-checkbox" data-i18n="chartGrid"><input type="checkbox" id="chartGridToggle" checked> Siatka</label>
+          <label class="control-checkbox" data-i18n="chartLegend"><input type="checkbox" id="chartLegendToggle" checked> Legenda</label>
+          <label class="control-checkbox" data-i18n="chartCustomColors"><input type="checkbox" id="chartCustomColorsToggle"> Custom kolory</label>
         </div>
 
         <div class="control-group">
-          <label class="control-label">Format</label>
+          <label class="control-label" data-i18n="chartFormat">Format</label>
           <div class="control-btn-group" id="chartFormatGroup">
             <button class="control-btn active" data-format="16:9">16:9</button>
             <button class="control-btn" data-format="9:16">9:16</button>
@@ -832,7 +835,7 @@
         </div>
 
         <div class="control-group">
-          <label class="control-label">Rozdzielczość</label>
+          <label class="control-label" data-i18n="chartResolution">Rozdzielczość</label>
           <select class="control-select" id="chartResolutionSelect">
             <option value="720p">720p</option>
             <option value="1080p" selected>1080p</option>
@@ -854,7 +857,7 @@
         <div class="control-actions">
           <button class="btn btn-primary" id="chartExportBtn" style="flex:1">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-            <span>Eksportuj MP4</span>
+            <span data-i18n="chartExportMp4">Eksportuj MP4</span>
           </button>
         </div>
 
@@ -878,11 +881,11 @@
 
       <aside class="sidebar">
         <div class="sidebar-header">
-          <span class="sidebar-title">Notification Stack</span>
+          <span class="sidebar-title" data-i18n="notifTitle">Notification Stack</span>
         </div>
 
         <div class="control-group">
-          <label class="control-label">Motyw</label>
+          <label class="control-label" data-i18n="notifTheme">Motyw</label>
           <div class="control-btn-group" id="notifThemeGroup">
             <button class="control-btn active" data-theme="ios">iOS</button>
             <button class="control-btn" data-theme="android">Android</button>
@@ -891,18 +894,18 @@
         </div>
 
         <div class="control-group" id="notifCustomThemeGroup" style="display:none">
-          <label class="control-label">Custom motyw</label>
+          <label class="control-label" data-i18n="notifCustomTheme">Custom motyw</label>
           <div class="notif-custom-controls">
             <label class="notif-custom-row"><span>T&#x142;o</span><input type="color" class="control-color" id="notifCustomBg" value="#f2f2f2"></label>
             <label class="notif-custom-row"><span>Obramowanie</span><input type="color" class="control-color" id="notifCustomBorder" value="#e5e5e5"></label>
             <label class="notif-custom-row"><span>Tytu&#x142;</span><input type="color" class="control-color" id="notifCustomTitle" value="#000000"></label>
             <label class="notif-custom-row"><span>Tekst</span><input type="color" class="control-color" id="notifCustomText" value="#666666"></label>
-            <label class="notif-custom-row"><span>Radius <span class="control-value" id="notifCustomRadiusVal">16</span></span><input type="range" class="control-range" id="notifCustomRadius" min="0" max="32" step="1" value="16"></label>
+            <label class="notif-custom-row"><span data-i18n-label="notifRadius">Radius <span class="control-value" id="notifCustomRadiusVal">16</span></span><input type="range" class="control-range" id="notifCustomRadius" min="0" max="32" step="1" value="16"></label>
           </div>
         </div>
 
         <div class="control-group">
-          <label class="control-label">Kierunek</label>
+          <label class="control-label" data-i18n="notifDirection">Kierunek</label>
           <div class="control-btn-group" id="notifDirectionGroup">
             <button class="control-btn active" data-dir="top">&#x25BC; Z g&#xF3;ry</button>
             <button class="control-btn" data-dir="bottom">&#x25B2; Z do&#x142;u</button>
@@ -910,7 +913,7 @@
         </div>
 
         <div class="control-group">
-          <label class="control-label">Pozycja</label>
+          <label class="control-label" data-i18n="notifPosition">Pozycja</label>
           <div class="control-btn-group" id="notifPositionGroup">
             <button class="control-btn" data-pos="left">Lewo</button>
             <button class="control-btn active" data-pos="right">Prawo</button>
@@ -919,7 +922,7 @@
         </div>
 
         <div class="control-group">
-          <label class="control-label">Szybkie dodawanie</label>
+          <label class="control-label" data-i18n="notifQuickAdd">Szybkie dodawanie</label>
           <div class="notif-presets">
             <button class="notif-preset-btn" data-preset="ig-follow">IG Follow</button>
             <button class="notif-preset-btn" data-preset="ig-like">IG Like</button>
@@ -940,34 +943,34 @@
         </div>
 
         <div class="control-group">
-          <label class="control-label">Lista powiadomień</label>
+          <label class="control-label" data-i18n="notifList">Lista powiadomień</label>
           <div class="notif-list" id="notifList"></div>
           <div id="notifEditFields"></div>
           <button class="btn btn-ghost notif-add-btn" id="notifAddCustom">
             <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 1v12M1 7h12"/></svg>
-            <span>+ Custom</span>
+            <span data-i18n="notifAddCustom">+ Custom</span>
           </button>
         </div>
 
         <div class="control-group">
-          <label class="control-label">Odstęp <span class="control-value" id="notifAnimSpeedVal">800ms</span></label>
+          <label class="control-label" data-i18n-label="notifAnimSpeed">Odstęp <span class="control-value" id="notifAnimSpeedVal">800ms</span></label>
           <input type="range" class="control-range" id="notifAnimSpeed" min="200" max="2000" step="50" value="800">
         </div>
 
         <div class="control-group">
-          <label class="control-label">Max widocznych <span class="control-value" id="notifMaxVisibleVal">5</span></label>
+          <label class="control-label" data-i18n-label="notifMaxVisible">Max widocznych <span class="control-value" id="notifMaxVisibleVal">5</span></label>
           <input type="range" class="control-range" id="notifMaxVisible" min="2" max="12" step="1" value="5">
         </div>
 
         <div class="control-group">
-          <label class="control-label">Nakładka <span class="control-value" id="notifStackOverlapVal">0px</span></label>
+          <label class="control-label" data-i18n-label="notifStackOverlap">Nakładka <span class="control-value" id="notifStackOverlapVal">0px</span></label>
           <input type="range" class="control-range" id="notifStackOverlap" min="0" max="80" step="2" value="0">
         </div>
 
-        <label class="control-checkbox"><input type="checkbox" id="notifFadeOut" checked> Fade-out starych</label>
+        <label class="control-checkbox" data-i18n="notifFadeOut"><input type="checkbox" id="notifFadeOut" checked> Fade-out starych</label>
 
         <div class="control-group">
-          <label class="control-label">Format</label>
+          <label class="control-label" data-i18n="notifFormat">Format</label>
           <div class="control-btn-group" id="notifFormatGroup">
             <button class="control-btn active" data-format="16:9">16:9</button>
             <button class="control-btn" data-format="9:16">9:16</button>
@@ -976,7 +979,7 @@
         </div>
 
         <div class="control-group">
-          <label class="control-label">Rozdzielczość</label>
+          <label class="control-label" data-i18n="notifResolution">Rozdzielczość</label>
           <select class="control-select" id="notifResolutionSelect">
             <option value="720p">720p</option>
             <option value="1080p" selected>1080p</option>
@@ -985,11 +988,11 @@
         </div>
 
         <div class="control-group">
-          <label class="control-label">Tło eksportu</label>
+          <label class="control-label" data-i18n="notifExportBg">Tło eksportu</label>
           <div class="control-btn-group" id="notifBgModeGroup">
-            <button class="control-btn active" data-bgmode="white">Białe</button>
+            <button class="control-btn active" data-bgmode="white" data-i18n="notifBgWhite">Białe</button>
             <button class="control-btn" data-bgmode="greenscreen">Green Screen</button>
-            <button class="control-btn" data-bgmode="black">Czarne</button>
+            <button class="control-btn" data-bgmode="black" data-i18n="notifBgBlack">Czarne</button>
           </div>
         </div>
 
@@ -1023,7 +1026,7 @@
 
         <div class="control-actions" style="margin-top:auto">
           <button class="btn btn-ghost" id="notifClearBtn" style="flex:1">
-            <span>Wyczyść</span>
+            <span data-i18n="notifClear">Wyczyść</span>
           </button>
         </div>
       </aside>
@@ -1047,7 +1050,7 @@
                   <path d="M7 8l3 3-3 3"/><line x1="13" y1="14" x2="17" y2="14"/>
                 </svg>
                 <div class="ck-ws-idle-title">CorridorKey</div>
-                <div class="ck-ws-idle-sub">Wybierz materiał wejściowy aby rozpoczac</div>
+                <div class="ck-ws-idle-sub" data-i18n="ckIdleSub">Wybierz materiał wejściowy aby rozpoczac</div>
               </div>
               <div class="ck-ws-content" id="ckWsInputContent" style="display:none">
                 <div class="ck-ws-info-bar" id="ckInputInfoBar"></div>
@@ -1056,7 +1059,7 @@
             </div>
             <div class="ck-ws-panel" data-ws-panel="output" style="display:none">
               <div class="ck-ws-empty" id="ckOutputEmpty">
-                <span>Uruchom inference aby zobaczyc wyniki</span>
+                <span data-i18n="ckOutputEmpty">Uruchom inference aby zobaczyc wyniki</span>
               </div>
               <div class="ck-ws-content" id="ckWsOutputContent" style="display:none">
                 <div class="ck-ws-info-bar" id="ckOutputInfoBar"></div>
@@ -1066,7 +1069,7 @@
             <div class="ck-ws-panel" data-ws-panel="log" style="display:none">
               <div class="ck-ws-console">
                 <div class="ck-ws-console-header">
-                  <span>Console Output</span>
+                  <span data-i18n="ckConsoleOutput">Console Output</span>
                   <button class="ck-log-clear" id="ckLogClear">Clear</button>
                 </div>
                 <div class="ck-ws-console-body" id="ckLogBody"></div>
@@ -1088,37 +1091,37 @@
 
         <div class="ck-license-banner" id="ckLicenseBanner">
           <div class="ck-license-icon">!</div>
-          <div class="ck-license-text">
+          <div class="ck-license-text" id="ckLicenseShort">
             <strong>Corridor Key Licence v1.0</strong> &mdash; CC BY-NC-SA 4.0.
-            <span class="ck-license-ok">Możesz:</span> przetwarzać obrazy dowolnie, również komercyjnie.
-            <span class="ck-license-warn">Nie możesz:</span> sprzedawać narzędzia ani oferować inference jako płatny serwis.
-            <a href="#" class="ck-license-link" id="ckLicenseToggle">Więcej</a>
+            <span class="ck-license-ok" data-i18n="ckLicenseOk">Możesz:</span> <span data-i18n="ckLicenseOkText">przetwarzać obrazy dowolnie, również komercyjnie.</span>
+            <span class="ck-license-warn" data-i18n="ckLicenseWarn">Nie możesz:</span> <span data-i18n="ckLicenseWarnText">sprzedawać narzędzia ani oferować inference jako płatny serwis.</span>
+            <a href="#" class="ck-license-link" id="ckLicenseToggle" data-i18n="ckLicenseMore">Więcej</a>
           </div>
         </div>
         <div class="ck-license-full" id="ckLicenseFull" style="display:none">
           <div class="ck-license-full-content">
-            <p><strong>Corridor Key Licence v1.0</strong> &mdash; CC BY-NC-SA 4.0 + dodatkowe warunki:</p>
+            <p><strong>Corridor Key Licence v1.0</strong> &mdash; <span data-i18n="ckLicenseIntro">CC BY-NC-SA 4.0 + dodatkowe warunki:</span></p>
             <ul>
-              <li><span class="ck-tag ck-tag-yes">DOZWOLONE</span> Dowolne użycie, w tym keying w projektach komercyjnych</li>
-              <li><span class="ck-tag ck-tag-yes">DOZWOLONE</span> Forki i modyfikacje z zachowaniem licencji i nazwy CorridorKey</li>
-              <li><span class="ck-tag ck-tag-no">ZABRONIONE</span> Repakowanie i sprzedaż jako samodzielny produkt</li>
-              <li><span class="ck-tag ck-tag-no">ZABRONIONE</span> Płatny dostęp do inference (paywall, subskrypcja, billing)</li>
-              <li><span class="ck-tag ck-tag-warn">WYJĄTEK</span> Komercyjne oprogramowanie wymaga pisemnej umowy &mdash; <a href="mailto:contact@corridordigital.com">contact@corridordigital.com</a></li>
-              <li><span class="ck-tag ck-tag-warn">SHARE-ALIKE</span> Publiczne modyfikacje muszą zachować tę samą licencję</li>
+              <li><span class="ck-tag ck-tag-yes" data-i18n="ckLicenseAllowed">DOZWOLONE</span> <span data-i18n="ckLicenseAllowed1">Dowolne użycie, w tym keying w projektach komercyjnych</span></li>
+              <li><span class="ck-tag ck-tag-yes" data-i18n="ckLicenseAllowed">DOZWOLONE</span> <span data-i18n="ckLicenseAllowed2">Forki i modyfikacje z zachowaniem licencji i nazwy CorridorKey</span></li>
+              <li><span class="ck-tag ck-tag-no" data-i18n="ckLicenseForbidden">ZABRONIONE</span> <span data-i18n="ckLicenseForbidden1">Repakowanie i sprzedaż jako samodzielny produkt</span></li>
+              <li><span class="ck-tag ck-tag-no" data-i18n="ckLicenseForbidden">ZABRONIONE</span> <span data-i18n="ckLicenseForbidden2">Płatny dostęp do inference (paywall, subskrypcja, billing)</span></li>
+              <li><span class="ck-tag ck-tag-warn" data-i18n="ckLicenseException">WYJĄTEK</span> <span data-i18n="ckLicenseException1">Komercyjne oprogramowanie wymaga pisemnej umowy</span> &mdash; <a href="mailto:contact@corridordigital.com">contact@corridordigital.com</a></li>
+              <li><span class="ck-tag ck-tag-warn">SHARE-ALIKE</span> <span data-i18n="ckLicenseShare1">Publiczne modyfikacje muszą zachować tę samą licencję</span></li>
             </ul>
-            <p>Repozytorium: <a href="https://github.com/nikopueringer/CorridorKey" target="_blank">github.com/nikopueringer/CorridorKey</a></p>
+            <p><span data-i18n="ckLicenseRepo">Repozytorium</span>: <a href="https://github.com/nikopueringer/CorridorKey" target="_blank">github.com/nikopueringer/CorridorKey</a></p>
           </div>
         </div>
 
         <div class="ck-step ck-step-active" id="ckStepSetup">
           <div class="ck-step-header" id="ckStepSetupToggle">
             <div class="ck-step-num">1</div>
-            <span class="ck-step-title">Setup repozytorium</span>
+            <span class="ck-step-title" data-i18n="ckStepSetup">Setup repozytorium</span>
             <span class="ck-step-status" id="ckStepSetupStatus"></span>
           </div>
           <div class="ck-step-body" id="ckStepSetupBody">
             <div class="ck-path-row">
-              <input type="text" class="control-input" id="ckRepoPath" placeholder="Ścieżka do CorridorKey" readonly>
+              <input type="text" class="control-input" id="ckRepoPath" data-i18n-placeholder="ckRepoPath" placeholder="Ścieżka do CorridorKey" readonly>
               <button class="btn btn-ghost ck-btn-browse" id="ckBrowseRepo">...</button>
             </div>
             <div class="ck-step-btns">
@@ -1137,7 +1140,7 @@
         <div class="ck-step" id="ckStepInput">
           <div class="ck-step-header" id="ckStepInputToggle">
             <div class="ck-step-num">2</div>
-            <span class="ck-step-title">Materiał wejściowy</span>
+            <span class="ck-step-title" data-i18n="ckStepInput">Materiał wejściowy</span>
             <span class="ck-step-status" id="ckStepInputStatus"></span>
           </div>
           <div class="ck-step-body" id="ckStepInputBody">
@@ -1165,13 +1168,13 @@
         <div class="ck-step" id="ckStepAlpha">
           <div class="ck-step-header" id="ckStepAlphaToggle">
             <div class="ck-step-num">3</div>
-            <span class="ck-step-title">Alpha Hint</span>
+            <span class="ck-step-title" data-i18n="ckStepAlpha">Alpha Hint</span>
             <span class="ck-step-status" id="ckStepAlphaStatus"></span>
           </div>
           <div class="ck-step-body" id="ckStepAlphaBody">
-            <p class="ck-step-hint">Alpha to czarno-biała maska wydzielająca pierwszy plan z green screen. Wygeneruj automatycznie lub pomiń jeśli masz własną.</p>
+            <p class="ck-step-hint" data-i18n="ckAlphaHint">Alpha to czarno-biała maska wydzielająca pierwszy plan z green screen. Wygeneruj automatycznie lub pomiń jeśli masz własną.</p>
             <div class="ck-step-btns">
-              <button class="btn btn-primary" id="ckGenerateAlphasBiRefNet" disabled>BiRefNet (szybkie)</button>
+              <button class="btn btn-primary" id="ckGenerateAlphasBiRefNet" data-i18n="ckBiRefNet" disabled>BiRefNet (szybkie)</button>
               <button class="btn btn-secondary" id="ckGenerateAlphasGVM" disabled>GVM (automatyczne)</button>
             </div>
             <div class="ck-input-info" id="ckAlphaInfo" style="display:none"></div>
@@ -1181,7 +1184,7 @@
         <div class="ck-step" id="ckStepProcess">
           <div class="ck-step-header" id="ckStepProcessToggle">
             <div class="ck-step-num">4</div>
-            <span class="ck-step-title">Inference</span>
+            <span class="ck-step-title" data-i18n="ckStepInference">Inference</span>
             <span class="ck-step-status" id="ckStepProcessStatus"></span>
           </div>
           <div class="ck-step-body" id="ckStepProcessBody">
@@ -1201,11 +1204,11 @@
         </div>
 
         <div class="ck-output-section" id="ckOutputSection" style="display:none">
-          <div class="ck-section-header"><span>Wyniki</span></div>
+          <div class="ck-section-header"><span data-i18n="ckResults">Wyniki</span></div>
           <div class="ck-output-grid" id="ckOutputGrid"></div>
           <button class="btn btn-ghost" id="ckAssembleVideo" style="display:none;width:100%;margin-top:6px">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><polygon points="10,8 16,12 10,16" fill="currentColor" stroke="none"/></svg>
-            <span>Złóż Comp do MP4</span>
+            <span data-i18n="ckAssembleComp">Złóż Comp do MP4</span>
           </button>
         </div>
 

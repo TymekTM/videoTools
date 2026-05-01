@@ -284,9 +284,9 @@ function typingUpdatePlayBtn() {
   const btn = $('#typingPlayBtn');
   if (!btn) return;
   if (typingState.playing) {
-    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14"><rect x="2" y="1" width="3.5" height="12" rx="1" fill="currentColor"/><rect x="8.5" y="1" width="3.5" height="12" rx="1" fill="currentColor"/></svg><span>Pause</span>`;
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14"><rect x="2" y="1" width="3.5" height="12" rx="1" fill="currentColor"/><rect x="8.5" y="1" width="3.5" height="12" rx="1" fill="currentColor"/></svg><span>${t('newsPause')}</span>`;
   } else {
-    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14"><polygon points="2,0 14,7 2,14" fill="currentColor"/></svg><span>Play</span>`;
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14"><polygon points="2,0 14,7 2,14" fill="currentColor"/></svg><span>${t('newsPlay')}</span>`;
   }
 }
 
@@ -297,30 +297,30 @@ function typingRenderSeqList() {
 
     switch (seq.action) {
       case 'type':
-        badge = '<span class="typing-seq-badge type">Tekst</span>';
+        badge = '<span class="typing-seq-badge type">' + t('typingBadgeText') + '</span>';
         content = `<input type="text" class="typing-seq-input" value="${(seq.text || '').replace(/"/g, '&quot;')}" data-idx="${i}" data-field="text">`;
         break;
       case 'delete':
-        badge = '<span class="typing-seq-badge delete">Usuń</span>';
-        content = `<span class="typing-seq-label">znaków:</span><input type="number" class="typing-seq-input typing-seq-num" value="${seq.count ?? 1}" min="1" data-idx="${i}" data-field="count">`;
+        badge = '<span class="typing-seq-badge delete">' + t('typingBadgeDelete') + '</span>';
+        content = `<span class="typing-seq-label">${t('typingChars')}</span><input type="number" class="typing-seq-input typing-seq-num" value="${seq.count ?? 1}" min="1" data-idx="${i}" data-field="count">`;
         break;
       case 'pause':
-        badge = '<span class="typing-seq-badge pause">Pauza</span>';
-        content = `<span class="typing-seq-label">ms:</span><input type="number" class="typing-seq-input typing-seq-num" value="${seq.duration ?? 500}" min="50" step="50" data-idx="${i}" data-field="duration">`;
+        badge = '<span class="typing-seq-badge pause">' + t('typingBadgePause') + '</span>';
+        content = `<span class="typing-seq-label">${t('typingMs')}</span><input type="number" class="typing-seq-input typing-seq-num" value="${seq.duration ?? 500}" min="50" step="50" data-idx="${i}" data-field="duration">`;
         break;
       case 'newline':
-        badge = '<span class="typing-seq-badge newline">Linia</span>';
+        badge = '<span class="typing-seq-badge newline">' + t('typingBadgeNewline') + '</span>';
         content = '';
         break;
     }
 
-    const moveUp = i > 0 ? `<button class="typing-seq-move" data-idx="${i}" data-dir="up" title="Góra">&#9650;</button>` : '<span style="width:14px"></span>';
-    const moveDown = i < typingState.sequences.length - 1 ? `<button class="typing-seq-move" data-idx="${i}" data-dir="down" title="Dół">&#9660;</button>` : '<span style="width:14px"></span>';
+    const moveUp = i > 0 ? `<button class="typing-seq-move" data-idx="${i}" data-dir="up" title="${t('moveUp')}">&#9650;</button>` : '<span style="width:14px"></span>';
+    const moveDown = i < typingState.sequences.length - 1 ? `<button class="typing-seq-move" data-idx="${i}" data-dir="down" title="${t('moveDown')}">&#9660;</button>` : '<span style="width:14px"></span>';
 
     return `<div class="typing-seq-item" data-idx="${i}">
       ${badge}${content}
       ${moveUp}${moveDown}
-      <button class="typing-seq-delete" data-idx="${i}" title="Usuń">
+      <button class="typing-seq-delete" data-idx="${i}" title="${t('delete')}">
         <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3l8 8M11 3l-8 8"/></svg>
       </button>
     </div>`;
@@ -364,23 +364,23 @@ function typingRenderSeqList() {
 
 const TYPING_THEME_FIELD_DEFS = {
   editor: [
-    { key: 'title', label: 'Tytuł', type: 'text' },
+    { key: 'title', label: t('typingFieldTitle'), type: 'text' },
   ],
   terminal: [
-    { key: 'title', label: 'Tytuł', type: 'text' },
-    { key: 'prompt', label: 'Prompt', type: 'text' },
+    { key: 'title', label: t('typingFieldTitle'), type: 'text' },
+    { key: 'prompt', label: t('typingFieldPrompt'), type: 'text' },
   ],
   email: [
-    { key: 'title', label: 'Tytuł', type: 'text' },
-    { key: 'to', label: 'Do', type: 'text' },
-    { key: 'subject', label: 'Temat', type: 'text' },
+    { key: 'title', label: t('typingFieldTitle'), type: 'text' },
+    { key: 'to', label: t('typingFieldTo'), type: 'text' },
+    { key: 'subject', label: t('typingFieldSubject'), type: 'text' },
   ],
   sms: [
-    { key: 'avatar', label: 'Awatar', type: 'text' },
-    { key: 'contactName', label: 'Kontakt', type: 'text' },
-    { key: 'status', label: 'Status', type: 'text' },
-    { key: 'bubbleColor', label: 'Kolor bąbla', type: 'color' },
-    { key: 'timestamp', label: 'Godzina', type: 'text' },
+    { key: 'avatar', label: t('typingFieldAvatar'), type: 'text' },
+    { key: 'contactName', label: t('typingFieldContact'), type: 'text' },
+    { key: 'status', label: t('typingFieldStatus'), type: 'text' },
+    { key: 'bubbleColor', label: t('typingFieldBubbleColor'), type: 'color' },
+    { key: 'timestamp', label: t('typingFieldTime'), type: 'text' },
   ],
   generic: [],
 };
@@ -551,7 +551,7 @@ function initTyping() {
     const totalDuration = typingState.startDelay + timeline.totalDuration + typingState.endDelay;
     const totalFrames = Math.max(1, Math.ceil(totalDuration / 1000 * fps));
 
-    setExporting(true, 'Inicjalizacja...');
+    setExporting(true, t('typingInitializing'));
     await ipcRenderer.invoke('bg-init', { width: w, height: h, css: loadExportCss() });
 
     const frames = [];
@@ -588,11 +588,11 @@ function initTyping() {
       if (i % 5 === 0) {
         const pct = Math.round((i + 1) / totalFrames * 100);
         $('#typingExportBarFill').style.width = pct + '%';
-        $('#typingExportLabel').textContent = `Klatka ${i + 1}/${totalFrames}`;
+        $('#typingExportLabel').textContent = `${t('typingFrame')} ${i + 1}/${totalFrames}`;
       }
     }
 
-    setExporting(true, 'Koduję MP4...');
+    setExporting(true, t('typingEncodingMp4'));
     $('#typingExportBarFill').style.width = '100%';
 
     await ipcRenderer.invoke('export-mp4', { frames, savePath, fps, width: w, height: h });

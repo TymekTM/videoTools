@@ -365,7 +365,7 @@
       input.type = 'text';
       input.className = 'control-input map-wp-input';
       input.value = wp.name;
-      input.placeholder = i === 0 ? 'Start...' : i === st.waypoints.length - 1 ? 'Cel...' : 'Przez...';
+      input.placeholder = i === 0 ? t('mapStart') : i === st.waypoints.length - 1 ? t('mapDest') : t('mapVia');
 
       var dropdown = document.createElement('div');
       dropdown.className = 'map-wp-dropdown';
@@ -413,7 +413,7 @@
       var del = document.createElement('button');
       del.className = 'map-wp-del';
       del.innerHTML = '&times;';
-      del.title = 'Usuń punkt';
+      del.title = t('mapDeletePoint');
       (function (index) {
         del.addEventListener('click', function () { removeWaypoint(index); });
       })(i);
@@ -711,13 +711,13 @@
         st.animating = false;
         trailLines.forEach(function (tl) { st.map.removeLayer(tl); });
         var btn = $('#mapPlayBtn');
-        if (btn) btn.querySelector('span').textContent = 'Podgl\u0105d';
+        if (btn) btn.querySelector('span').textContent = t('mapPreview');
       }
     }
 
     st.animRaf = requestAnimationFrame(frame);
     var btn = $('#mapPlayBtn');
-    if (btn) btn.querySelector('span').textContent = 'Gram...';
+    if (btn) btn.querySelector('span').textContent = t('mapPlaying');
   }
 
   function stopAnimation() {
@@ -726,7 +726,7 @@
     st.animRaf = null;
 
     var btn = $('#mapPlayBtn');
-    if (btn) btn.querySelector('span').textContent = 'Podgl\u0105d';
+    if (btn) btn.querySelector('span').textContent = t('mapPreview');
 
     if (st.trailLine) st.trailLine.setLatLngs([]);
     if (st.vehicleMarker && st.routeCoords.length) {
@@ -912,7 +912,7 @@
       if (!active) $('#mapExportBarFill').style.width = '0%';
     };
 
-    setExporting(true, 'Przygotowuję map\u0119...', 0);
+    setExporting(true, t('mapPreparingMap'), 0);
 
     var iconHtml;
     if (st.customVehiclePng) {
@@ -945,7 +945,7 @@
 
     await ipcRenderer.invoke('bg-load-html', { html: html, width: w, height: h });
 
-    setExporting(true, '\u0141adowanie mapy...', 5);
+    setExporting(true, t('mapLoadingMap'), 5);
     await ipcRenderer.invoke('bg-eval', 'window._waitTiles()');
 
     if (st.cameraMode === 'overview') {
@@ -955,7 +955,7 @@
       );
     }
 
-    setExporting(true, 'Renderowanie klatek...', 10);
+    setExporting(true, t('mapRenderingFrames'), 10);
 
     var wps = st.waypoints.filter(function (w) { return w.lat || w.lng; });
     var numLegs = Math.max(wps.length - 1, 1);
@@ -993,7 +993,7 @@
           batchMeta = [];
           var doneFrames = frames.length;
           var pct = 10 + Math.round((doneFrames / (totalFrames + totalCheckpointFrames)) * 70);
-          setExporting(true, 'Klatka ' + doneFrames, pct);
+          setExporting(true, t('mapFrame') + ' ' + doneFrames, pct);
         }
       }
 
@@ -1013,7 +1013,7 @@
 
     frames.push({ data: frames[frames.length - 1].data, duration: Math.round(fps * 1.5) });
 
-    setExporting(true, 'Koduj\u0119 MP4...', 90);
+    setExporting(true, t('mapEncodingMp4'), 90);
     await ipcRenderer.invoke('export-mp4', { frames: frames, savePath: savePath, fps: fps, width: w, height: h });
     await ipcRenderer.invoke('bg-cleanup');
 

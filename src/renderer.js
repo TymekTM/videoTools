@@ -57,11 +57,26 @@ function initThemeToggle() {
   });
 }
 
+function initLangToggle() {
+  const btn = document.getElementById('langToggleNav');
+  if (!btn) return;
+  btn.textContent = currentLang().toUpperCase();
+  btn.addEventListener('click', () => {
+    const next = currentLang() === 'pl' ? 'en' : 'pl';
+    setLang(next);
+    btn.textContent = next.toUpperCase();
+    applyTranslations();
+    window.dispatchEvent(new CustomEvent('lang-changed', { detail: { lang: next } }));
+  });
+}
+
 /* ═══════════════════════════════════════
    INIT
    ═══════════════════════════════════════ */
 
 function init() {
+  applyTranslations();
+  initLangToggle();
   initThemeToggle();
   initToolNav();
   initNewspaper();

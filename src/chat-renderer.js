@@ -116,7 +116,7 @@ function chatTypingHTML(sender) {
     return `
       <div class="chat-typing-indicator chat-discord-typing">
         <span class="chat-discord-typing-name" style="color:${contact.color}">${contact.name}</span>
-        <span class="chat-discord-typing-text">pisze</span>
+        <span class="chat-discord-typing-text">${t('chatTypingText')}</span>
         <span class="chat-discord-typing-dots">
           <span class="chat-typing-dot"></span>
           <span class="chat-typing-dot"></span>
@@ -286,7 +286,7 @@ function chatRenderMessageList() {
       <div class="chat-msg-item" data-idx="${i}">
         <span class="chat-msg-dot" style="background:${contact.color}"></span>
         <span class="chat-msg-text">${contact.name}: ${msg.text}</span>
-        <button class="chat-msg-delete" data-idx="${i}" title="Usuń">
+        <button class="chat-msg-delete" data-idx="${i}" title="${t('delete')}">
           <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3l8 8M11 3l-8 8"/></svg>
         </button>
       </div>`;
@@ -433,7 +433,7 @@ function initChat() {
     const fileInput = $(`#chatAvatar${idx + 1}File`);
 
     nameInput.addEventListener('input', () => {
-      chatState.contacts[idx].name = nameInput.value || `Osoba ${idx + 1}`;
+      chatState.contacts[idx].name = nameInput.value || `${t('chatContacts')} ${idx + 1}`;
       chatUpdateAvatarUI(idx);
       chatUpdateSenderDropdown();
       chatRenderMessageList();
@@ -508,7 +508,7 @@ function initChat() {
 
     const [w, h] = chatGetResolution();
 
-    setExporting(true, 'Eksportuję PNG...');
+    setExporting(true, t('chatExportingPng'));
     await ipcRenderer.invoke('bg-init', {
       width: w, height: h,
       css: loadExportCss()
@@ -566,7 +566,7 @@ function initChat() {
     const framesPerPause = Math.round((pauseMs / 1000) * fps);
     const framesEnd = Math.round(1.5 * fps);
 
-    setExporting(true, 'Przygotowuję...');
+    setExporting(true, t('chatPreparing'));
     await ipcRenderer.invoke('bg-init', {
       width: w, height: h,
       css: loadExportCss()
@@ -648,12 +648,12 @@ function initChat() {
 
       const pct = Math.round((done / total) * 80);
       $('#chatExportBarFill').style.width = pct + '%';
-      $('#chatExportLabel').textContent = `Wiadomość ${i + 1}/${msgCount}`;
+      $('#chatExportLabel').textContent = `${t('chatMessage')} ${i + 1}/${msgCount}`;
     }
 
     frames.push({ data: frames[frames.length - 1].data, duration: framesEnd });
 
-    setExporting(true, 'Koduję MP4...');
+    setExporting(true, t('chatEncodingMp4'));
     $('#chatExportBarFill').style.width = '100%';
 
     await ipcRenderer.invoke('export-mp4', { frames, savePath, fps, width: w, height: h });

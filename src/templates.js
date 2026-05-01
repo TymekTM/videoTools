@@ -1783,10 +1783,10 @@ const TEMPLATES_MORE = [
 TEMPLATES.push(...TEMPLATES_EXTRA, ...TEMPLATES_NEW, ...TEMPLATES_MORE);
 
 const CATEGORIES = {
-  classic: { label: 'Klasyczne gazety', icon: '\u{1F4F0}' },
-  us_uk: { label: 'US / UK', icon: '\u{1F1EC}\u{1F1E7}' },
-  magazine: { label: 'Magazyny', icon: '\u{1F4D6}' },
-  tech: { label: 'Tech', icon: '\u{1F4BB}' },
-  tabloid: { label: 'Tabloidy', icon: '\u{1F4C4}' },
-  bold: { label: 'Bold / Eksperymentalne', icon: '\u{26A1}' }
+  classic: { label: t('catClassic'), icon: '\u{1F4F0}' },
+  us_uk: { label: t('catUsUk'), icon: '\u{1F1EC}\u{1F1E7}' },
+  magazine: { label: t('catMagazine'), icon: '\u{1F4D6}' },
+  tech: { label: t('catTech'), icon: '\u{1F4BB}' },
+  tabloid: { label: t('catTabloid'), icon: '\u{1F4C4}' },
+  bold: { label: t('catBold'), icon: '\u{26A1}' }
 };

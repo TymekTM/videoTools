@@ -424,7 +424,7 @@ ipcMain.handle('ck-detect-system', async () => {
 ipcMain.handle('ck-select-dir', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openDirectory'],
-    title: 'Wybierz folder z materiałem green screen'
+    title: 'Select green screen material folder'
   });
   return result.canceled ? null : result.filePaths[0];
 });
@@ -432,7 +432,7 @@ ipcMain.handle('ck-select-dir', async () => {
 ipcMain.handle('ck-select-file', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openFile'],
-    title: 'Wybierz plik wideo lub obraz',
+    title: 'Select video or image file',
     filters: [
       { name: 'Media', extensions: ['mp4', 'mov', 'avi', 'mkv', 'png', 'jpg', 'jpeg', 'exr', 'tiff', 'tif'] }
     ]
@@ -443,7 +443,7 @@ ipcMain.handle('ck-select-file', async () => {
 ipcMain.handle('ck-select-repo', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openDirectory'],
-    title: 'Wybierz folder repozytorium CorridorKey'
+    title: 'Select CorridorKey repository folder'
   });
   return result.canceled ? null : result.filePaths[0];
 });
@@ -516,7 +516,7 @@ ipcMain.handle('ck-run-install', async (event, { repoPath }) => {
   const scriptPath = path.join(repoPath, scriptName);
 
   if (!fs.existsSync(scriptPath)) {
-    return { code: -1, stdout: '', stderr: `Skrypt instalacyjny nie znaleziony: ${scriptPath}` };
+    return { code: -1, stdout: '', stderr: `Install script not found: ${scriptPath}` };
   }
 
   return new Promise((resolve) => {
@@ -545,7 +545,7 @@ ipcMain.handle('ck-run-install', async (event, { repoPath }) => {
 ipcMain.handle('ck-clone-repo', async (event, { targetDir }) => {
   const destPath = path.join(targetDir, 'CorridorKey');
   if (fs.existsSync(destPath)) {
-    return { code: -1, stdout: '', stderr: 'Folder CorridorKey już istnieje w: ' + targetDir };
+    return { code: -1, stdout: '', stderr: 'CorridorKey folder already exists in: ' + targetDir };
   }
 
   return new Promise((resolve) => {

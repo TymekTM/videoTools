@@ -50,7 +50,7 @@ function lerp(a, b, t) {
 }
 
 const ANIMATION_PRESETS = {
-  none: { name: 'Brak', easing: 'linear' },
+  none: { name: t('newsAnimNone'), easing: 'linear' },
   zoomIn: { name: 'Zoom In', easing: 'ease-in-out', resolve: (p, s) => {
     const i = s.intensity;
     const z0 = s.zoom - (s.zoom - 1) * i;
@@ -341,9 +341,9 @@ function shuffle() {
 function updatePlayButton() {
   const btn = $('#btnPlay');
   if (state.playing) {
-    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14"><rect x="2" y="1" width="3.5" height="12" rx="1" fill="currentColor"/><rect x="8.5" y="1" width="3.5" height="12" rx="1" fill="currentColor"/></svg><span>Pause</span>`;
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14"><rect x="2" y="1" width="3.5" height="12" rx="1" fill="currentColor"/><rect x="8.5" y="1" width="3.5" height="12" rx="1" fill="currentColor"/></svg><span>${t('newsPause')}</span>`;
   } else {
-    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14"><polygon points="2,0 14,7 2,14" fill="currentColor"/></svg><span>Play</span>`;
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14"><polygon points="2,0 14,7 2,14" fill="currentColor"/></svg><span>${t('newsPlay')}</span>`;
   }
 }
 
@@ -540,7 +540,7 @@ function initNewspaper() {
   async function renderNewsToMp4(slidesData, width, height, fps, savePath, formatLabel) {
     const { ipcRenderer } = require('electron');
 
-    setNewsExporting(true, `${formatLabel} — Inicjalizacja...`);
+    setNewsExporting(true, `${formatLabel} — ${t('newsExportInit')}`);
     await ipcRenderer.invoke('bg-init', {
       width, height,
       css: `.keyword-highlight{font-weight:800;padding:2px 6px;border-radius:2px;white-space:nowrap;display:inline}`
@@ -551,7 +551,7 @@ function initNewspaper() {
       el.textContent = '.keyword-highlight{background:linear-gradient(120deg,${state.colorAccent}ee,${state.colorAccent});color:#000;box-shadow:0 0 20px ${state.colorAccent}66,0 0 60px ${state.colorAccent}26}';
     `);
 
-    setNewsExporting(true, `${formatLabel} — Renderowanie...`);
+    setNewsExporting(true, `${formatLabel} — ${t('newsExportRendering')}`);
     const frames = [];
     let prevSlideIdx = -1;
 
@@ -591,7 +591,7 @@ function initNewspaper() {
       $('#newsExportLabel').textContent = `${formatLabel} — ${pct}%`;
     }
 
-    setNewsExporting(true, `${formatLabel} — Koduję MP4...`);
+    setNewsExporting(true, `${formatLabel} — ${t('newsExportEncoding')}`);
     $('#newsExportBarFill').style.width = '100%';
 
     await ipcRenderer.invoke('export-mp4', { frames, savePath, fps, width, height });
@@ -791,5 +791,10 @@ function initNewspaper() {
     else if (activeTool === 'chat') chatUpdatePreviewSize();
     else if (activeTool === 'typing') typingUpdatePreviewSize();
     else if (activeTool === 'notification') { if (window.notificationUpdatePreviewSize) window.notificationUpdatePreviewSize(); }
+  });
+
+  window.addEventListener('lang-changed', () => {
+    buildTemplateToggles();
+    updatePlayButton();
   });
 }

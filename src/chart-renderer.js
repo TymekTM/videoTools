@@ -776,7 +776,7 @@ ctx.font = chartFont('600', st.fontSize * 0.8);
       if (!active) $('#chartExportBarFill').style.width = '0%';
     };
 
-    setExporting(true, 'Przygotowuję...', 0);
+    setExporting(true, t('chartInitializing'), 0);
 
     var html = buildOffscreenHtml({
       width: w, height: h,
@@ -811,7 +811,7 @@ ctx.font = chartFont('600', st.fontSize * 0.8);
     });
 
     await ipcRenderer.invoke('bg-load-html', { html: html, width: w, height: h });
-    setExporting(true, 'Renderowanie klatek...', 5);
+    setExporting(true, t('chartRenderingFrames'), 5);
 
     var frames = [];
     var batchSize = 10;
@@ -828,13 +828,13 @@ ctx.font = chartFont('600', st.fontSize * 0.8);
         }
         batchItems = [];
         var pct = 5 + Math.round(((i + 1) / totalFrames) * 80);
-        setExporting(true, 'Klatka ' + (i + 1) + '/' + totalFrames, pct);
+        setExporting(true, t('chartRenderingFrame') + ' ' + (i + 1) + '/' + totalFrames, pct);
       }
     }
 
     frames.push({ data: frames[frames.length - 1].data, duration: Math.round(fps * 1.5) });
 
-    setExporting(true, 'Koduj\u0119 MP4...', 90);
+    setExporting(true, t('chartEncodingMp4'), 90);
     await ipcRenderer.invoke('export-mp4', { frames: frames, savePath: savePath, fps: fps, width: w, height: h });
     await ipcRenderer.invoke('bg-cleanup');
 
@@ -870,7 +870,7 @@ ctx.font = chartFont('600', st.fontSize * 0.8);
       labelInp.type = 'text';
       labelInp.className = 'control-input chart-data-input';
       labelInp.value = d.label;
-      labelInp.placeholder = 'Etykieta';
+      labelInp.placeholder = t('chartGaugeLabel');
       (function (idx, inp) {
         inp.addEventListener('input', function () {
           st.data[idx].label = inp.value;
@@ -893,7 +893,7 @@ ctx.font = chartFont('600', st.fontSize * 0.8);
       var del = document.createElement('button');
       del.className = 'chart-data-del';
       del.innerHTML = '&times;';
-      del.title = 'Usu\u0144';
+      del.title = t('chartDelete');
       (function (idx) {
         del.addEventListener('click', function () {
           if (st.data.length <= 1) return;
@@ -948,7 +948,7 @@ ctx.font = chartFont('600', st.fontSize * 0.8);
     });
 
     listen('#chartAddDataBtn', 'click', function () {
-      st.data.push({ label: 'Nowy', value: Math.round(Math.random() * 1000) });
+      st.data.push({ label: t('chartNewItem'), value: Math.round(Math.random() * 1000) });
       renderDataTable();
       renderPreview();
     });
