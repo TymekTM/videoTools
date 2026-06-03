@@ -3,3 +3,4 @@ node_modules/
 *.mov
 *.webm
 mcp/node_modules/
+.env

@@ -779,7 +779,17 @@ function applyTranslations() {
   document.querySelectorAll('[data-i18n]').forEach(function (el) {
     var key = el.getAttribute('data-i18n');
     var val = t(key);
-    if (val) el.textContent = val;
+    if (!val) return;
+    if (el.children.length > 0) {
+      var last = el.childNodes[el.childNodes.length - 1];
+      if (last && last.nodeType === 3) {
+        last.textContent = val;
+      } else {
+        el.appendChild(document.createTextNode(val));
+      }
+    } else {
+      el.textContent = val;
+    }
   });
   document.querySelectorAll('[data-i18n-placeholder]').forEach(function (el) {
     var key = el.getAttribute('data-i18n-placeholder');

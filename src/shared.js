@@ -39,7 +39,7 @@ function loadExportCss() {
   var fs = require('fs');
   var path = require('path');
   var dir = __dirname;
-  var files = ['base.css', 'newspaper.css', 'chat.css', 'typing.css', 'map.css', 'chart.css', 'notification.css', 'corridorkey.css'];
+  var files = ['base.css', 'newspaper.css', 'chat.css', 'typing.css', 'map.css', 'chart.css', 'notification.css', 'corridorkey.css', 'subtitles.css', 'webcap.css'];
   var parts = [];
   for (var i = 0; i < files.length; i++) {
     try { parts.push(fs.readFileSync(path.join(dir, files[i]), 'utf8')); } catch (_) {}

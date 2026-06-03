@@ -669,7 +669,11 @@
     });
   }
 
+  var controlsBound = false;
+
   function bindControls() {
+    if (controlsBound) return;
+    controlsBound = true;
     $$('#notifThemeGroup .control-btn').forEach(function (btn) {
       btn.addEventListener('click', function () {
         $$('#notifThemeGroup .control-btn').forEach(function (b) { b.classList.remove('active'); });
@@ -807,6 +811,7 @@
   };
 
   window.notificationActivate = function () {
+    try { bindControls(); renderNotifList(); renderPreview(); } catch (e) { console.error('[notification] activate:', e); }
     setTimeout(function () {
       renderPreview();
     }, 150);

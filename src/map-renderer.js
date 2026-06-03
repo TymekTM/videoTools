@@ -1048,7 +1048,11 @@
     }
   }
 
+  var controlsBound = false;
+
   function bindControls() {
+    if (controlsBound) return;
+    controlsBound = true;
     $$('#mapStyleGroup .control-btn').forEach(function (btn) {
       btn.addEventListener('click', function () {
         $$('#mapStyleGroup .control-btn').forEach(function (b) { b.classList.remove('active'); });
@@ -1175,6 +1179,7 @@
   };
 
   window.mapActivate = function () {
+    try { bindControls(); renderWaypointList(); } catch (e) { console.error('[map] activate:', e); }
     if (!st.map) {
       initLeaflet();
     }

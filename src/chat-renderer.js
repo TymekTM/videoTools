@@ -486,7 +486,8 @@ function initChat() {
     });
   });
 
-  $('#chatHideTime').addEventListener('change', (e) => {
+  var chatHideTimeEl = $('#chatHideTime');
+  if (chatHideTimeEl) chatHideTimeEl.addEventListener('change', (e) => {
     chatState.hideTime = e.target.checked;
     chatRenderPreview(chatState.animSpeed > 0);
   });

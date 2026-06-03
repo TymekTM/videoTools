@@ -911,7 +911,11 @@ ctx.font = chartFont('600', st.fontSize * 0.8);
     });
   }
 
+  var controlsBound = false;
+
   function bindControls() {
+    if (controlsBound) return;
+    controlsBound = true;
     $$('#chartTypeGroup .control-btn').forEach(function (btn) {
       btn.addEventListener('click', function () {
         $$('#chartTypeGroup .control-btn').forEach(function (b) { b.classList.remove('active'); });
@@ -1126,6 +1130,16 @@ ctx.font = chartFont('600', st.fontSize * 0.8);
   };
 
   window.chartActivate = function () {
+    try {
+      if (!st.canvas) {
+        st.canvas = document.getElementById('chartCanvas');
+        if (st.canvas) st.ctx = st.canvas.getContext('2d');
+      }
+      bindControls();
+      renderDataTable();
+      updateChartTypeVisibility();
+      renderPreview();
+    } catch (e) { console.error('[chart] activate:', e); }
     setTimeout(function () {
       renderPreview();
     }, 150);

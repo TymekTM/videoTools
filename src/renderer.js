@@ -22,6 +22,14 @@ function switchTool(toolId) {
     if (window.chartActivate) window.chartActivate();
   } else if (toolId === 'notification') {
     if (window.notificationActivate) window.notificationActivate();
+  } else if (toolId === 'subtitles') {
+    if (window.subtitlesActivate) window.subtitlesActivate();
+  } else if (toolId === 'webcap') {
+    if (window.webcapActivate) window.webcapActivate();
+  } else if (toolId === 'corridorkey') {
+    if (typeof CK !== 'undefined' && CK.els && !CK.els.statusBadge) {
+      try { CK.init(); } catch (e) { console.error('[init] corridorkey activate:', e); }
+    }
   }
 }
 
@@ -79,12 +87,14 @@ function init() {
   initLangToggle();
   initThemeToggle();
   initToolNav();
-  initNewspaper();
-  initChat();
-  initTyping();
-  if (window.initMapTool) window.initMapTool();
-  if (window.initChartTool) window.initChartTool();
-  if (window.initNotificationTool) window.initNotificationTool();
+  try { initNewspaper(); } catch (e) { console.error('[init] newspaper:', e); }
+  try { initChat(); } catch (e) { console.error('[init] chat:', e); }
+  try { initTyping(); } catch (e) { console.error('[init] typing:', e); }
+  try { if (window.initMapTool) window.initMapTool(); } catch (e) { console.error('[init] map:', e); }
+  try { if (window.initChartTool) window.initChartTool(); } catch (e) { console.error('[init] chart:', e); }
+  try { if (window.initNotificationTool) window.initNotificationTool(); } catch (e) { console.error('[init] notification:', e); }
+  try { if (window.initSubtitlesTool) window.initSubtitlesTool(); } catch (e) { console.error('[init] subtitles:', e); }
+  try { if (window.initWebcap) window.initWebcap(); } catch (e) { console.error('[init] webcap:', e); }
 }
 
 document.addEventListener('DOMContentLoaded', init);

@@ -5,6 +5,23 @@ const os = require('os');
 const { spawn } = require('child_process');
 const ffmpegPath = require('ffmpeg-static');
 
+function loadEnv() {
+  try {
+    const envPath = path.join(__dirname, '.env');
+    const content = fs.readFileSync(envPath, 'utf8');
+    content.split('\n').forEach(line => {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) return;
+      const eqIdx = trimmed.indexOf('=');
+      if (eqIdx < 0) return;
+      const key = trimmed.slice(0, eqIdx).trim();
+      const val = trimmed.slice(eqIdx + 1).trim();
+      if (!process.env[key]) process.env[key] = val;
+    });
+  } catch (_) {}
+}
+loadEnv();
+
 let mainWindow;
 let bgWindow = null;
 let exportWindow = null;
@@ -215,42 +232,62 @@ ipcMain.handle('bg-render-js', (e, p) => bgCapture({ html: p.html, js: p.js, for
 ipcMain.handle('bg-apply-capture', (e, p) => bgCapture({ js: p.js, format: 'jpeg' }));
 
 ipcMain.handle('bg-eval', async (event, code) => {
-  if (!bgWindow) return null;
+  if (!bgWindow || bgWindow.isDestroyed()) return null;
   return await bgWindow.webContents.executeJavaScript(code);
 });
 
 ipcMain.handle('bg-load-html', async (event, { html, width, height }) => {
-  if (bgWindow) { bgWindow.close(); bgWindow = null; }
+  if (bgWindow) { try { bgWindow.close(); } catch (_) {} bgWindow = null; }
+  const tmpHtml = path.join(os.tmpdir(), 'vt-bg-' + Date.now() + '.html');
+  fs.writeFileSync(tmpHtml, html, 'utf8');
   bgWindow = new BrowserWindow({
     width: width || 1920,
     height: height || 1080,
     show: false,
     webPreferences: { offscreen: true }
   });
-  await bgWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
+  bgWindow.webContents.on('render-process-gone', (e, details) => {
+    console.error('[bgWindow] render-process-gone:', details.reason, details.exitCode);
+  });
+  bgWindow.webContents.on('crashed', () => {
+    console.error('[bgWindow] webContents crashed');
+  });
+  await bgWindow.loadFile(tmpHtml);
+  try { fs.unlinkSync(tmpHtml); } catch (_) {}
   return true;
 });
 
 ipcMain.handle('bg-eval-capture', (e, p) => bgCapture({ js: p.js, delay: p.delay, format: 'jpeg' }));
 
-ipcMain.handle('bg-eval-capture-batch', async (event, { frames }) => {
-  if (!bgWindow) return [];
+ipcMain.handle('bg-eval-capture-batch', async (event, { frames, format }) => {
+  if (!bgWindow || bgWindow.isDestroyed()) return [];
   const wc = bgWindow.webContents;
+  if (wc.isDestroyed()) return [];
   const results = [];
   for (const frame of frames) {
-    if (frame.js) await wc.executeJavaScript(frame.js);
-    await wc.executeJavaScript(RAF_WAIT);
-    if (frame.delay) {
-      await wc.executeJavaScript(delayJs(frame.delay));
+    if (bgWindow.isDestroyed() || wc.isDestroyed()) break;
+    try {
+      if (frame.js) await wc.executeJavaScript(frame.js);
+      await wc.executeJavaScript(RAF_WAIT);
+      if (frame.delay) {
+        await wc.executeJavaScript(delayJs(frame.delay));
+      }
+      const image = await wc.capturePage();
+      if (format === 'png') {
+        results.push(image.toPNG().toString('base64'));
+      } else {
+        results.push(image.toJPEG(92).toString('base64'));
+      }
+    } catch (e) {
+      console.error('[bg-eval-capture-batch] frame error:', e.message);
+      break;
     }
-    const image = await wc.capturePage();
-    results.push(image.toJPEG(92).toString('base64'));
   }
   return results;
 });
 
 ipcMain.handle('bg-cleanup', () => {
-  if (bgWindow) { bgWindow.close(); bgWindow = null; }
+  if (bgWindow) { try { bgWindow.close(); } catch (_) {} bgWindow = null; }
 });
 
 ipcMain.handle('export-init', async (event, { width, height, accent, vignetteOpacity, vignetteSize, vignetteSpread }) => {
@@ -727,6 +764,315 @@ ipcMain.handle('ck-assemble-video', async (event, { framesDir, savePath, fps }) 
     proc.on('close', (code) => resolve({ code, savePath, stderr }));
     proc.on('error', (err) => resolve({ code: -1, savePath, stderr: err.message }));
   });
+});
+
+ipcMain.handle('get-env', (e, key) => process.env[key] || '');
+
+ipcMain.handle('write-file-utf8', async (event, { path: savePath, content }) => {
+  fs.writeFileSync(savePath, content, 'utf-8');
+  return savePath;
+});
+
+ipcMain.handle('subtitles-select-file', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openFile'],
+    title: 'Select audio or video file',
+    filters: [
+      { name: 'Media', extensions: ['mp3', 'wav', 'm4a', 'ogg', 'flac', 'aac', 'mp4', 'mov', 'avi', 'mkv', 'webm'] }
+    ]
+  });
+  return result.canceled ? null : result.filePaths[0];
+});
+
+ipcMain.handle('subtitles-extract-audio', async (event, { mediaPath }) => {
+  const tmpDir = path.join(os.tmpdir(), 'vt-sub-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  const audioPath = path.join(tmpDir, 'audio.wav');
+
+  return new Promise((resolve) => {
+    const proc = spawn(ffmpegPath, [
+      '-i', mediaPath,
+      '-vn', '-acodec', 'pcm_s16le', '-ar', '16000', '-ac', '1',
+      '-y', audioPath
+    ], { timeout: 300000 });
+
+    let stderr = '';
+    proc.stderr.on('data', d => stderr += d.toString());
+    proc.on('close', (code) => {
+      if (code === 0) resolve({ audioPath });
+      else resolve({ error: 'ffmpeg error: ' + stderr.substring(stderr.length - 300) });
+    });
+    proc.on('error', (err) => resolve({ error: err.message }));
+  });
+});
+
+ipcMain.handle('subtitles-whisper-local', async (event, { audioPath, model }) => {
+  const scriptPath = path.join(__dirname, 'scripts', 'whisper_transcribe.py');
+  if (!fs.existsSync(scriptPath)) {
+    return { error: 'Script not found: ' + scriptPath };
+  }
+
+  return new Promise((resolve) => {
+    const proc = spawn('uv', ['run', 'python', scriptPath, '--audio', audioPath, '--model', model || 'base'], {
+      timeout: 600000,
+      env: { ...process.env }
+    });
+
+    let stdout = '';
+    let stderr = '';
+    proc.stdout.on('data', d => {
+      const text = d.toString();
+      stdout += text;
+      mainWindow.webContents.send('subtitles-whisper-progress', { text, type: 'stdout' });
+    });
+    proc.stderr.on('data', d => {
+      const text = d.toString();
+      stderr += text;
+      mainWindow.webContents.send('subtitles-whisper-progress', { text, type: 'stderr' });
+    });
+    proc.on('close', (code) => {
+      if (code !== 0) {
+        resolve({ error: 'Exit code ' + code + ': ' + stderr.substring(stderr.length - 300) });
+        return;
+      }
+      try {
+        const result = JSON.parse(stdout.trim().split('\n').pop());
+        resolve(result);
+      } catch (e) {
+        resolve({ error: 'Parse error: ' + stdout.substring(stdout.length - 300) });
+      }
+    });
+    proc.on('error', (err) => resolve({ error: err.message }));
+  });
+});
+
+function groqTranscribeChunk(chunkPath, apiKey, timeOffset) {
+  const https = require('https');
+  const boundary = '----WhisperBoundary' + Date.now();
+  const fileName = path.basename(chunkPath);
+  const fileBuffer = fs.readFileSync(chunkPath);
+
+  function fieldPart(name, value) {
+    return Buffer.from('--' + boundary + '\r\nContent-Disposition: form-data; name="' + name + '"\r\n\r\n' + value + '\r\n');
+  }
+
+  const parts = [
+    fieldPart('model', 'whisper-large-v3-turbo'),
+    fieldPart('response_format', 'verbose_json'),
+    fieldPart('timestamp_granularities[]', 'word'),
+    Buffer.from('--' + boundary + '\r\nContent-Disposition: form-data; name="file"; filename="' + fileName + '"\r\nContent-Type: application/octet-stream\r\n\r\n'),
+    fileBuffer,
+    Buffer.from('\r\n--' + boundary + '--\r\n')
+  ];
+  const body = Buffer.concat(parts);
+
+  return new Promise((resolve) => {
+    const req = https.request({
+      hostname: 'api.groq.com',
+      path: '/openai/v1/audio/transcriptions',
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + apiKey,
+        'Content-Type': 'multipart/form-data; boundary=' + boundary,
+        'Content-Length': body.length
+      }
+    }, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data);
+          if (json.error) {
+            resolve({ error: typeof json.error === 'string' ? json.error : json.error.message || JSON.stringify(json.error) });
+            return;
+          }
+          const words = [];
+          if (json.words && json.words.length > 0) {
+            for (const w of json.words) {
+              const trimmed = (w.word || '').trim();
+              if (!trimmed) continue;
+              words.push({
+                word: trimmed,
+                start: Math.round((w.start || 0) * 1000) / 1000 + timeOffset,
+                end: Math.round((w.end || 0) * 1000) / 1000 + timeOffset
+              });
+            }
+          } else if (json.segments) {
+            for (const seg of json.segments) {
+              if (seg.words) {
+                for (const w of seg.words) {
+                  const trimmed = (w.word || '').trim();
+                  if (!trimmed) continue;
+                  words.push({
+                    word: trimmed,
+                    start: Math.round((w.start || 0) * 1000) / 1000 + timeOffset,
+                    end: Math.round((w.end || 0) * 1000) / 1000 + timeOffset
+                  });
+                }
+              }
+            }
+          }
+          resolve({ words, error: null });
+        } catch (e) {
+          resolve({ error: 'Parse error: ' + data.substring(0, 300) });
+        }
+      });
+    });
+    req.on('error', (e) => resolve({ error: e.message }));
+    req.write(body);
+    req.end();
+  });
+}
+
+function getAudioDuration(audioPath) {
+  return new Promise((resolve) => {
+    const proc = spawn(ffmpegPath, ['-i', audioPath]);
+    let stderr = '';
+    proc.stderr.on('data', d => stderr += d.toString());
+    proc.on('close', () => {
+      const m = stderr.match(/Duration:\s*(\d+):(\d+):(\d+\.\d+)/);
+      if (m) {
+        resolve(parseFloat(m[1]) * 3600 + parseFloat(m[2]) * 60 + parseFloat(m[3]));
+      } else {
+        resolve(0);
+      }
+    });
+    proc.on('error', () => resolve(0));
+  });
+}
+
+ipcMain.handle('subtitles-whisper-groq', async (event, { audioPath, apiKey }) => {
+  const MAX_BYTES = 20 * 1024 * 1024;
+  const CHUNK_SEC = 300;
+
+  const stat = fs.statSync(audioPath);
+  const duration = await getAudioDuration(audioPath);
+
+  if (stat.size <= MAX_BYTES) {
+    const result = await groqTranscribeChunk(audioPath, apiKey, 0);
+    if (result.error) return result;
+    const dur = result.words.length > 0 ? result.words[result.words.length - 1].end : duration;
+    return { words: result.words, duration: dur, text: '' };
+  }
+
+  mainWindow.webContents.send('subtitles-whisper-progress', { text: 'File too large (' + Math.round(stat.size / 1024 / 1024) + 'MB), splitting into chunks...\n', type: 'stdout' });
+
+  const tmpDir = path.join(os.tmpdir(), 'vt-sub-chunks-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+
+  const numChunks = Math.ceil(duration / CHUNK_SEC);
+  const chunks = [];
+
+  for (let i = 0; i < numChunks; i++) {
+    const startTime = i * CHUNK_SEC;
+    const chunkPath = path.join(tmpDir, 'chunk_' + String(i).padStart(3, '0') + '.mp3');
+
+    mainWindow.webContents.send('subtitles-whisper-progress', { text: 'Creating chunk ' + (i + 1) + '/' + numChunks + ' (' + formatTime(startTime) + ')\n', type: 'stdout' });
+
+    await new Promise((res, rej) => {
+      const args = ['-y', '-i', audioPath, '-ss', String(startTime), '-t', String(CHUNK_SEC), '-acodec', 'libmp3lame', '-ar', '16000', '-ac', '1', '-b:a', '64k', chunkPath];
+      const proc = spawn(ffmpegPath, args, { timeout: 120000 });
+      let stderr = '';
+      proc.stderr.on('data', d => stderr += d.toString());
+      proc.on('close', (code) => {
+        if (code === 0) res();
+        else rej(new Error('ffmpeg chunk error: ' + stderr.substring(-200)));
+      });
+      proc.on('error', rej);
+    });
+
+    chunks.push({ path: chunkPath, offset: startTime });
+  }
+
+  const allWords = [];
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
+    mainWindow.webContents.send('subtitles-whisper-progress', { text: 'Transcribing chunk ' + (i + 1) + '/' + chunks.length + '...\n', type: 'stdout' });
+
+    const result = await groqTranscribeChunk(chunk.path, apiKey, chunk.offset);
+    if (result.error) {
+      for (const c of chunks) { try { fs.unlinkSync(c.path); } catch (_) {} }
+      try { fs.rmdirSync(tmpDir); } catch (_) {}
+      return { error: 'Chunk ' + (i + 1) + ' error: ' + result.error };
+    }
+
+    if (result.words && result.words.length > 0) {
+      for (const w of result.words) allWords.push(w);
+    }
+
+    try { fs.unlinkSync(chunk.path); } catch (_) {}
+  }
+
+  try { fs.rmdirSync(tmpDir); } catch (_) {}
+
+  const finalDur = allWords.length > 0 ? allWords[allWords.length - 1].end : duration;
+  return { words: allWords, duration: finalDur, text: '' };
+});
+
+function formatTime(sec) {
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return m + ':' + String(s).padStart(2, '0');
+}
+
+let webcapWindow = null;
+
+ipcMain.handle('webcap-load-url', async (event, { url, viewportWidth, viewportHeight, fullPage, scaleFactor }) => {
+  if (webcapWindow) { try { webcapWindow.close(); } catch (_) {} webcapWindow = null; }
+
+  const vw = Math.max(320, Math.min(7680, viewportWidth || 1920));
+  const vh = Math.max(400, Math.min(8000, viewportHeight || 900));
+  const sf = Math.max(1, Math.min(4, scaleFactor || 1));
+
+  webcapWindow = new BrowserWindow({
+    width: vw,
+    height: vh,
+    show: false,
+    webPreferences: { offscreen: true }
+  });
+
+  if (sf > 1) {
+    webcapWindow.webContents.enableDeviceEmulation({
+      deviceScaleFactor: sf,
+      screenPosition: 'desktop'
+    });
+  }
+
+  try {
+    await webcapWindow.loadURL(url);
+  } catch (e) {
+    try { webcapWindow.close(); } catch (_) {}
+    webcapWindow = null;
+    return { error: e.message };
+  }
+
+  await webcapWindow.webContents.executeJavaScript('document.fonts.ready');
+  await webcapWindow.webContents.executeJavaScript('new Promise(function(r){setTimeout(r,1000)})');
+
+  if (fullPage) {
+    const dimsJson = await webcapWindow.webContents.executeJavaScript(
+      'JSON.stringify({w:Math.max(document.documentElement.scrollWidth,document.body?document.body.scrollWidth:0,' + vw + '),h:Math.max(document.documentElement.scrollHeight,document.body?document.body.scrollHeight:0,' + vh + ')})'
+    );
+    const dims = JSON.parse(dimsJson);
+    const fpW = Math.min(dims.w, 7680);
+    const fpH = Math.min(dims.h, 32768);
+    webcapWindow.setSize(fpW, fpH);
+    await webcapWindow.webContents.executeJavaScript('new Promise(function(r){requestAnimationFrame(function(){requestAnimationFrame(r)})})');
+    await webcapWindow.webContents.executeJavaScript('new Promise(function(r){setTimeout(r,500)})');
+  }
+
+  const image = await webcapWindow.capturePage();
+  const imgSize = image.getSize();
+  const screenshot = image.toPNG().toString('base64');
+
+  try { webcapWindow.close(); } catch (_) {}
+  webcapWindow = null;
+
+  return { screenshot, width: imgSize.width, height: imgSize.height };
+});
+
+ipcMain.handle('webcap-cleanup', () => {
+  if (webcapWindow) { try { webcapWindow.close(); } catch (_) {} webcapWindow = null; }
 });
 
 app.whenReady().then(createWindow);
