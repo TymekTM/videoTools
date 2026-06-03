@@ -1,0 +1,25 @@
+.sub-file-row {
+  display: flex;
+  gap: 6px;
+}
+
+.sub-file-row .control-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.sub-status {
+  font-size: 11px;
+  color: var(--text-muted);
+  padding: 4px 0;
+  min-height: 16px;
+  word-break: break-word;
+}
+
+.sub-status.error {
+  color: var(--danger);
+}
+
+.sub-status.success {
+  color: var(--success);
+}
