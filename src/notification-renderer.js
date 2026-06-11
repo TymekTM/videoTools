@@ -442,20 +442,22 @@
     setExporting(true, t('notifRenderingFrames'), 5);
 
     var frames = [];
+    var batchSize = 30;
+    var batchItems = [];
     for (var i = 0; i < totalFrames; i++) {
       var t = totalFrames === 1 ? 1 : i / (totalFrames - 1);
       var frameJs = 'window._uf(' + t + ')';
 
-      var frameData;
-      if (isAlpha) {
-        await ipcRenderer.invoke('bg-eval', frameJs);
-        frameData = await ipcRenderer.invoke('bg-capture-png', { delay: 20 });
-      } else {
-        frameData = await ipcRenderer.invoke('bg-eval-capture', { js: frameJs, delay: 20 });
-      }
-      frames.push({ data: frameData, duration: 1 });
-
-      if (i % 5 === 0) {
+      batchItems.push({ js: frameJs });
+      if (batchItems.length >= batchSize || i === totalFrames - 1) {
+        var batchData = await ipcRenderer.invoke('bg-eval-capture-batch', {
+          frames: batchItems,
+          format: isAlpha ? 'png' : 'jpeg'
+        });
+        for (var b = 0; b < batchData.length; b++) {
+          frames.push({ data: batchData[b], duration: 1 });
+        }
+        batchItems = [];
         var pct = 5 + Math.round((i / totalFrames) * 80);
         setExporting(true, t('notifFrame') + ' ' + (i + 1) + '/' + totalFrames, pct);
       }

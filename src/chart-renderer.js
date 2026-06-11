@@ -819,7 +819,7 @@ ctx.font = chartFont('600', st.fontSize * 0.8);
 
     for (var i = 0; i < totalFrames; i++) {
       var t = totalFrames === 1 ? 1 : i / (totalFrames - 1);
-      batchItems.push({ js: 'window._updateFrame(' + t + ')', delay: 30 });
+      batchItems.push({ js: 'window._updateFrame(' + t + ')' });
 
       if (batchItems.length >= batchSize || i === totalFrames - 1) {
         var batchData = await ipcRenderer.invoke('bg-eval-capture-batch', { frames: batchItems });

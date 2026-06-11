@@ -75,6 +75,11 @@ function setupBrowserMocks() {
   global.ResizeObserver = function () { this.observe = () => {}; };
   global.$ = (sel) => global.document.querySelector(sel);
   global.$$ = (sel) => global.document.querySelectorAll(sel);
+  const translations = {
+    notifPresetSmsTitle: 'Mama',
+    notifPresetSmsMsg: 'Kiedy przychodzisz na obiad?',
+  };
+  global.t = (key) => translations[key] || key;
   global.Map = Map;
 }
 

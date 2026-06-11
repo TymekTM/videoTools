@@ -981,7 +981,7 @@
         var rawSegT = framesPerSegment === 1 ? 0 : f / (framesPerSegment - 1);
         var segT = st.easing ? easeInOut(rawSegT) : rawSegT;
         var globalT = tStart + (tEnd - tStart) * segT;
-        batchItems.push({ js: 'window._updateFrame(' + globalT + ',"' + st.cameraMode + '",' + st.zoom + ')', delay: 30 });
+        batchItems.push({ js: 'window._updateFrame(' + globalT + ',"' + st.cameraMode + '",' + st.zoom + ')' });
         batchMeta.push({ checkpoint: false });
 
         if (batchItems.length >= batchSize) {

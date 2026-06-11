@@ -163,11 +163,10 @@ async function bgCapture({ html = null, js = null, delay = null, format = 'jpeg'
   if (!bgWindow) return null;
   const wc = bgWindow.webContents;
   if (html !== null) {
-    await wc.executeJavaScript('window._bgRender(' + JSON.stringify(html) + ');' + RAF_WAIT);
+    await wc.executeJavaScript('window._bgRender(' + JSON.stringify(html) + ');');
   }
   if (js) {
     await wc.executeJavaScript(js);
-    await wc.executeJavaScript(RAF_WAIT);
   }
   if (delay) {
     await wc.executeJavaScript(delayJs(delay));
@@ -268,7 +267,6 @@ ipcMain.handle('bg-eval-capture-batch', async (event, { frames, format }) => {
     if (bgWindow.isDestroyed() || wc.isDestroyed()) break;
     try {
       if (frame.js) await wc.executeJavaScript(frame.js);
-      await wc.executeJavaScript(RAF_WAIT);
       if (frame.delay) {
         await wc.executeJavaScript(delayJs(frame.delay));
       }
