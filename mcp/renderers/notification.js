@@ -1,6 +1,7 @@
 const { createPage, loadHtml, waitForFonts, evalAndCapture, closePage } = require('../lib/browser');
 const { encode, countFrames } = require('../lib/encoder');
 const { getResolution } = require('../registry');
+const NotificationCore = require('../../shared/notification');
 
 const FONTS_LINK = '<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">';
 
@@ -140,7 +141,7 @@ async function generate(params, outputPath, format) {
     ],
     format: '9:16', resolution: '1080p', fps: 30,
     slideDirection: 'top', stackPosition: 'right',
-    animSpeed: 800, maxVisible: 5, stackOverlap: 0,
+    animSpeed: 800, slideDuration: 400, maxVisible: 5, stackOverlap: 0,
     fadeOut: true, bgMode: 'white',
     customBg: '#f2f2f2', customBorder: '#e5e5e5', customTitle: '#000', customText: '#666', customRadius: 16,
     ...params,
@@ -167,29 +168,29 @@ async function generate(params, outputPath, format) {
   });
 
   const page = await createPage(width, height);
-  await loadHtml(page, baseHtml, true);
+  await loadHtml(page, baseHtml);
   await waitForFonts(page);
 
+  const plan = NotificationCore.buildFramePlan({
+    notificationCount: notifs.length,
+    animSpeed: p.animSpeed,
+    slideDuration: p.slideDuration,
+    tailMs: 2000,
+  }, fps);
   const frames = [];
 
-  for (let n = 0; n < notifs.length; n++) {
-    const slideFrames = Math.round(p.animSpeed / 1000 * fps);
-    for (let f = 0; f < slideFrames; f++) {
-      const progress = f / slideFrames;
-      const d = await evalAndCapture(page,
-        `window._renderState(${n}, ${progress})`,
-        captureFormat
-      );
-      frames.push({ data: d, duration: 1 });
-    }
+  for (const spec of plan.frames) {
+    const completedCount = spec.slideProgress >= 0
+      ? Math.max(0, spec.visibleCount - 1)
+      : spec.visibleCount;
+    const d = await evalAndCapture(page,
+      `window._renderState(${completedCount}, ${spec.slideProgress})`,
+      captureFormat
+    );
+    frames.push({ data: d, duration: spec.duration });
   }
 
-  const holdFrames = Math.round(fps * 1.5);
-  const d = await evalAndCapture(page,
-    `window._renderState(${notifs.length}, -1)`,
-    captureFormat
-  );
-  frames.push({ data: d, duration: holdFrames });
+  frames[frames.length - 1].duration += Math.round(fps * 1.5);
 
   await closePage(page);
   await encode(frames, outputPath, fps, width, height, format || 'mp4');
@@ -206,4 +207,4 @@ async function generate(params, outputPath, format) {
   };
 }
 
-module.exports = { generate };
+module.exports = { generate, buildFramePlan: NotificationCore.buildFramePlan };

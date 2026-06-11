@@ -228,6 +228,23 @@ async function testChatFramePlan() {
   console.log(`  ${passed} passed, ${failed} failed`);
 }
 
+async function testNotificationFramePlan() {
+  console.log('\n[shared notification frame plan]');
+  const { buildFramePlan } = require(path.join(MCP, 'renderers/notification'));
+  const plan = buildFramePlan({
+    notificationCount: 3,
+    animSpeed: 800,
+    slideDuration: 400,
+    tailMs: 2000,
+  }, 30);
+  assert(plan.totalFrames === 132, `timeline produces 132 frames: ${plan.totalFrames}`);
+  assert(plan.frames.reduce((sum, frame) => sum + frame.duration, 0) === plan.totalFrames, 'compaction preserves logical frame count');
+  assert(plan.frames.length < plan.totalFrames, 'static notification states are compacted');
+  assert(plan.frames[0].visibleCount === 1 && plan.frames[0].slideProgress === 0, 'first notification starts at zero progress');
+  assert(plan.frames[plan.frames.length - 1].visibleCount === 3, 'final state contains all notifications');
+  console.log(`  ${passed} passed, ${failed} failed`);
+}
+
 async function testEncoderFrameExpansion() {
   console.log('\n[encoder frame expansion]');
   const { encodedFrameBuffers, countFrames, detectFrameCodec } = require(path.join(MCP, 'lib/encoder'));
@@ -260,6 +277,7 @@ async function run() {
   await testHelpers();
   await testTypingFramePlan();
   await testChatFramePlan();
+  await testNotificationFramePlan();
   await testEncoderFrameExpansion();
 
   console.log('\n================');

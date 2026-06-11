@@ -390,22 +390,12 @@
   }
 
   function buildExportFrameSpecs(totalFrames, totalMs) {
-    var specs = [];
-    for (var i = 0; i < totalFrames; i++) {
-      var t = totalFrames === 1 ? 1 : i / (totalFrames - 1);
-      var elapsed = t * totalMs;
-      var visibleCount = Math.min(st.notifications.length, Math.floor(elapsed / st.animSpeed) + 1);
-      var latestStart = Math.max(0, visibleCount - 1) * st.animSpeed;
-      var isAnimating = visibleCount > 0 && elapsed - latestStart < st.slideDuration;
-      var key = isAnimating ? 'frame:' + i : 'static:' + visibleCount;
-      var last = specs[specs.length - 1];
-      if (last && last.key === key) {
-        last.duration++;
-      } else {
-        specs.push({ key: key, t: t, duration: 1 });
-      }
-    }
-    return specs;
+    return NotificationCore.buildFramePlan({
+      notificationCount: st.notifications.length,
+      animSpeed: st.animSpeed,
+      slideDuration: st.slideDuration,
+      tailMs: totalMs - st.notifications.length * st.animSpeed
+    }, totalFrames / (totalMs / 1000)).frames;
   }
 
   async function exportVideo(format) {
@@ -460,7 +450,12 @@
     await ipcRenderer.invoke('bg-load-html', { html: html, width: w, height: h });
     setExporting(true, t('notifRenderingFrames'), 5);
 
-    var frameSpecs = buildExportFrameSpecs(totalFrames, totalMs);
+    var frameSpecs = NotificationCore.buildFramePlan({
+      notificationCount: st.notifications.length,
+      animSpeed: st.animSpeed,
+      slideDuration: st.slideDuration,
+      tailMs: 2000
+    }, fps).frames;
     var frames = [];
     var batchSize = 30;
     var batchItems = [];

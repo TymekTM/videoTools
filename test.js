@@ -113,6 +113,7 @@ setupBrowserMocks();
 loadShared();
 global.TypingCore = require('./shared/typing');
 global.ChatCore = require('./shared/chat');
+global.NotificationCore = require('./shared/notification');
 
 console.log('\x1b[1mShared module:\x1b[0m');
 test('RESOLUTIONS has all 3 formats', () => {
