@@ -5,31 +5,26 @@ const path = require('path');
 const os = require('os');
 
 function encodeMp4(frames, savePath, fps, width, height) {
+  if (!frames.length) return Promise.reject(new Error('Cannot encode an empty frame list'));
   const tmpDir = path.join(os.tmpdir(), `mcp-vt-${Date.now()}`);
   fs.mkdirSync(tmpDir, { recursive: true });
 
-  let idx = 0;
-  for (const frame of frames) {
-    const buf = Buffer.from(frame.data, 'base64');
-    const fname = `f_${String(idx).padStart(6, '0')}.jpg`;
-    fs.writeFileSync(path.join(tmpDir, fname), buf);
-    idx++;
-  }
-
-  let concat = '';
-  for (let i = 0; i < frames.length; i++) {
-    for (let d = 0; d < frames[i].duration; d++) {
-      concat += `file 'f_${String(i).padStart(6, '0')}.jpg'\n`;
-    }
-  }
+  let concat = 'ffconcat version 1.0\n';
+  frames.forEach((frame, index) => {
+    const fname = `f_${String(index).padStart(6, '0')}.jpg`;
+    fs.writeFileSync(path.join(tmpDir, fname), frameBuffer(frame));
+    concat += `file '${fname}'\noption framerate ${fps}\nduration ${(frame.duration / fps).toFixed(9)}\n`;
+  });
+  const lastName = `f_${String(frames.length - 1).padStart(6, '0')}.jpg`;
+  concat += `file '${lastName}'\noption framerate ${fps}\n`;
   fs.writeFileSync(path.join(tmpDir, 'concat.txt'), concat);
+  const frameCount = countFrames(frames);
 
   return new Promise((resolve, reject) => {
     const args = [
       '-y', '-f', 'concat', '-safe', '0',
-      '-r', String(fps),
       '-i', path.join(tmpDir, 'concat.txt'),
-      '-vf', 'crop=trunc(iw/2)*2:trunc(ih/2)*2',
+      '-vf', `fps=${fps},trim=end_frame=${frameCount},crop=trunc(iw/2)*2:trunc(ih/2)*2`,
       '-c:v', 'libx264', '-pix_fmt', 'yuv420p',
       '-preset', 'fast', '-crf', '18', '-movflags', '+faststart',
       savePath,

@@ -12,6 +12,7 @@ const HEIGHT = Number(process.env.VT_BENCH_HEIGHT || 360);
 const FPS = 30;
 const UNIQUE_FRAMES = Number(process.env.VT_BENCH_STATES || 8);
 const DURATION = Number(process.env.VT_BENCH_DURATION || 15);
+const VARIABLE_DURATIONS = process.env.VT_BENCH_VARIABLE === '1';
 
 function runFfmpeg(args) {
   return new Promise((resolve, reject) => {
@@ -49,7 +50,8 @@ async function captureFrames(format = 'jpeg') {
   const frames = [];
   for (let i = 0; i < UNIQUE_FRAMES; i++) {
     await page.evaluate((t) => window.draw(t), i / Math.max(1, UNIQUE_FRAMES - 1));
-    frames.push({ data: await captureFrame(page, format), duration: DURATION });
+    const duration = VARIABLE_DURATIONS ? 1 + ((i * 7) % DURATION) : DURATION;
+    frames.push({ data: await captureFrame(page, format), duration });
   }
   await closePage(page);
   return frames;
@@ -82,9 +84,13 @@ async function encodeLegacy(frames, outputPath, format, tmpDir) {
 }
 
 async function frameMd5(filePath) {
+  return (await frameMd5Lines(filePath)).join('\n');
+}
+
+async function frameMd5Lines(filePath) {
   return (await runFfmpeg([
     '-v', 'error', '-i', filePath, '-f', 'framemd5', 'pipe:1',
-  ])).toString().split(/\r?\n/).filter((line) => line && !line.startsWith('#')).join('\n');
+  ])).toString().split(/\r?\n/).filter((line) => line && !line.startsWith('#'));
 }
 
 async function benchmarkFormat(frames, format, tmpDir, label = format) {
@@ -129,6 +135,9 @@ async function benchmarkMp4Compaction(frames, tmpDir) {
   await encodeMp4(frames, compactPath, FPS, WIDTH, HEIGHT);
   const compactMs = performance.now() - started;
 
+  const expandedHashes = await frameMd5Lines(expandedPath);
+  const compactHashes = await frameMd5Lines(compactPath);
+
   return {
     format: 'mp4',
     expandedRecords: expandedFrames.length,
@@ -136,7 +145,7 @@ async function benchmarkMp4Compaction(frames, tmpDir) {
     expandedMs: Number(expandedMs.toFixed(1)),
     compactMs: Number(compactMs.toFixed(1)),
     speedup: Number((expandedMs / compactMs).toFixed(2)),
-    exactDecodedMatch: await frameMd5(expandedPath) === await frameMd5(compactPath),
+    exactDecodedMatch: expandedHashes.join('\n') === compactHashes.join('\n'),
   };
 }
 
@@ -153,7 +162,8 @@ async function run() {
     console.log(JSON.stringify({
       resolution: `${WIDTH}x${HEIGHT}`,
       uniqueFrames: UNIQUE_FRAMES,
-      outputFrames: UNIQUE_FRAMES * DURATION,
+      outputFrames: frames.reduce((sum, frame) => sum + frame.duration, 0),
+      variableDurations: VARIABLE_DURATIONS,
       results,
     }));
   } finally {
