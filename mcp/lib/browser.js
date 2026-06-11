@@ -1,16 +1,27 @@
 const puppeteer = require('puppeteer');
+const fs = require('fs');
 
 let browser = null;
+
+function findChrome() {
+  const candidates = [
+    process.env.PUPPETEER_EXECUTABLE_PATH,
+    process.platform === 'win32' && 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+    process.platform === 'win32' && 'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+    process.platform === 'win32' && 'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+  ].filter(Boolean);
+  return candidates.find((candidate) => fs.existsSync(candidate));
+}
 
 async function getBrowser() {
   if (!browser || !browser.connected) {
     browser = await puppeteer.launch({
       headless: true,
+      executablePath: findChrome(),
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
-        '--disable-gpu',
         '--font-render-hinting=none',
       ],
     });
@@ -34,16 +45,13 @@ async function loadHtml(page, html, waitForNetwork = false) {
 
 async function waitForFonts(page) {
   await page.evaluate(() => document.fonts.ready);
-  await new Promise((r) => setTimeout(r, 200));
 }
 
 async function captureFrame(page, format = 'jpeg') {
   if (format === 'png') {
-    const buf = await page.screenshot({ type: 'png' });
-    return buf.toString('base64');
+    return page.screenshot({ type: 'png', encoding: 'base64' });
   }
-  const buf = await page.screenshot({ type: 'jpeg', quality: 92 });
-  return buf.toString('base64');
+  return page.screenshot({ type: 'jpeg', quality: 92, encoding: 'base64' });
 }
 
 async function evalAndCapture(page, js, format = 'jpeg') {
@@ -75,4 +83,5 @@ module.exports = {
   evalAndCapture,
   closePage,
   closeBrowser,
+  findChrome,
 };
