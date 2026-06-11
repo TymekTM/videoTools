@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const X264_PRESET = 'veryfast';
+const VP9_CPU_USED = '5';
 
 function frameBuffer(frame) {
   return typeof frame.data === 'string'
@@ -128,6 +129,7 @@ function encodeWebm(frames, savePath, fps) {
   return encodePiped(frames, savePath, fps, [
     '-c:v', 'libvpx-vp9', '-pix_fmt', 'yuva420p',
     '-auto-alt-ref', '0', '-crf', '18', '-b:v', '0',
+    '-deadline', 'good', '-cpu-used', VP9_CPU_USED,
   ]);
 }
 
@@ -150,4 +152,5 @@ module.exports = {
   detectFrameCodec,
   writeBuffers,
   X264_PRESET,
+  VP9_CPU_USED,
 };

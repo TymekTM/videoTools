@@ -3136,6 +3136,7 @@ const {
   countFrames,
   detectFrameCodec,
   X264_PRESET,
+  VP9_CPU_USED,
 } = require('./shared/encoder');
 
 const _mapSt = st;
@@ -3557,6 +3558,9 @@ test('delayJs produces correct setTimeout string', () => {
 });
 test('MP4 encoder uses the cross-platform veryfast preset', () => {
   assert.strictEqual(X264_PRESET, 'veryfast');
+});
+test('WebM encoder uses the cross-platform VP9 speed preset', () => {
+  assert.strictEqual(VP9_CPU_USED, '5');
 });
 
 console.log('\n\x1b[1m' + '='.repeat(40) + '\x1b[0m');
