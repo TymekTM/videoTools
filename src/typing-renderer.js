@@ -72,72 +72,15 @@ function typingEscapeHTML(str) {
 }
 
 function typingBuildTimeline() {
-  const states = [];
-  const pauses = [];
-  let time = 0;
-  let text = '';
-
-  for (const seq of typingState.sequences) {
-    const tSpeed = seq.speed ?? typingState.typeSpeed;
-    const dSpeed = seq.speed ?? typingState.delSpeed;
-
-    switch (seq.action) {
-      case 'type':
-        if (seq.text) {
-          for (const ch of seq.text) {
-            text += ch;
-            states.push({ time, text });
-            time += tSpeed;
-          }
-        }
-        break;
-      case 'delete': {
-        const count = Math.min(seq.count ?? 1, text.length);
-        for (let i = 0; i < count; i++) {
-          text = text.slice(0, -1);
-          states.push({ time, text });
-          time += dSpeed;
-        }
-        break;
-      }
-      case 'deleteAll':
-        while (text.length > 0) {
-          text = text.slice(0, -1);
-          states.push({ time, text });
-          time += dSpeed;
-        }
-        break;
-      case 'pause': {
-        const dur = seq.duration ?? 500;
-        pauses.push({ start: time, end: time + dur });
-        time += dur;
-        break;
-      }
-      case 'newline':
-        text += '\n';
-        states.push({ time, text });
-        time += tSpeed;
-        break;
-    }
-  }
-
-  return { states, pauses, totalDuration: time, finalText: text };
+  return TypingCore.buildTimeline(typingState);
 }
 
 function typingGetTextAtTime(timeline, T) {
-  let text = '';
-  for (const s of timeline.states) {
-    if (s.time > T) break;
-    text = s.text;
-  }
-  return text;
+  return TypingCore.getTextAtTime(timeline, T);
 }
 
 function typingIsInPause(pauses, T) {
-  for (const p of pauses) {
-    if (T >= p.start && T < p.end) return true;
-  }
-  return false;
+  return TypingCore.isInPause(pauses, T);
 }
 
 function typingCursorHTML(visible, solidCursor) {
@@ -547,48 +490,27 @@ function initTyping() {
 
     const [w, h] = typingGetResolution();
     const fps = 30;
-    const timeline = typingBuildTimeline();
-    const totalDuration = typingState.startDelay + timeline.totalDuration + typingState.endDelay;
-    const totalFrames = Math.max(1, Math.ceil(totalDuration / 1000 * fps));
+    const plan = TypingCore.buildFrameStates(typingState, fps);
+    const totalFrames = plan.totalFrames;
 
     setExporting(true, t('typingInitializing'));
     await ipcRenderer.invoke('bg-init', { width: w, height: h, css: loadExportCss() });
 
     const frames = [];
-    let prevHtml = null;
-    let prevData = null;
-    for (let i = 0; i < totalFrames; i++) {
-      const T = i / fps * 1000;
-      const t = T - typingState.startDelay;
-      const blinkOn = typingState.cursorBlink ? (Math.floor(T / 530) % 2 === 0) : true;
-
-      let text = '';
-      if (t < 0) {
-        text = '';
-      } else if (t >= timeline.totalDuration) {
-        text = timeline.finalText;
-      } else {
-        text = typingGetTextAtTime(timeline, t);
-      }
-
-      const escaped = typingEscapeHTML(text);
-      const cursor = typingCursorHTML(blinkOn, false);
+    let completedFrames = 0;
+    for (let i = 0; i < plan.states.length; i++) {
+      const state = plan.states[i];
+      const escaped = typingEscapeHTML(state.text);
+      const cursor = typingCursorHTML(state.cursor, false);
       const html = typingRenderTheme(typingState.theme, escaped + cursor);
+      const data = await ipcRenderer.invoke('bg-render', { html });
+      frames.push({ data, duration: state.duration });
+      completedFrames += state.duration;
 
-      let data;
-      if (html === prevHtml && prevData) {
-        data = prevData;
-      } else {
-        data = await ipcRenderer.invoke('bg-render', { html });
-        prevHtml = html;
-        prevData = data;
-      }
-      frames.push({ data, duration: 1 });
-
-      if (i % 5 === 0) {
-        const pct = Math.round((i + 1) / totalFrames * 100);
+      if (i % 5 === 0 || i === plan.states.length - 1) {
+        const pct = Math.round(completedFrames / totalFrames * 100);
         $('#typingExportBarFill').style.width = pct + '%';
-        $('#typingExportLabel').textContent = `${t('typingFrame')} ${i + 1}/${totalFrames}`;
+        $('#typingExportLabel').textContent = `${t('typingFrame')} ${completedFrames}/${totalFrames}`;
       }
     }
 

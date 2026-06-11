@@ -47,7 +47,7 @@ async function testModuleLoad() {
 
   const typing = require(path.join(MCP, 'renderers/typing'));
   assert(typeof typing.generate === 'function', 'typing.generate');
-  assert(typeof typing.compactFrameActions === 'function', 'typing.compactFrameActions');
+  assert(typeof typing.buildFrameStates === 'function', 'typing.buildFrameStates');
 
   const chart = require(path.join(MCP, 'renderers/chart'));
   assert(typeof chart.generate === 'function', 'chart.generate');
@@ -190,23 +190,27 @@ async function testHelpers() {
   console.log(`  ${passed} passed, ${failed} failed`);
 }
 
-async function testTypingCompaction() {
-  console.log('\n[typing frame compaction]');
-  const { compactFrameActions } = require(path.join(MCP, 'renderers/typing'));
-  const actions = [
-    { text: 'A', cursor: true },
-    { text: 'A', cursor: true },
-    { text: 'A', cursor: false },
-    { text: 'A', cursor: false },
-    { text: 'AB', cursor: true },
-  ];
-  const states = compactFrameActions(actions);
-  assert(states.length === 3, `compacts to 3 states: ${states.length}`);
-  assert(states[0].duration === 2, 'first cursor-on state lasts 2 frames');
-  assert(states[1].duration === 2, 'cursor-off state lasts 2 frames');
-  assert(states[2].duration === 1, 'changed text lasts 1 frame');
-  assert(states.reduce((sum, state) => sum + state.duration, 0) === actions.length, 'preserves total frame count');
-  assert(states[0].key !== states[1].key, 'cursor visibility changes visual state');
+async function testTypingFramePlan() {
+  console.log('\n[shared typing frame plan]');
+  const { buildFrameStates } = require(path.join(MCP, 'renderers/typing'));
+  const options = {
+    sequences: [
+      { action: 'type', text: 'AB' },
+      { action: 'pause', duration: 200 },
+      { action: 'deleteAll' },
+    ],
+    typeSpeed: 100,
+    delSpeed: 50,
+    startDelay: 100,
+    endDelay: 100,
+    cursorBlink: true,
+  };
+  const plan = buildFrameStates(options, 10);
+  assert(plan.totalFrames === 7, `timeline produces 7 frames: ${plan.totalFrames}`);
+  assert(plan.timeline.finalText === '', 'deleteAll clears final text');
+  assert(plan.states.reduce((sum, state) => sum + state.duration, 0) === plan.totalFrames, 'compaction preserves logical frame count');
+  assert(plan.states.some((state) => state.text === 'AB'), 'typing speed produces visible AB state');
+  assert(plan.states.length < plan.totalFrames, 'repeated visual states are compacted');
   console.log(`  ${passed} passed, ${failed} failed`);
 }
 
@@ -240,7 +244,7 @@ async function run() {
   await testEncoderFormats();
   await testBrowserModule();
   await testHelpers();
-  await testTypingCompaction();
+  await testTypingFramePlan();
   await testEncoderFrameExpansion();
 
   console.log('\n================');

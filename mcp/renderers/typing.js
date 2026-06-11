@@ -1,20 +1,7 @@
 const { createPage, loadHtml, waitForFonts, evalAndCapture, closePage } = require('../lib/browser');
 const { encode } = require('../lib/encoder');
 const { getResolution } = require('../registry');
-
-function compactFrameActions(frameActions) {
-  const states = [];
-  for (const action of frameActions) {
-    const key = `${action.cursor ? 1 : 0}:${action.text}`;
-    const last = states[states.length - 1];
-    if (last && last.key === key) {
-      last.duration++;
-    } else {
-      states.push({ ...action, key, duration: 1 });
-    }
-  }
-  return states;
-}
+const TypingCore = require('../../shared/typing');
 
 const FONTS_LINK = '<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">';
 
@@ -80,40 +67,8 @@ async function generate(params, outputPath, format) {
   const frames = [];
   const page = await createPage(width, height);
 
-  let text = '';
-  const frameActions = [];
-
-  if (p.startDelay > 0) {
-    const count = Math.round(p.startDelay / 1000 * fps);
-    for (let i = 0; i < count; i++) frameActions.push({ text: '', cursor: true });
-  }
-
-  for (const seq of p.sequences) {
-    if (seq.action === 'type' && seq.text) {
-      for (const ch of seq.text) {
-        text += ch;
-        frameActions.push({ text, cursor: true });
-      }
-    } else if (seq.action === 'delete' && seq.count) {
-      for (let i = 0; i < seq.count && text.length > 0; i++) {
-        text = text.slice(0, -1);
-        frameActions.push({ text, cursor: true });
-      }
-    } else if (seq.action === 'pause' && seq.duration) {
-      const count = Math.round(seq.duration / 1000 * fps);
-      for (let i = 0; i < count; i++) frameActions.push({ text, cursor: p.cursorBlink ? i % (fps / 2) < fps / 4 : true });
-    } else if (seq.action === 'newline') {
-      text += '\n';
-      frameActions.push({ text, cursor: true });
-    }
-  }
-
-  if (p.endDelay > 0) {
-    const count = Math.round(p.endDelay / 1000 * fps);
-    for (let i = 0; i < count; i++) frameActions.push({ text, cursor: p.cursorBlink ? i % (fps / 2) < fps / 4 : true });
-  }
-
-  const renderStates = compactFrameActions(frameActions);
+  const plan = TypingCore.buildFrameStates(p, fps);
+  const renderStates = plan.states;
   for (let i = 0; i < renderStates.length; i++) {
     const fa = renderStates[i];
     const html = buildTypingHtml(p.theme, fa.text, fa.cursor, p.bgColor, p.textColor, p.cursorColor, p.fontSize, p.title, p.prompt, width, height);
@@ -132,9 +87,9 @@ async function generate(params, outputPath, format) {
     success: true,
     filePath: outputPath,
     fileSize: stat.size,
-    duration: frameActions.length / fps,
-    frames: frameActions.length,
+    duration: plan.totalFrames / fps,
+    frames: plan.totalFrames,
   };
 }
 
-module.exports = { generate, compactFrameActions };
+module.exports = { generate, buildFrameStates: TypingCore.buildFrameStates };
