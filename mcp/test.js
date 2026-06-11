@@ -245,6 +245,18 @@ async function testNotificationFramePlan() {
   console.log(`  ${passed} passed, ${failed} failed`);
 }
 
+async function testContinuousAnimationFramePlan() {
+  console.log('\n[shared continuous animation frame plan]');
+  const { buildFramePlan } = require(path.join(MCP, 'renderers/chart'));
+  const plan = buildFramePlan({ durationSeconds: 3, holdSeconds: 1.5 }, 30);
+  assert(plan.animationFrames === 90, `animation has 90 captured frames: ${plan.animationFrames}`);
+  assert(plan.totalFrames === 135, `hold extends timeline to 135 frames: ${plan.totalFrames}`);
+  assert(plan.frames.length === 90, 'hold reuses the final captured frame');
+  assert(plan.frames[0].progress === 0 && plan.frames[89].progress === 1, 'progress includes exact endpoints');
+  assert(plan.frames[89].duration === 46, 'final capture includes animation frame and 45-frame hold');
+  console.log(`  ${passed} passed, ${failed} failed`);
+}
+
 async function testEncoderFrameExpansion() {
   console.log('\n[encoder frame expansion]');
   const { encodedFrameBuffers, countFrames, detectFrameCodec } = require(path.join(MCP, 'lib/encoder'));
@@ -278,6 +290,7 @@ async function run() {
   await testTypingFramePlan();
   await testChatFramePlan();
   await testNotificationFramePlan();
+  await testContinuousAnimationFramePlan();
   await testEncoderFrameExpansion();
 
   console.log('\n================');

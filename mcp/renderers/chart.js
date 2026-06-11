@@ -1,6 +1,7 @@
 const { createPage, loadHtml, waitForFonts, evalAndCapture, closePage } = require('../lib/browser');
 const { encode, countFrames } = require('../lib/encoder');
 const { getResolution } = require('../registry');
+const AnimationCore = require('../../shared/animation');
 
 function buildChartHtml(opts) {
   const PALETTES = {
@@ -71,7 +72,10 @@ async function generate(params, outputPath, format) {
 
   const [width, height] = getResolution(p.format, p.resolution);
   const fps = p.fps;
-  const totalFrames = Math.round(p.animDuration * fps);
+  const framePlan = AnimationCore.buildFramePlan({
+    durationSeconds: p.animDuration,
+    holdSeconds: 1.5,
+  }, fps);
 
   const html = buildChartHtml({
     width, height,
@@ -94,14 +98,10 @@ async function generate(params, outputPath, format) {
   await waitForFonts(page);
 
   const frames = [];
-  for (let i = 0; i < totalFrames; i++) {
-    const t = totalFrames === 1 ? 1 : i / (totalFrames - 1);
-    const d = await evalAndCapture(page, `window._updateFrame(${t})`);
-    frames.push({ data: d, duration: 1 });
+  for (const spec of framePlan.frames) {
+    const d = await evalAndCapture(page, `window._updateFrame(${spec.progress})`);
+    frames.push({ data: d, duration: spec.duration });
   }
-
-  const holdFrames = Math.round(fps * 1.5);
-  frames[frames.length - 1].duration += holdFrames;
 
   await closePage(page);
   await encode(frames, outputPath, fps, width, height, format || 'mp4');
@@ -118,4 +118,4 @@ async function generate(params, outputPath, format) {
   };
 }
 
-module.exports = { generate };
+module.exports = { generate, buildFramePlan: AnimationCore.buildFramePlan };

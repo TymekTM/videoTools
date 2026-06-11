@@ -765,7 +765,11 @@ ctx.font = chartFont('600', st.fontSize * 0.8);
     var res = getResolution();
     var w = res[0], h = res[1];
     var fps = 30;
-    var totalFrames = Math.round(st.animDuration * fps);
+    var framePlan = AnimationCore.buildFramePlan({
+      durationSeconds: st.animDuration,
+      holdSeconds: 1.5
+    }, fps);
+    var totalFrames = framePlan.animationFrames;
 
     var setExporting = function (active, label, pct) {
       var prog = $('#chartExportProgress');
@@ -817,22 +821,20 @@ ctx.font = chartFont('600', st.fontSize * 0.8);
     var batchSize = 10;
     var batchItems = [];
 
-    for (var i = 0; i < totalFrames; i++) {
-      var t = totalFrames === 1 ? 1 : i / (totalFrames - 1);
-      batchItems.push({ js: 'window._updateFrame(' + t + ')' });
+    for (var i = 0; i < framePlan.frames.length; i++) {
+      batchItems.push({ js: 'window._updateFrame(' + framePlan.frames[i].progress + ')' });
 
-      if (batchItems.length >= batchSize || i === totalFrames - 1) {
+      if (batchItems.length >= batchSize || i === framePlan.frames.length - 1) {
         var batchData = await ipcRenderer.invoke('bg-eval-capture-batch', { frames: batchItems });
         for (var b = 0; b < batchData.length; b++) {
-          frames.push({ data: batchData[b], duration: 1 });
+          var specIndex = frames.length;
+          frames.push({ data: batchData[b], duration: framePlan.frames[specIndex].duration });
         }
         batchItems = [];
         var pct = 5 + Math.round(((i + 1) / totalFrames) * 80);
         setExporting(true, t('chartRenderingFrame') + ' ' + (i + 1) + '/' + totalFrames, pct);
       }
     }
-
-    frames.push({ data: frames[frames.length - 1].data, duration: Math.round(fps * 1.5) });
 
     setExporting(true, t('chartEncodingMp4'), 90);
     await ipcRenderer.invoke('export-mp4', { frames: frames, savePath: savePath, fps: fps, width: w, height: h });
