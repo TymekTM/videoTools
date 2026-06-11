@@ -112,7 +112,20 @@ var routeLines = segments.map(function(seg) {
 var routeCoords = ${routeCoordsJson};
 var waypoints = ${JSON.stringify(waypointLabels)};
 var map = L.map('map', {zoomControl: false, attributionControl: false}).setView([${opts.centerLat}, ${opts.centerLng}], ${opts.zoom});
-L.tileLayer('${MAP_TILES[opts.mapStyle] || MAP_TILES.dark}', {maxZoom: 19}).addTo(map);
+var tileLayer = L.tileLayer('${MAP_TILES[opts.mapStyle] || MAP_TILES.dark}', {maxZoom: 19});
+window._tilesReady = new Promise(function(resolve) {
+  var settled = false;
+  function finish(delay) {
+    if (settled) return;
+    settled = true;
+    setTimeout(function() {
+      requestAnimationFrame(function() { requestAnimationFrame(resolve); });
+    }, delay);
+  }
+  tileLayer.once('load', function() { finish(250); });
+  setTimeout(function() { finish(0); }, 3000);
+});
+tileLayer.addTo(map);
 
 ${segmentRouteLines}
 
@@ -237,7 +250,7 @@ async function generate(params, outputPath, format) {
   await loadHtml(page, html);
   await waitForFonts(page);
 
-  await page.evaluate(() => new Promise(r => setTimeout(r, 3000)));
+  await page.evaluate(() => window._tilesReady);
 
   const totalFrames = Math.round(p.animDuration * fps);
   const frames = [];
@@ -267,4 +280,4 @@ async function generate(params, outputPath, format) {
   };
 }
 
-module.exports = { generate };
+module.exports = { generate, buildMapHtml };
