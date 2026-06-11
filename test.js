@@ -112,6 +112,7 @@ console.log('\n\x1b[1mVideo Tools - Unit Tests\x1b[0m\n');
 setupBrowserMocks();
 loadShared();
 global.TypingCore = require('./shared/typing');
+global.ChatCore = require('./shared/chat');
 
 console.log('\x1b[1mShared module:\x1b[0m');
 test('RESOLUTIONS has all 3 formats', () => {

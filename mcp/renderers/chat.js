@@ -1,6 +1,7 @@
 const { createPage, loadHtml, waitForFonts, evalAndCapture, closePage } = require('../lib/browser');
 const { encode, countFrames } = require('../lib/encoder');
 const { getResolution } = require('../registry');
+const ChatCore = require('../../shared/chat');
 
 const FONTS_LINK = '<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;0,9..40,900;1,9..40,400&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">';
 
@@ -158,31 +159,30 @@ async function generate(params, outputPath, format) {
   const fps = p.fps;
   const frames = [];
   const page = await createPage(width, height);
+  const plan = ChatCore.buildFramePlan(p, fps);
 
-  for (let i = 0; i < p.messages.length; i++) {
-    if (p.animSpeed > 0) {
-      const typingHtml = buildChatHtml(p.platform, p.contacts, p.messages, i, i + 1, p.customTheme, p.hideTime, p.fontScale);
-      await loadHtml(page, typingHtml);
-      await waitForFonts(page);
-      const typingFrames = Math.max(1, Math.round((p.animSpeed * 0.6 / 1000) * fps));
-      const d = await evalAndCapture(page, null);
-      frames.push({ data: d, duration: typingFrames });
+  for (const phase of plan.phases) {
+    if (phase.type === 'end') {
+      frames[frames.length - 1].duration += phase.duration;
+      continue;
     }
-
-    const msgHtml = buildChatHtml(p.platform, p.contacts, p.messages, i + 1, null, p.customTheme, p.hideTime, p.fontScale);
-    await loadHtml(page, msgHtml);
+    const visibleMessages = phase.type === 'message' ? phase.messageIndex + 1 : Math.max(0, phase.messageIndex);
+    const typingIndex = phase.type === 'typing' ? phase.messageIndex : null;
+    const html = buildChatHtml(
+      p.platform,
+      p.contacts,
+      p.messages,
+      visibleMessages,
+      typingIndex,
+      p.customTheme,
+      p.hideTime,
+      p.fontScale
+    );
+    await loadHtml(page, html);
     await waitForFonts(page);
-    const msgFrames = Math.max(1, Math.round((p.animSpeed / 1000) * fps));
     const d = await evalAndCapture(page, null);
-    frames.push({ data: d, duration: msgFrames });
+    frames.push({ data: d, duration: phase.duration });
   }
-
-  const endHtml = buildChatHtml(p.platform, p.contacts, p.messages, p.messages.length, null, p.customTheme, p.hideTime, p.fontScale);
-  await loadHtml(page, endHtml);
-  await waitForFonts(page);
-  const endFrames = Math.round(fps * 1.5);
-  const d = await evalAndCapture(page, null);
-  frames.push({ data: d, duration: endFrames });
 
   await closePage(page);
   await encode(frames, outputPath, fps, width, height, format || 'mp4');
@@ -199,4 +199,4 @@ async function generate(params, outputPath, format) {
   };
 }
 
-module.exports = { generate };
+module.exports = { generate, buildFramePlan: ChatCore.buildFramePlan };

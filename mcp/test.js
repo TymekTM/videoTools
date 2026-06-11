@@ -44,6 +44,7 @@ async function testModuleLoad() {
 
   const chat = require(path.join(MCP, 'renderers/chat'));
   assert(typeof chat.generate === 'function', 'chat.generate');
+  assert(typeof chat.buildFramePlan === 'function', 'chat.buildFramePlan');
 
   const typing = require(path.join(MCP, 'renderers/typing'));
   assert(typeof typing.generate === 'function', 'typing.generate');
@@ -214,6 +215,19 @@ async function testTypingFramePlan() {
   console.log(`  ${passed} passed, ${failed} failed`);
 }
 
+async function testChatFramePlan() {
+  console.log('\n[shared chat frame plan]');
+  const { buildFramePlan } = require(path.join(MCP, 'renderers/chat'));
+  const plan = buildFramePlan({ messages: [{}, {}], animSpeed: 600 }, 30);
+  assert(plan.phases.length === 6, `two messages produce 6 phases: ${plan.phases.length}`);
+  assert(plan.phases[0].type === 'empty' && plan.phases[0].duration === 18, 'initial pause is 18 frames');
+  assert(plan.phases[1].type === 'typing' && plan.phases[1].duration === 11, 'typing phase uses shared timing');
+  assert(plan.phases[2].type === 'message' && plan.phases[2].duration === 29, 'message combines bubble and pause');
+  assert(plan.phases[5].type === 'end' && plan.phases[5].duration === 45, 'end hold is 45 frames');
+  assert(plan.totalFrames === plan.phases.reduce((sum, phase) => sum + phase.duration, 0), 'total frame count matches phases');
+  console.log(`  ${passed} passed, ${failed} failed`);
+}
+
 async function testEncoderFrameExpansion() {
   console.log('\n[encoder frame expansion]');
   const { encodedFrameBuffers, countFrames, detectFrameCodec } = require(path.join(MCP, 'lib/encoder'));
@@ -245,6 +259,7 @@ async function run() {
   await testBrowserModule();
   await testHelpers();
   await testTypingFramePlan();
+  await testChatFramePlan();
   await testEncoderFrameExpansion();
 
   console.log('\n================');

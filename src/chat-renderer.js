@@ -559,13 +559,7 @@ function initChat() {
     const [w, h] = chatGetResolution();
     const fps = 30;
     const msgCount = chatState.messages.length;
-    const speed = chatState.animSpeed > 0 ? chatState.animSpeed : 600;
-    const typingMs = Math.min(speed * 0.6, 800);
-    const pauseMs = 600;
-    const framesPerTyping = Math.round((typingMs / 1000) * fps);
-    const framesPerBubble = Math.round((350 / 1000) * fps);
-    const framesPerPause = Math.round((pauseMs / 1000) * fps);
-    const framesEnd = Math.round(1.5 * fps);
+    const plan = ChatCore.buildFramePlan(chatState, fps);
 
     setExporting(true, t('chatPreparing'));
     await ipcRenderer.invoke('bg-init', {
@@ -610,49 +604,52 @@ function initChat() {
 
     const frames = [];
 
+    const emptyPhase = plan.phases[0];
     const emptyData = await capture(buildFrame(0));
-    frames.push({ data: emptyData, duration: framesPerPause });
+    frames.push({ data: emptyData, duration: emptyPhase.duration });
 
-    let total = framesPerPause + (framesPerTyping + framesPerBubble + framesPerPause) * msgCount + framesEnd;
+    let total = plan.totalFrames;
     let done = 0;
 
     let prevFrameHtml = null;
     let prevFrameData = null;
 
     for (let i = 0; i < msgCount; i++) {
-      const typingStep = Math.max(1, Math.round(typingMs / framesPerTyping));
-      const typingHtml = buildFrame(i, i);
-      let typingData;
-      if (typingHtml === prevFrameHtml && prevFrameData) {
-        typingData = prevFrameData;
-      } else {
-        typingData = await capture(typingHtml, typingStep);
-        prevFrameHtml = typingHtml;
-        prevFrameData = typingData;
+      const typingPhase = plan.phases.find(phase => phase.type === 'typing' && phase.messageIndex === i);
+      if (typingPhase) {
+        const typingHtml = buildFrame(i, i);
+        let typingData;
+        if (typingHtml === prevFrameHtml && prevFrameData) {
+          typingData = prevFrameData;
+        } else {
+          typingData = await capture(typingHtml, typingPhase.renderDelay);
+          prevFrameHtml = typingHtml;
+          prevFrameData = typingData;
+        }
+        frames.push({ data: typingData, duration: typingPhase.duration });
+        done += typingPhase.duration;
       }
-      for (let t = 0; t < framesPerTyping; t++) {
-        frames.push({ data: typingData, duration: 1 });
-      }
-      done += framesPerTyping;
 
+      const messagePhase = plan.phases.find(phase => phase.type === 'message' && phase.messageIndex === i);
       const bubbleHtml = buildFrame(i + 1, undefined, true);
       let bubbleData;
       if (bubbleHtml === prevFrameHtml && prevFrameData) {
         bubbleData = prevFrameData;
       } else {
-        bubbleData = await capture(bubbleHtml, 450);
+        bubbleData = await capture(bubbleHtml, messagePhase.renderDelay);
         prevFrameHtml = bubbleHtml;
         prevFrameData = bubbleData;
       }
-      frames.push({ data: bubbleData, duration: framesPerBubble + framesPerPause });
-      done += framesPerBubble + framesPerPause;
+      frames.push({ data: bubbleData, duration: messagePhase.duration });
+      done += messagePhase.duration;
 
       const pct = Math.round((done / total) * 80);
       $('#chatExportBarFill').style.width = pct + '%';
       $('#chatExportLabel').textContent = `${t('chatMessage')} ${i + 1}/${msgCount}`;
     }
 
-    frames.push({ data: frames[frames.length - 1].data, duration: framesEnd });
+    const endPhase = plan.phases[plan.phases.length - 1];
+    frames[frames.length - 1].duration += endPhase.duration;
 
     setExporting(true, t('chatEncodingMp4'));
     $('#chatExportBarFill').style.width = '100%';
