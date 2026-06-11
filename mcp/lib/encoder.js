@@ -45,69 +45,78 @@ function encodeMp4(frames, savePath, fps, width, height) {
   });
 }
 
-function encodeMov(frames, savePath, fps, width, height) {
-  const tmpDir = path.join(os.tmpdir(), `mcp-vt-${Date.now()}`);
-  fs.mkdirSync(tmpDir, { recursive: true });
-
-  let idx = 0;
+function* encodedFrameBuffers(frames) {
   for (const frame of frames) {
-    const buf = Buffer.from(frame.data, 'base64');
+    const buffer = typeof frame.data === 'string'
+      ? Buffer.from(frame.data, 'base64')
+      : Buffer.from(frame.data.buffer, frame.data.byteOffset, frame.data.byteLength);
     for (let d = 0; d < frame.duration; d++) {
-      fs.writeFileSync(path.join(tmpDir, `f_${String(idx).padStart(6, '0')}.png`), buf);
-      idx++;
+      yield buffer;
     }
   }
+}
 
+async function writeBuffers(stream, buffers) {
+  for (const buffer of buffers) {
+    if (!stream.write(buffer)) {
+      await new Promise((resolve, reject) => {
+        const onDrain = () => {
+          stream.off('error', onError);
+          resolve();
+        };
+        const onError = (error) => {
+          stream.off('drain', onDrain);
+          reject(error);
+        };
+        stream.once('drain', onDrain);
+        stream.once('error', onError);
+      });
+    }
+  }
+  stream.end();
+}
+
+function encodePiped(frames, savePath, fps, outputArgs) {
   return new Promise((resolve, reject) => {
     const args = [
-      '-y', '-f', 'image2', '-framerate', String(fps),
-      '-i', path.join(tmpDir, 'f_%06d.png'),
-      '-s', `${width}x${height}`,
-      '-c:v', 'prores_ks', '-profile:v', '3',
-      '-pix_fmt', 'yuva444p10le', '-vendor', 'ap10',
-      savePath,
+      '-y',
+      '-f', 'image2pipe',
+      '-framerate', String(fps),
+      '-vcodec', 'mjpeg',
+      '-i', 'pipe:0',
+      ...outputArgs,
+      savePath
     ];
-    const proc = spawn(ffmpegPath, args);
+    const proc = spawn(ffmpegPath, args, { stdio: ['pipe', 'ignore', 'pipe'] });
     let stderr = '';
+    let settled = false;
     proc.stderr.on('data', (d) => (stderr += d.toString()));
+    proc.on('error', reject);
     proc.on('close', (code) => {
-      fs.rmSync(tmpDir, { recursive: true, force: true });
+      settled = true;
       if (code === 0) resolve(savePath);
       else reject(new Error('ffmpeg exited ' + code + ': ' + stderr));
+    });
+    writeBuffers(proc.stdin, encodedFrameBuffers(frames)).catch((error) => {
+      if (!settled) proc.kill();
+      reject(error);
     });
   });
 }
 
+function encodeMov(frames, savePath, fps, width, height) {
+  return encodePiped(frames, savePath, fps, [
+    '-s', `${width}x${height}`,
+    '-c:v', 'prores_ks', '-profile:v', '3',
+    '-pix_fmt', 'yuva444p10le', '-vendor', 'ap10',
+  ]);
+}
+
 function encodeWebm(frames, savePath, fps) {
-  const tmpDir = path.join(os.tmpdir(), `mcp-vt-${Date.now()}`);
-  fs.mkdirSync(tmpDir, { recursive: true });
-
-  let idx = 0;
-  for (const frame of frames) {
-    const buf = Buffer.from(frame.data, 'base64');
-    for (let d = 0; d < frame.duration; d++) {
-      fs.writeFileSync(path.join(tmpDir, `f_${String(idx).padStart(6, '0')}.png`), buf);
-      idx++;
-    }
-  }
-
-  return new Promise((resolve, reject) => {
-    const args = [
-      '-y', '-f', 'image2', '-framerate', String(fps),
-      '-i', path.join(tmpDir, 'f_%06d.png'),
-      '-c:v', 'libvpx-vp9', '-pix_fmt', 'yuva420p',
-      '-auto-alt-ref', '0', '-crf', '18', '-b:v', '0',
-      savePath,
-    ];
-    const proc = spawn(ffmpegPath, args);
-    let stderr = '';
-    proc.stderr.on('data', (d) => (stderr += d.toString()));
-    proc.on('close', (code) => {
-      fs.rmSync(tmpDir, { recursive: true, force: true });
-      if (code === 0) resolve(savePath);
-      else reject(new Error('ffmpeg exited ' + code + ': ' + stderr));
-    });
-  });
+  return encodePiped(frames, savePath, fps, [
+    '-c:v', 'libvpx-vp9', '-pix_fmt', 'yuva420p',
+    '-auto-alt-ref', '0', '-crf', '18', '-b:v', '0',
+  ]);
 }
 
 function encode(frames, savePath, fps, width, height, format = 'mp4') {
@@ -118,4 +127,11 @@ function encode(frames, savePath, fps, width, height, format = 'mp4') {
   }
 }
 
-module.exports = { encodeMp4, encodeMov, encodeWebm, encode };
+module.exports = {
+  encodeMp4,
+  encodeMov,
+  encodeWebm,
+  encode,
+  encodedFrameBuffers,
+  writeBuffers,
+};

@@ -210,6 +210,22 @@ async function testTypingCompaction() {
   console.log(`  ${passed} passed, ${failed} failed`);
 }
 
+async function testEncoderFrameExpansion() {
+  console.log('\n[encoder frame expansion]');
+  const { encodedFrameBuffers } = require(path.join(MCP, 'lib/encoder'));
+  const textFrame = Buffer.from('jpeg-a');
+  const binaryFrame = Buffer.from('jpeg-b');
+  const frames = [
+    { data: textFrame.toString('base64'), duration: 2 },
+    { data: binaryFrame, duration: 3 },
+  ];
+  const expanded = [...encodedFrameBuffers(frames)];
+  assert(expanded.length === 5, `expands durations to 5 frames: ${expanded.length}`);
+  assert(expanded[0].equals(textFrame) && expanded[1].equals(textFrame), 'decodes and repeats base64 frames');
+  assert(expanded[2].equals(binaryFrame) && expanded[4].equals(binaryFrame), 'repeats binary frames');
+  console.log(`  ${passed} passed, ${failed} failed`);
+}
+
 async function run() {
   console.log('MCP Server Tests');
   console.log('================');
@@ -222,6 +238,7 @@ async function run() {
   await testBrowserModule();
   await testHelpers();
   await testTypingCompaction();
+  await testEncoderFrameExpansion();
 
   console.log('\n================');
   console.log(`Total: ${passed} passed, ${failed} failed`);
