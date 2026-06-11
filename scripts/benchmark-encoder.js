@@ -5,6 +5,7 @@ const os = require('os');
 const path = require('path');
 const { performance } = require('perf_hooks');
 const ffmpegPath = require('ffmpeg-static');
+const { encodeMp4 } = require('../shared/encoder');
 
 const WIDTH = Number(process.env.VT_BENCH_WIDTH || 640);
 const HEIGHT = Number(process.env.VT_BENCH_HEIGHT || 360);
@@ -106,6 +107,12 @@ async function encodePipe(frames, outputPath) {
   return performance.now() - started;
 }
 
+async function encodeDurationConcat(frames, outputPath) {
+  const started = performance.now();
+  await encodeMp4(frames, outputPath, FPS, WIDTH, HEIGHT);
+  return performance.now() - started;
+}
+
 async function frameMd5(filePath) {
   return (await runFfmpeg([
     '-v', 'error', '-i', filePath, '-f', 'framemd5', 'pipe:1',
@@ -124,6 +131,13 @@ app.whenReady().then(async () => {
     const legacyMs = await encodeLegacy(frames, legacyPath, tmpDir);
     const pipeMs = await encodePipe(frames, pipePath);
     const exactDecodedMatch = await frameMd5(legacyPath) === await frameMd5(pipePath);
+    const staticFrames = frames.slice(0, Math.min(8, frames.length)).map((data) => ({ data, duration: 15 }));
+    const expandedStatic = staticFrames.flatMap((frame) => Array(frame.duration).fill(frame.data));
+    const staticPipePath = path.join(tmpDir, 'static-pipe.mp4');
+    const staticDurationPath = path.join(tmpDir, 'static-duration.mp4');
+    const staticPipeMs = await encodePipe(expandedStatic, staticPipePath);
+    const staticDurationMs = await encodeDurationConcat(staticFrames, staticDurationPath);
+    const staticExactDecodedMatch = await frameMd5(staticPipePath) === await frameMd5(staticDurationPath);
     console.log(JSON.stringify({
       frames: FRAME_COUNT,
       resolution: `${WIDTH}x${HEIGHT}`,
@@ -131,6 +145,12 @@ app.whenReady().then(async () => {
       pipeMs: Number(pipeMs.toFixed(1)),
       speedup: Number((legacyMs / pipeMs).toFixed(2)),
       exactDecodedMatch,
+      staticStates: staticFrames.length,
+      staticOutputFrames: expandedStatic.length,
+      staticPipeMs: Number(staticPipeMs.toFixed(1)),
+      staticDurationMs: Number(staticDurationMs.toFixed(1)),
+      staticSpeedup: Number((staticPipeMs / staticDurationMs).toFixed(2)),
+      staticExactDecodedMatch,
     }));
   } finally {
     if (win && !win.isDestroyed()) win.destroy();

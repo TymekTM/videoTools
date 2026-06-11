@@ -4,6 +4,7 @@ const fs = require('fs');
 const os = require('os');
 const { spawn } = require('child_process');
 const ffmpegPath = require('ffmpeg-static');
+const { encode } = require('./shared/encoder');
 
 function loadEnv() {
   try {
@@ -177,109 +178,6 @@ async function bgCapture({ html = null, js = null, delay = null, format = 'jpeg'
     : image.toJPEG(92);
 }
 
-async function runFfmpegExport({ frames, savePath, fps, width, height, writeFrames, buildArgs }) {
-  const tmpDir = path.join(os.tmpdir(), `vt-export-${Date.now()}`);
-  fs.mkdirSync(tmpDir, { recursive: true });
-  await writeFrames(tmpDir, frames);
-  return new Promise((resolve, reject) => {
-    const args = buildArgs(tmpDir, { fps, width, height, savePath });
-    const proc = spawn(ffmpegPath, args);
-    let stderr = '';
-    proc.stderr.on('data', d => stderr += d.toString());
-    proc.on('close', (code) => {
-      fs.rmSync(tmpDir, { recursive: true, force: true });
-      if (code === 0) resolve(savePath);
-      else reject(new Error('ffmpeg exited ' + code + ': ' + stderr));
-    });
-  });
-}
-
-function* encodedFrameBuffers(frames) {
-  for (const frame of frames) {
-    const buffer = typeof frame.data === 'string'
-      ? Buffer.from(frame.data, 'base64')
-      : Buffer.from(frame.data.buffer, frame.data.byteOffset, frame.data.byteLength);
-    for (let i = 0; i < frame.duration; i++) {
-      yield buffer;
-    }
-  }
-}
-
-async function writeBuffers(stream, buffers) {
-  for (const buffer of buffers) {
-    if (!stream.write(buffer)) {
-      await new Promise((resolve, reject) => {
-        const onDrain = () => {
-          stream.off('error', onError);
-          resolve();
-        };
-        const onError = (error) => {
-          stream.off('drain', onDrain);
-          reject(error);
-        };
-        stream.once('drain', onDrain);
-        stream.once('error', onError);
-      });
-    }
-  }
-  stream.end();
-}
-
-function runFfmpegPipeExport({ frames, savePath, fps, width, height, inputCodec, buildArgs }) {
-  return new Promise((resolve, reject) => {
-    const args = [
-      '-y',
-      '-f', 'image2pipe',
-      '-framerate', String(fps),
-      '-vcodec', inputCodec,
-      '-i', 'pipe:0',
-      ...buildArgs({ fps, width, height, savePath })
-    ];
-    const proc = spawn(ffmpegPath, args, { stdio: ['pipe', 'ignore', 'pipe'] });
-    let stderr = '';
-    let settled = false;
-    proc.stderr.on('data', d => stderr += d.toString());
-    proc.on('error', reject);
-    proc.on('close', (code) => {
-      settled = true;
-      if (code === 0) resolve(savePath);
-      else reject(new Error('ffmpeg exited ' + code + ': ' + stderr));
-    });
-    writeBuffers(proc.stdin, encodedFrameBuffers(frames)).catch((error) => {
-      if (!settled) proc.kill();
-      reject(error);
-    });
-  });
-}
-
-function writeJpgConcat(tmpDir, frames) {
-  let frameIdx = 0;
-  for (const frame of frames) {
-    const buf = Buffer.from(frame.data, 'base64');
-    const fname = `f_${String(frameIdx).padStart(6, '0')}.jpg`;
-    fs.writeFileSync(path.join(tmpDir, fname), buf);
-    frameIdx++;
-  }
-  let concatContent = '';
-  for (let idx = 0; idx < frames.length; idx++) {
-    for (let d = 0; d < frames[idx].duration; d++) {
-      concatContent += `file 'f_${String(idx).padStart(6, '0')}.jpg'\n`;
-    }
-  }
-  fs.writeFileSync(path.join(tmpDir, 'concat.txt'), concatContent);
-}
-
-function writePngDuplicated(tmpDir, frames) {
-  let idx = 0;
-  for (const frame of frames) {
-    const buf = Buffer.from(frame.data, 'base64');
-    for (let d = 0; d < frame.duration; d++) {
-      fs.writeFileSync(path.join(tmpDir, `f_${String(idx).padStart(6, '0')}.png`), buf);
-      idx++;
-    }
-  }
-}
-
 ipcMain.handle('bg-render', (e, p) => bgCapture({ html: p.html, delay: p.delay, format: 'jpeg' }));
 
 ipcMain.handle('bg-render-png', (e, p) => bgCapture({ html: p.html, format: 'png' }));
@@ -382,37 +280,9 @@ ipcMain.handle('export-cleanup', () => {
   if (exportWindow) { exportWindow.close(); exportWindow = null; }
 });
 
-ipcMain.handle('export-mp4', (e, p) => runFfmpegPipeExport({
-  ...p,
-  inputCodec: 'mjpeg',
-  buildArgs: ({ savePath }) => [
-    '-vf', 'crop=trunc(iw/2)*2:trunc(ih/2)*2',
-    '-c:v', 'libx264', '-pix_fmt', 'yuv420p',
-    '-preset', 'fast', '-crf', '18', '-movflags', '+faststart',
-    savePath
-  ]
-}));
-
-ipcMain.handle('export-mov', (e, p) => runFfmpegPipeExport({
-  ...p,
-  inputCodec: 'png',
-  buildArgs: ({ width, height, savePath }) => [
-    '-s', `${width}x${height}`,
-    '-c:v', 'prores_ks', '-profile:v', '3',
-    '-pix_fmt', 'yuva444p10le', '-vendor', 'ap10',
-    savePath
-  ]
-}));
-
-ipcMain.handle('export-webm', (e, p) => runFfmpegPipeExport({
-  ...p,
-  inputCodec: 'png',
-  buildArgs: ({ savePath }) => [
-    '-c:v', 'libvpx-vp9', '-pix_fmt', 'yuva420p',
-    '-auto-alt-ref', '0', '-crf', '18', '-b:v', '0',
-    savePath
-  ]
-}));
+ipcMain.handle('export-mp4', (e, p) => encode(p.frames, p.savePath, p.fps, p.width, p.height, 'mp4'));
+ipcMain.handle('export-mov', (e, p) => encode(p.frames, p.savePath, p.fps, p.width, p.height, 'mov'));
+ipcMain.handle('export-webm', (e, p) => encode(p.frames, p.savePath, p.fps, p.width, p.height, 'webm'));
 
 ipcMain.handle('bg-capture-png', (e, p) => bgCapture({ js: p.js, delay: p.delay, format: 'png' }));
 

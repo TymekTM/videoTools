@@ -3125,6 +3125,12 @@ function loadMainHelpers() {
 }
 
 loadMainHelpers();
+const {
+  frameBuffer,
+  encodedFrameBuffers,
+  countFrames,
+  detectFrameCodec,
+} = require('./shared/encoder');
 
 const _mapSt = st;
 const _mapD2r = d2r;
@@ -3494,43 +3500,7 @@ test('buildCumulativeDists with identical points is all zeros', () => {
   d.forEach((v, i) => assert.strictEqual(v, 0));
 });
 
-console.log('\n\x1b[1mMain.js helpers (pure logic tests):\x1b[0m');
-test('writeJpgConcat produces correct file names and concat content', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vt-test-'));
-  try {
-    const frames = [
-      { data: Buffer.from('fake1').toString('base64'), duration: 2 },
-      { data: Buffer.from('fake2').toString('base64'), duration: 3 },
-    ];
-    writeJpgConcat(tmpDir, frames);
-    assert.ok(fs.existsSync(path.join(tmpDir, 'f_000000.jpg')));
-    assert.ok(fs.existsSync(path.join(tmpDir, 'f_000001.jpg')));
-    const concat = fs.readFileSync(path.join(tmpDir, 'concat.txt'), 'utf8');
-    const lines = concat.trim().split('\n');
-    assert.strictEqual(lines.length, 5, '2+3=5 concat lines');
-    assert.ok(lines[0].includes('f_000000.jpg'));
-  } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
-  }
-});
-
-test('writePngDuplicated produces correct file count', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vt-test-'));
-  try {
-    const frames = [
-      { data: Buffer.from('fake1').toString('base64'), duration: 3 },
-      { data: Buffer.from('fake2').toString('base64'), duration: 1 },
-    ];
-    writePngDuplicated(tmpDir, frames);
-    assert.ok(fs.existsSync(path.join(tmpDir, 'f_000000.png')));
-    assert.ok(fs.existsSync(path.join(tmpDir, 'f_000001.png')));
-    assert.ok(fs.existsSync(path.join(tmpDir, 'f_000002.png')));
-    assert.ok(fs.existsSync(path.join(tmpDir, 'f_000003.png')));
-    assert.ok(!fs.existsSync(path.join(tmpDir, 'f_000004.png')));
-  } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
-  }
-});
+console.log('\n\x1b[1mShared encoder helpers:\x1b[0m');
 
 test('encodedFrameBuffers expands durations without changing frame data', () => {
   const frames = [
@@ -3550,6 +3520,23 @@ test('encodedFrameBuffers accepts binary IPC frame data', () => {
   const buffers = Array.from(encodedFrameBuffers([{ data: ipcData, duration: 1 }]));
   assert.strictEqual(buffers.length, 1);
   assert.strictEqual(buffers[0].toString(), 'binary-frame');
+});
+
+test('frameBuffer accepts base64 and binary IPC data', () => {
+  const source = Buffer.from('frame-data');
+  assert.strictEqual(frameBuffer({ data: source.toString('base64') }).toString(), 'frame-data');
+  assert.strictEqual(frameBuffer({ data: new Uint8Array(source.buffer, source.byteOffset, source.byteLength) }).toString(), 'frame-data');
+});
+
+test('countFrames sums compact frame durations', () => {
+  assert.strictEqual(countFrames([{ duration: 2 }, { duration: 7 }, { duration: 1 }]), 10);
+});
+
+test('detectFrameCodec distinguishes PNG and JPEG data', () => {
+  const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0]);
+  assert.strictEqual(detectFrameCodec([{ data: png, duration: 1 }]), 'png');
+  assert.strictEqual(detectFrameCodec([{ data: jpeg, duration: 1 }]), 'mjpeg');
 });
 
 test('RAF_WAIT is a valid JS promise string', () => {
