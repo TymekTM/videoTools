@@ -5,7 +5,7 @@ const os = require('os');
 const path = require('path');
 const { performance } = require('perf_hooks');
 const ffmpegPath = require('ffmpeg-static');
-const { encodeMp4 } = require('../shared/encoder');
+const { encodeMp4, X264_PRESET } = require('../shared/encoder');
 
 const WIDTH = Number(process.env.VT_BENCH_WIDTH || 640);
 const HEIGHT = Number(process.env.VT_BENCH_HEIGHT || 360);
@@ -94,14 +94,14 @@ async function encodeLegacy(frames, outputPath, tmpDir) {
   return performance.now() - started;
 }
 
-async function encodePipe(frames, outputPath) {
+async function encodePipe(frames, outputPath, preset = 'fast') {
   const started = performance.now();
   await runFfmpeg([
     '-y', '-f', 'image2pipe', '-framerate', String(FPS),
     '-vcodec', 'mjpeg', '-i', 'pipe:0',
     '-vf', 'crop=trunc(iw/2)*2:trunc(ih/2)*2',
     '-c:v', 'libx264', '-pix_fmt', 'yuv420p',
-    '-preset', 'fast', '-crf', '18', '-movflags', '+faststart',
+    '-preset', preset, '-crf', '18', '-movflags', '+faststart',
     outputPath,
   ], frames);
   return performance.now() - started;
@@ -135,7 +135,7 @@ app.whenReady().then(async () => {
     const expandedStatic = staticFrames.flatMap((frame) => Array(frame.duration).fill(frame.data));
     const staticPipePath = path.join(tmpDir, 'static-pipe.mp4');
     const staticDurationPath = path.join(tmpDir, 'static-duration.mp4');
-    const staticPipeMs = await encodePipe(expandedStatic, staticPipePath);
+    const staticPipeMs = await encodePipe(expandedStatic, staticPipePath, X264_PRESET);
     const staticDurationMs = await encodeDurationConcat(staticFrames, staticDurationPath);
     const staticExactDecodedMatch = await frameMd5(staticPipePath) === await frameMd5(staticDurationPath);
     console.log(JSON.stringify({

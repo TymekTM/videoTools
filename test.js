@@ -3135,6 +3135,7 @@ const {
   encodedFrameBuffers,
   countFrames,
   detectFrameCodec,
+  X264_PRESET,
 } = require('./shared/encoder');
 
 const _mapSt = st;
@@ -3553,6 +3554,9 @@ test('delayJs produces correct setTimeout string', () => {
   const result = delayJs(500);
   assert.ok(result.includes('500'));
   assert.ok(result.includes('setTimeout'));
+});
+test('MP4 encoder uses the cross-platform veryfast preset', () => {
+  assert.strictEqual(X264_PRESET, 'veryfast');
 });
 
 console.log('\n\x1b[1m' + '='.repeat(40) + '\x1b[0m');

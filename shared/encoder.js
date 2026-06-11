@@ -3,6 +3,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const X264_PRESET = 'veryfast';
 
 function frameBuffer(frame) {
   return typeof frame.data === 'string'
@@ -92,7 +93,7 @@ async function encodeMp4(frames, savePath, fps) {
       '-i', concatPath,
       '-vf', `fps=${fps},trim=end_frame=${countFrames(frames)},crop=trunc(iw/2)*2:trunc(ih/2)*2`,
       '-c:v', 'libx264', '-pix_fmt', 'yuv420p',
-      '-preset', 'fast', '-crf', '18', '-movflags', '+faststart',
+      '-preset', X264_PRESET, '-crf', '18', '-movflags', '+faststart',
       savePath,
     ]);
     return savePath;
@@ -148,4 +149,5 @@ module.exports = {
   countFrames,
   detectFrameCodec,
   writeBuffers,
+  X264_PRESET,
 };
