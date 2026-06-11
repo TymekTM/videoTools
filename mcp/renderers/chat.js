@@ -1,5 +1,5 @@
 const { createPage, loadHtml, waitForFonts, evalAndCapture, closePage } = require('../lib/browser');
-const { encode } = require('../lib/encoder');
+const { encode, countFrames } = require('../lib/encoder');
 const { getResolution } = require('../registry');
 
 const FONTS_LINK = '<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;0,9..40,900;1,9..40,400&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">';
@@ -166,7 +166,7 @@ async function generate(params, outputPath, format) {
       await waitForFonts(page);
       const typingFrames = Math.max(1, Math.round((p.animSpeed * 0.6 / 1000) * fps));
       const d = await evalAndCapture(page, null);
-      for (let f = 0; f < typingFrames; f++) frames.push({ data: d, duration: 1 });
+      frames.push({ data: d, duration: typingFrames });
     }
 
     const msgHtml = buildChatHtml(p.platform, p.contacts, p.messages, i + 1, null, p.customTheme, p.hideTime, p.fontScale);
@@ -174,7 +174,7 @@ async function generate(params, outputPath, format) {
     await waitForFonts(page);
     const msgFrames = Math.max(1, Math.round((p.animSpeed / 1000) * fps));
     const d = await evalAndCapture(page, null);
-    for (let f = 0; f < msgFrames; f++) frames.push({ data: d, duration: 1 });
+    frames.push({ data: d, duration: msgFrames });
   }
 
   const endHtml = buildChatHtml(p.platform, p.contacts, p.messages, p.messages.length, null, p.customTheme, p.hideTime, p.fontScale);
@@ -182,19 +182,20 @@ async function generate(params, outputPath, format) {
   await waitForFonts(page);
   const endFrames = Math.round(fps * 1.5);
   const d = await evalAndCapture(page, null);
-  for (let f = 0; f < endFrames; f++) frames.push({ data: d, duration: 1 });
+  frames.push({ data: d, duration: endFrames });
 
   await closePage(page);
   await encode(frames, outputPath, fps, width, height, format || 'mp4');
 
   const fs = require('fs');
   const stat = fs.statSync(outputPath);
+  const frameCount = countFrames(frames);
   return {
     success: true,
     filePath: outputPath,
     fileSize: stat.size,
-    duration: frames.length / fps,
-    frames: frames.length,
+    duration: frameCount / fps,
+    frames: frameCount,
   };
 }
 

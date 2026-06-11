@@ -212,7 +212,7 @@ async function testTypingCompaction() {
 
 async function testEncoderFrameExpansion() {
   console.log('\n[encoder frame expansion]');
-  const { encodedFrameBuffers } = require(path.join(MCP, 'lib/encoder'));
+  const { encodedFrameBuffers, countFrames, detectFrameCodec } = require(path.join(MCP, 'lib/encoder'));
   const textFrame = Buffer.from('jpeg-a');
   const binaryFrame = Buffer.from('jpeg-b');
   const frames = [
@@ -221,8 +221,11 @@ async function testEncoderFrameExpansion() {
   ];
   const expanded = [...encodedFrameBuffers(frames)];
   assert(expanded.length === 5, `expands durations to 5 frames: ${expanded.length}`);
+  assert(countFrames(frames) === 5, 'counts logical frames from durations');
   assert(expanded[0].equals(textFrame) && expanded[1].equals(textFrame), 'decodes and repeats base64 frames');
   assert(expanded[2].equals(binaryFrame) && expanded[4].equals(binaryFrame), 'repeats binary frames');
+  assert(detectFrameCodec([{ data: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), duration: 1 }]) === 'png', 'detects PNG input');
+  assert(detectFrameCodec(frames) === 'mjpeg', 'defaults non-PNG input to MJPEG');
   console.log(`  ${passed} passed, ${failed} failed`);
 }
 

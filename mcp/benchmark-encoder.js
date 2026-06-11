@@ -5,7 +5,7 @@ const os = require('os');
 const path = require('path');
 const ffmpegPath = require('ffmpeg-static');
 const { createPage, loadHtml, captureFrame, closePage, closeBrowser } = require('./lib/browser');
-const { encodeMov, encodeWebm } = require('./lib/encoder');
+const { encodeMp4, encodeMov, encodeWebm, detectFrameCodec } = require('./lib/encoder');
 
 const WIDTH = Number(process.env.VT_BENCH_WIDTH || 640);
 const HEIGHT = Number(process.env.VT_BENCH_HEIGHT || 360);
@@ -28,7 +28,7 @@ function runFfmpeg(args) {
   });
 }
 
-async function captureFrames() {
+async function captureFrames(format = 'jpeg') {
   const page = await createPage(WIDTH, HEIGHT);
   await loadHtml(page, `<!doctype html><html><body style="margin:0;overflow:hidden">
     <canvas id="c" width="${WIDTH}" height="${HEIGHT}"></canvas>
@@ -49,21 +49,22 @@ async function captureFrames() {
   const frames = [];
   for (let i = 0; i < UNIQUE_FRAMES; i++) {
     await page.evaluate((t) => window.draw(t), i / Math.max(1, UNIQUE_FRAMES - 1));
-    frames.push({ data: await captureFrame(page), duration: DURATION });
+    frames.push({ data: await captureFrame(page, format), duration: DURATION });
   }
   await closePage(page);
   return frames;
 }
 
 async function encodeLegacy(frames, outputPath, format, tmpDir) {
+  const extension = detectFrameCodec(frames) === 'png' ? 'png' : 'jpg';
   let index = 0;
   for (const frame of frames) {
     const buffer = Buffer.from(frame.data, 'base64');
     for (let i = 0; i < frame.duration; i++) {
-      fs.writeFileSync(path.join(tmpDir, `f_${String(index++).padStart(6, '0')}.jpg`), buffer);
+      fs.writeFileSync(path.join(tmpDir, `f_${String(index++).padStart(6, '0')}.${extension}`), buffer);
     }
   }
-  const args = ['-y', '-f', 'image2', '-framerate', String(FPS), '-i', path.join(tmpDir, 'f_%06d.jpg')];
+  const args = ['-y', '-f', 'image2', '-framerate', String(FPS), '-i', path.join(tmpDir, `f_%06d.${extension}`)];
   if (format === 'mov') {
     args.push(
       '-s', `${WIDTH}x${HEIGHT}`,
@@ -86,10 +87,10 @@ async function frameMd5(filePath) {
   ])).toString().split(/\r?\n/).filter((line) => line && !line.startsWith('#')).join('\n');
 }
 
-async function benchmarkFormat(frames, format, tmpDir) {
-  const legacyPath = path.join(tmpDir, `legacy.${format}`);
-  const pipedPath = path.join(tmpDir, `piped.${format}`);
-  const legacyFramesDir = path.join(tmpDir, `legacy-${format}`);
+async function benchmarkFormat(frames, format, tmpDir, label = format) {
+  const legacyPath = path.join(tmpDir, `legacy-${label}.${format}`);
+  const pipedPath = path.join(tmpDir, `piped-${label}.${format}`);
+  const legacyFramesDir = path.join(tmpDir, `legacy-${label}`);
   fs.mkdirSync(legacyFramesDir);
 
   let started = performance.now();
@@ -102,7 +103,7 @@ async function benchmarkFormat(frames, format, tmpDir) {
   const pipedMs = performance.now() - started;
 
   return {
-    format,
+    format: label,
     legacyMs: Number(legacyMs.toFixed(1)),
     pipedMs: Number(pipedMs.toFixed(1)),
     speedup: Number((legacyMs / pipedMs).toFixed(2)),
@@ -110,13 +111,45 @@ async function benchmarkFormat(frames, format, tmpDir) {
   };
 }
 
+async function benchmarkMp4Compaction(frames, tmpDir) {
+  const expandedFrames = [];
+  for (const frame of frames) {
+    for (let i = 0; i < frame.duration; i++) {
+      expandedFrames.push({ data: frame.data, duration: 1 });
+    }
+  }
+  const expandedPath = path.join(tmpDir, 'expanded.mp4');
+  const compactPath = path.join(tmpDir, 'compact.mp4');
+
+  let started = performance.now();
+  await encodeMp4(expandedFrames, expandedPath, FPS, WIDTH, HEIGHT);
+  const expandedMs = performance.now() - started;
+
+  started = performance.now();
+  await encodeMp4(frames, compactPath, FPS, WIDTH, HEIGHT);
+  const compactMs = performance.now() - started;
+
+  return {
+    format: 'mp4',
+    expandedRecords: expandedFrames.length,
+    compactRecords: frames.length,
+    expandedMs: Number(expandedMs.toFixed(1)),
+    compactMs: Number(compactMs.toFixed(1)),
+    speedup: Number((expandedMs / compactMs).toFixed(2)),
+    exactDecodedMatch: await frameMd5(expandedPath) === await frameMd5(compactPath),
+  };
+}
+
 async function run() {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-encoder-benchmark-'));
   try {
     const frames = await captureFrames();
+    const pngFrames = await captureFrames('png');
     const results = [];
+    results.push(await benchmarkMp4Compaction(frames, tmpDir));
     results.push(await benchmarkFormat(frames, 'mov', tmpDir));
     results.push(await benchmarkFormat(frames, 'webm', tmpDir));
+    results.push(await benchmarkFormat(pngFrames, 'mov', tmpDir, 'mov-png'));
     console.log(JSON.stringify({
       resolution: `${WIDTH}x${HEIGHT}`,
       uniqueFrames: UNIQUE_FRAMES,

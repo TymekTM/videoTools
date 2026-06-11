@@ -1,5 +1,5 @@
 const { createPage, loadHtml, waitForFonts, evalAndCapture, closePage } = require('../lib/browser');
-const { encode } = require('../lib/encoder');
+const { encode, countFrames } = require('../lib/encoder');
 const { getResolution } = require('../registry');
 
 const FONTS_LINK = '<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">';
@@ -189,21 +189,20 @@ async function generate(params, outputPath, format) {
     `window._renderState(${notifs.length}, -1)`,
     captureFormat
   );
-  for (let i = 0; i < holdFrames; i++) {
-    frames.push({ data: d, duration: 1 });
-  }
+  frames.push({ data: d, duration: holdFrames });
 
   await closePage(page);
   await encode(frames, outputPath, fps, width, height, format || 'mp4');
 
   const fs = require('fs');
   const stat = fs.statSync(outputPath);
+  const frameCount = countFrames(frames);
   return {
     success: true,
     filePath: outputPath,
     fileSize: stat.size,
-    duration: frames.length / fps,
-    frames: frames.length,
+    duration: frameCount / fps,
+    frames: frameCount,
   };
 }
 

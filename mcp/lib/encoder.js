@@ -45,15 +45,32 @@ function encodeMp4(frames, savePath, fps, width, height) {
   });
 }
 
+function frameBuffer(frame) {
+  return typeof frame.data === 'string'
+    ? Buffer.from(frame.data, 'base64')
+    : Buffer.from(frame.data.buffer, frame.data.byteOffset, frame.data.byteLength);
+}
+
 function* encodedFrameBuffers(frames) {
   for (const frame of frames) {
-    const buffer = typeof frame.data === 'string'
-      ? Buffer.from(frame.data, 'base64')
-      : Buffer.from(frame.data.buffer, frame.data.byteOffset, frame.data.byteLength);
+    const buffer = frameBuffer(frame);
     for (let d = 0; d < frame.duration; d++) {
       yield buffer;
     }
   }
+}
+
+function countFrames(frames) {
+  return frames.reduce((sum, frame) => sum + frame.duration, 0);
+}
+
+function detectFrameCodec(frames) {
+  if (!frames.length) throw new Error('Cannot encode an empty frame list');
+  const buffer = frameBuffer(frames[0]);
+  const isPng = buffer.length >= 8
+    && buffer[0] === 0x89
+    && buffer.subarray(1, 4).toString('ascii') === 'PNG';
+  return isPng ? 'png' : 'mjpeg';
 }
 
 async function writeBuffers(stream, buffers) {
@@ -78,11 +95,12 @@ async function writeBuffers(stream, buffers) {
 
 function encodePiped(frames, savePath, fps, outputArgs) {
   return new Promise((resolve, reject) => {
+    const inputCodec = detectFrameCodec(frames);
     const args = [
       '-y',
       '-f', 'image2pipe',
       '-framerate', String(fps),
-      '-vcodec', 'mjpeg',
+      '-vcodec', inputCodec,
       '-i', 'pipe:0',
       ...outputArgs,
       savePath
@@ -133,5 +151,7 @@ module.exports = {
   encodeWebm,
   encode,
   encodedFrameBuffers,
+  countFrames,
+  detectFrameCodec,
   writeBuffers,
 };
