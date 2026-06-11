@@ -2,6 +2,20 @@ const { createPage, loadHtml, waitForFonts, evalAndCapture, closePage } = requir
 const { encode } = require('../lib/encoder');
 const { getResolution } = require('../registry');
 
+function compactFrameActions(frameActions) {
+  const states = [];
+  for (const action of frameActions) {
+    const key = `${action.cursor ? 1 : 0}:${action.text}`;
+    const last = states[states.length - 1];
+    if (last && last.key === key) {
+      last.duration++;
+    } else {
+      states.push({ ...action, key, duration: 1 });
+    }
+  }
+  return states;
+}
+
 const FONTS_LINK = '<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">';
 
 function escapeHtml(s) {
@@ -99,22 +113,14 @@ async function generate(params, outputPath, format) {
     for (let i = 0; i < count; i++) frameActions.push({ text, cursor: p.cursorBlink ? i % (fps / 2) < fps / 4 : true });
   }
 
-  let prevData = null;
-  for (let i = 0; i < frameActions.length; i++) {
-    const fa = frameActions[i];
-    const isSameAsPrev = i > 0 && fa.text === frameActions[i - 1].text;
-
-    if (isSameAsPrev && prevData) {
-      frames.push({ data: prevData, duration: 1 });
-      continue;
-    }
-
+  const renderStates = compactFrameActions(frameActions);
+  for (let i = 0; i < renderStates.length; i++) {
+    const fa = renderStates[i];
     const html = buildTypingHtml(p.theme, fa.text, fa.cursor, p.bgColor, p.textColor, p.cursorColor, p.fontSize, p.title, p.prompt, width, height);
     await loadHtml(page, html);
     if (i === 0) await waitForFonts(page);
     const d = await evalAndCapture(page, null);
-    prevData = d;
-    frames.push({ data: d, duration: 1 });
+    frames.push({ data: d, duration: fa.duration });
   }
 
   await closePage(page);
@@ -126,9 +132,9 @@ async function generate(params, outputPath, format) {
     success: true,
     filePath: outputPath,
     fileSize: stat.size,
-    duration: frames.length / fps,
-    frames: frames.length,
+    duration: frameActions.length / fps,
+    frames: frameActions.length,
   };
 }
 
-module.exports = { generate };
+module.exports = { generate, compactFrameActions };

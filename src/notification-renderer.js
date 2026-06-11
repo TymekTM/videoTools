@@ -389,6 +389,25 @@
     canvas.innerHTML = html;
   }
 
+  function buildExportFrameSpecs(totalFrames, totalMs) {
+    var specs = [];
+    for (var i = 0; i < totalFrames; i++) {
+      var t = totalFrames === 1 ? 1 : i / (totalFrames - 1);
+      var elapsed = t * totalMs;
+      var visibleCount = Math.min(st.notifications.length, Math.floor(elapsed / st.animSpeed) + 1);
+      var latestStart = Math.max(0, visibleCount - 1) * st.animSpeed;
+      var isAnimating = visibleCount > 0 && elapsed - latestStart < st.slideDuration;
+      var key = isAnimating ? 'frame:' + i : 'static:' + visibleCount;
+      var last = specs[specs.length - 1];
+      if (last && last.key === key) {
+        last.duration++;
+      } else {
+        specs.push({ key: key, t: t, duration: 1 });
+      }
+    }
+    return specs;
+  }
+
   async function exportVideo(format) {
     if (!st.notifications.length || st.animating) return;
 
@@ -441,25 +460,26 @@
     await ipcRenderer.invoke('bg-load-html', { html: html, width: w, height: h });
     setExporting(true, t('notifRenderingFrames'), 5);
 
+    var frameSpecs = buildExportFrameSpecs(totalFrames, totalMs);
     var frames = [];
     var batchSize = 30;
     var batchItems = [];
-    for (var i = 0; i < totalFrames; i++) {
-      var t = totalFrames === 1 ? 1 : i / (totalFrames - 1);
-      var frameJs = 'window._uf(' + t + ')';
+    for (var i = 0; i < frameSpecs.length; i++) {
+      var frameJs = 'window._uf(' + frameSpecs[i].t + ')';
 
-      batchItems.push({ js: frameJs });
-      if (batchItems.length >= batchSize || i === totalFrames - 1) {
+      batchItems.push({ js: frameJs, waitForPaint: true });
+      if (batchItems.length >= batchSize || i === frameSpecs.length - 1) {
         var batchData = await ipcRenderer.invoke('bg-eval-capture-batch', {
           frames: batchItems,
           format: isAlpha ? 'png' : 'jpeg'
         });
         for (var b = 0; b < batchData.length; b++) {
-          frames.push({ data: batchData[b], duration: 1 });
+          var specIndex = frames.length;
+          frames.push({ data: batchData[b], duration: frameSpecs[specIndex].duration });
         }
         batchItems = [];
-        var pct = 5 + Math.round((i / totalFrames) * 80);
-        setExporting(true, t('notifFrame') + ' ' + (i + 1) + '/' + totalFrames, pct);
+        var pct = 5 + Math.round((i / frameSpecs.length) * 80);
+        setExporting(true, t('notifFrame') + ' ' + (i + 1) + '/' + frameSpecs.length, pct);
       }
     }
 

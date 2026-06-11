@@ -148,6 +148,41 @@
     return null;
   }
 
+  function getFrameStateKey(t) {
+    for (var i = 0; i < st.lines.length; i++) {
+      var line = st.lines[i];
+      if (t >= line.start - 0.1 && t <= line.end + 0.15) {
+        var active = [];
+        for (var j = 0; j < line.words.length; j++) {
+          if (t >= line.words[j].start - 0.05 && t <= line.words[j].end + 0.05) {
+            active.push(j);
+          }
+        }
+        return i + ':' + active.join(',');
+      }
+    }
+    return 'blank';
+  }
+
+  function buildExportFrameSpecs(totalFrames, fps) {
+    var specs = [];
+    for (var i = 0; i < totalFrames; i++) {
+      var time = i / fps;
+      var key = getFrameStateKey(time);
+      var last = specs[specs.length - 1];
+      if (last && last.key === key) {
+        last.duration++;
+      } else {
+        specs.push({
+          key: key,
+          time: time,
+          duration: 1
+        });
+      }
+    }
+    return specs;
+  }
+
   function makeShadowCSS(width) {
     if (!width || width <= 0) return '';
     var parts = [];
@@ -442,13 +477,17 @@
       await ipcRenderer.invoke('bg-eval', 'document.fonts.ready');
       setExporting(true, 'Rendering frames...', 5);
 
+      var frameSpecs = buildExportFrameSpecs(totalFrames, fps);
       var BATCH_SIZE = 50;
       var frameData = [];
-      for (var batchStart = 0; batchStart < totalFrames; batchStart += BATCH_SIZE) {
-        var batchEnd = Math.min(batchStart + BATCH_SIZE, totalFrames);
+      for (var batchStart = 0; batchStart < frameSpecs.length; batchStart += BATCH_SIZE) {
+        var batchEnd = Math.min(batchStart + BATCH_SIZE, frameSpecs.length);
         var frames = [];
         for (var i = batchStart; i < batchEnd; i++) {
-          frames.push({ js: 'window._seek(' + (i / fps).toFixed(4) + ')' });
+          frames.push({
+            js: 'window._seek(' + frameSpecs[i].time.toFixed(4) + ')',
+            waitForPaint: true
+          });
         }
 
         var batchData = await ipcRenderer.invoke('bg-eval-capture-batch', {
@@ -459,8 +498,8 @@
           frameData.push(batchData[j]);
         }
 
-        var pct = 5 + Math.round((batchEnd / totalFrames) * 80);
-        setExporting(true, 'Frame ' + batchEnd + '/' + totalFrames, pct);
+        var pct = 5 + Math.round((batchEnd / frameSpecs.length) * 80);
+        setExporting(true, 'State ' + batchEnd + '/' + frameSpecs.length, pct);
       }
 
       if (frameData.length === 0) {
@@ -472,7 +511,7 @@
 
       var exportFrames = [];
       for (var k = 0; k < frameData.length; k++) {
-        exportFrames.push({ data: frameData[k], duration: 1 });
+        exportFrames.push({ data: frameData[k], duration: frameSpecs[k].duration });
       }
       exportFrames.push({ data: exportFrames[exportFrames.length - 1].data, duration: Math.round(fps * 0.5) });
 

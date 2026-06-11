@@ -47,6 +47,7 @@ async function testModuleLoad() {
 
   const typing = require(path.join(MCP, 'renderers/typing'));
   assert(typeof typing.generate === 'function', 'typing.generate');
+  assert(typeof typing.compactFrameActions === 'function', 'typing.compactFrameActions');
 
   const chart = require(path.join(MCP, 'renderers/chart'));
   assert(typeof chart.generate === 'function', 'chart.generate');
@@ -189,6 +190,26 @@ async function testHelpers() {
   console.log(`  ${passed} passed, ${failed} failed`);
 }
 
+async function testTypingCompaction() {
+  console.log('\n[typing frame compaction]');
+  const { compactFrameActions } = require(path.join(MCP, 'renderers/typing'));
+  const actions = [
+    { text: 'A', cursor: true },
+    { text: 'A', cursor: true },
+    { text: 'A', cursor: false },
+    { text: 'A', cursor: false },
+    { text: 'AB', cursor: true },
+  ];
+  const states = compactFrameActions(actions);
+  assert(states.length === 3, `compacts to 3 states: ${states.length}`);
+  assert(states[0].duration === 2, 'first cursor-on state lasts 2 frames');
+  assert(states[1].duration === 2, 'cursor-off state lasts 2 frames');
+  assert(states[2].duration === 1, 'changed text lasts 1 frame');
+  assert(states.reduce((sum, state) => sum + state.duration, 0) === actions.length, 'preserves total frame count');
+  assert(states[0].key !== states[1].key, 'cursor visibility changes visual state');
+  console.log(`  ${passed} passed, ${failed} failed`);
+}
+
 async function run() {
   console.log('MCP Server Tests');
   console.log('================');
@@ -200,6 +221,7 @@ async function run() {
   await testEncoderFormats();
   await testBrowserModule();
   await testHelpers();
+  await testTypingCompaction();
 
   console.log('\n================');
   console.log(`Total: ${passed} passed, ${failed} failed`);

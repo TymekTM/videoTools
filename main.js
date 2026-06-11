@@ -325,6 +325,7 @@ ipcMain.handle('bg-eval-capture-batch', async (event, { frames, format }) => {
     if (bgWindow.isDestroyed() || wc.isDestroyed()) break;
     try {
       if (frame.js) await wc.executeJavaScript(frame.js);
+      if (frame.waitForPaint) await wc.executeJavaScript(RAF_WAIT);
       if (frame.delay) {
         await wc.executeJavaScript(delayJs(frame.delay));
       }
