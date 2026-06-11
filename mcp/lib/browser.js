@@ -43,8 +43,11 @@ async function loadHtml(page, html, waitForNetwork = false) {
   });
 }
 
-async function waitForFonts(page) {
-  await page.evaluate(() => document.fonts.ready);
+async function waitForFonts(page, timeoutMs = 5000) {
+  await page.evaluate((timeout) => Promise.race([
+    document.fonts.ready,
+    new Promise((resolve) => setTimeout(resolve, timeout)),
+  ]), timeoutMs);
 }
 
 async function captureFrame(page, format = 'jpeg') {
