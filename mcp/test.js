@@ -257,6 +257,35 @@ async function testContinuousAnimationFramePlan() {
   console.log(`  ${passed} passed, ${failed} failed`);
 }
 
+async function testMapFramePlan() {
+  console.log('\n[shared map frame plan]');
+  const map = require(path.join(MCP, 'renderers/map'));
+  const coords = [
+    { lat: 0, lng: 0 },
+    { lat: 0, lng: 1 },
+    { lat: 0, lng: 2 },
+    { lat: 0, lng: 3 },
+  ];
+  const waypoints = [coords[0], coords[2], coords[3]];
+  const segments = map.buildSegmentBounds(coords, waypoints, ['#a', '#b']);
+  const fractions = map.computeLegFractions(coords, segments, 2);
+  const positions = fractions.starts.concat([fractions.ends[fractions.ends.length - 1]]);
+  const plan = map.buildFramePlan({
+    positions,
+    durationSeconds: 5,
+    checkpointPauseMs: 400,
+    holdSeconds: 1.5,
+    easing: true,
+  }, 30);
+  assert(segments.length === 2 && segments[0].end === 2, 'segment boundaries follow nearest waypoints');
+  assert(Math.abs(positions[1] - 2 / 3) < 0.001, 'leg boundary follows route distance');
+  assert(plan.checkpointFrames === 12, 'checkpoint pause is 12 frames');
+  assert(plan.frames.some(frame => frame.duration === 13), 'checkpoint reuses its final captured frame');
+  assert(plan.frames[0].progress === 0 && plan.frames[plan.frames.length - 1].progress === 1, 'map progress includes exact endpoints');
+  assert(plan.totalFrames === plan.frames.reduce((sum, frame) => sum + frame.duration, 0), 'map frame durations preserve logical count');
+  console.log(`  ${passed} passed, ${failed} failed`);
+}
+
 async function testEncoderFrameExpansion() {
   console.log('\n[encoder frame expansion]');
   const { encodedFrameBuffers, countFrames, detectFrameCodec } = require(path.join(MCP, 'lib/encoder'));
@@ -291,6 +320,7 @@ async function run() {
   await testChatFramePlan();
   await testNotificationFramePlan();
   await testContinuousAnimationFramePlan();
+  await testMapFramePlan();
   await testEncoderFrameExpansion();
 
   console.log('\n================');

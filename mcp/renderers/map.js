@@ -1,6 +1,7 @@
 const { createPage, loadHtml, waitForFonts, evalAndCapture, closePage } = require('../lib/browser');
 const { encode, countFrames } = require('../lib/encoder');
 const { getResolution } = require('../registry');
+const MapCore = require('../../shared/map');
 
 const MAP_TILES = {
   dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
@@ -218,18 +219,10 @@ async function generate(params, outputPath, format) {
     }
   }
 
-  const segments = [];
+  let segments = [];
   const colors = p.segmentColors;
   if (p.waypoints.length > 2) {
-    const wps = p.waypoints.length;
-    const perLeg = Math.floor(routeCoords.length / (wps - 1));
-    for (let i = 0; i < wps - 1; i++) {
-      segments.push({
-        start: i * perLeg,
-        end: i === wps - 2 ? routeCoords.length - 1 : (i + 1) * perLeg,
-        color: colors[i % colors.length],
-      });
-    }
+    segments = MapCore.buildSegmentBounds(routeCoords, p.waypoints, colors);
   }
 
   const centerLat = p.waypoints.reduce((s, w) => s + w.lat, 0) / p.waypoints.length;
@@ -252,18 +245,22 @@ async function generate(params, outputPath, format) {
 
   await page.evaluate(() => window._tilesReady);
 
-  const totalFrames = Math.round(p.animDuration * fps);
+  const legCount = Math.max(p.waypoints.length - 1, 1);
+  const fractions = MapCore.computeLegFractions(routeCoords, segments, legCount);
+  const positions = fractions.starts.concat([fractions.ends[fractions.ends.length - 1]]);
+  const framePlan = MapCore.buildFramePlan({
+    positions,
+    durationSeconds: p.animDuration,
+    checkpointPauseMs: 400,
+    holdSeconds: 1.5,
+    easing: p.easing,
+  }, fps);
   const frames = [];
 
-  for (let i = 0; i < totalFrames; i++) {
-    const rawT = totalFrames === 1 ? 1 : i / (totalFrames - 1);
-    const t = p.easing ? easeInOut(rawT) : rawT;
-    const d = await evalAndCapture(page, `window._setProgress(${t})`);
-    frames.push({ data: d, duration: 1 });
+  for (const spec of framePlan.frames) {
+    const d = await evalAndCapture(page, `window._setProgress(${spec.progress})`);
+    frames.push({ data: d, duration: spec.duration });
   }
-
-  const holdFrames = Math.round(fps * 1);
-  frames[frames.length - 1].duration += holdFrames;
 
   await closePage(page);
   await encode(frames, outputPath, fps, width, height, format || 'mp4');
@@ -280,4 +277,10 @@ async function generate(params, outputPath, format) {
   };
 }
 
-module.exports = { generate, buildMapHtml };
+module.exports = {
+  generate,
+  buildMapHtml,
+  buildFramePlan: MapCore.buildFramePlan,
+  buildSegmentBounds: MapCore.buildSegmentBounds,
+  computeLegFractions: MapCore.computeLegFractions,
+};

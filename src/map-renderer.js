@@ -280,31 +280,7 @@
   }
 
   function buildSegmentBounds(coords, wps) {
-    var segs = [];
-    if (wps.length < 2) return segs;
-    var dists = [0];
-    for (var i = 1; i < coords.length; i++) {
-      dists.push(dists[i - 1] + haversine(coords[i - 1], coords[i]));
-    }
-    var total = dists[dists.length - 1];
-    var wpDists = [];
-    for (var w = 0; w < wps.length; w++) {
-      var bestIdx = 0;
-      var bestDist = Infinity;
-      for (var c = 0; c < coords.length; c++) {
-        var d = haversine(wps[w], coords[c]);
-        if (d < bestDist) { bestDist = d; bestIdx = c; }
-      }
-      wpDists.push(bestIdx);
-    }
-    for (var s = 0; s < wpDists.length - 1; s++) {
-      segs.push({
-        start: wpDists[s],
-        end: Math.min(wpDists[s + 1], coords.length - 1),
-        color: getSegmentColor(s)
-      });
-    }
-    return segs;
+    return MapCore.buildSegmentBounds(coords, wps, st.segmentColors);
   }
 
   function addWaypoint(lat, lng, name) {
@@ -579,27 +555,7 @@
   }
 
   function computeLegFractions(coords, segments, numLegs) {
-    var cumDist = [0];
-    for (var i = 1; i < coords.length; i++) {
-      cumDist.push(cumDist[i - 1] + haversine(coords[i - 1], coords[i]));
-    }
-    var totalDist = cumDist[cumDist.length - 1] || 1;
-    var starts = [];
-    var ends = [];
-    if (segments.length >= numLegs) {
-      for (var si = 0; si < numLegs; si++) {
-        starts.push(cumDist[segments[si].start] / totalDist);
-        if (si < numLegs - 1) {
-          ends.push(cumDist[segments[si + 1].start] / totalDist);
-        } else {
-          ends.push(1);
-        }
-      }
-    } else {
-      starts = [0];
-      ends = [1];
-    }
-    return { starts: starts, ends: ends };
+    return MapCore.computeLegFractions(coords, segments, numLegs);
   }
 
   function startAnimation() {
@@ -963,55 +919,33 @@
     var wpTPositions = exportFrac.starts.concat([exportFrac.ends[exportFrac.ends.length - 1]]);
     if (wpTPositions.length < 2) wpTPositions = [0, 1];
 
-    var numSegments = wpTPositions.length - 1;
-    var checkpointFrames = Math.round((checkpointPauseMs / 1000) * fps);
-    var totalCheckpointFrames = Math.max(0, numSegments - 1) * checkpointFrames;
-    var moveFrames = Math.max(totalFrames - totalCheckpointFrames, fps);
-    var framesPerSegment = Math.round(moveFrames / numSegments);
+    var framePlan = MapCore.buildFramePlan({
+      positions: wpTPositions,
+      durationSeconds: st.animDuration,
+      checkpointPauseMs: checkpointPauseMs,
+      holdSeconds: 1.5,
+      easing: st.easing
+    }, fps);
 
     var frames = [];
     var batchItems = [];
-    var batchMeta = [];
     var batchSize = 10;
 
-    for (var seg = 0; seg < numSegments; seg++) {
-      var tStart = wpTPositions[seg];
-      var tEnd = wpTPositions[seg + 1];
-      for (var f = 0; f < framesPerSegment; f++) {
-        var rawSegT = framesPerSegment === 1 ? 0 : f / (framesPerSegment - 1);
-        var segT = st.easing ? easeInOut(rawSegT) : rawSegT;
-        var globalT = tStart + (tEnd - tStart) * segT;
-        batchItems.push({ js: 'window._updateFrame(' + globalT + ',"' + st.cameraMode + '",' + st.zoom + ')' });
-        batchMeta.push({ checkpoint: false });
+    for (var i = 0; i < framePlan.frames.length; i++) {
+      batchItems.push({ js: 'window._updateFrame(' + framePlan.frames[i].progress + ',"' + st.cameraMode + '",' + st.zoom + ')' });
 
-        if (batchItems.length >= batchSize) {
-          var batchData = await ipcRenderer.invoke('bg-eval-capture-batch', { frames: batchItems });
-          for (var b = 0; b < batchData.length; b++) {
-            frames.push({ data: batchData[b], duration: 1 });
-          }
-          batchItems = [];
-          batchMeta = [];
-          var doneFrames = frames.length;
-          var pct = 10 + Math.round((doneFrames / (totalFrames + totalCheckpointFrames)) * 70);
-          setExporting(true, t('mapFrame') + ' ' + doneFrames, pct);
+      if (batchItems.length >= batchSize || i === framePlan.frames.length - 1) {
+        var batchData = await ipcRenderer.invoke('bg-eval-capture-batch', { frames: batchItems });
+        for (var b = 0; b < batchData.length; b++) {
+          var specIndex = frames.length;
+          frames.push({ data: batchData[b], duration: framePlan.frames[specIndex].duration });
         }
-      }
-
-      if (seg < numSegments - 1 && frames.length > 0) {
-        for (var cp = 0; cp < checkpointFrames; cp++) {
-          frames.push({ data: frames[frames.length - 1].data, duration: 1 });
-        }
+        batchItems = [];
+        var doneFrames = frames.length;
+        var pct = 10 + Math.round((doneFrames / framePlan.captureFrames) * 70);
+        setExporting(true, t('mapFrame') + ' ' + doneFrames, pct);
       }
     }
-
-    if (batchItems.length > 0) {
-      var batchData = await ipcRenderer.invoke('bg-eval-capture-batch', { frames: batchItems });
-      for (var b = 0; b < batchData.length; b++) {
-        frames.push({ data: batchData[b], duration: 1 });
-      }
-    }
-
-    frames.push({ data: frames[frames.length - 1].data, duration: Math.round(fps * 1.5) });
 
     setExporting(true, t('mapEncodingMp4'), 90);
     await ipcRenderer.invoke('export-mp4', { frames: frames, savePath: savePath, fps: fps, width: w, height: h });
