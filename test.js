@@ -3532,6 +3532,26 @@ test('writePngDuplicated produces correct file count', () => {
   }
 });
 
+test('encodedFrameBuffers expands durations without changing frame data', () => {
+  const frames = [
+    { data: Buffer.from('frame-a').toString('base64'), duration: 2 },
+    { data: Buffer.from('frame-b').toString('base64'), duration: 1 },
+  ];
+  const buffers = Array.from(encodedFrameBuffers(frames));
+  assert.strictEqual(buffers.length, 3);
+  assert.strictEqual(buffers[0].toString(), 'frame-a');
+  assert.strictEqual(buffers[1].toString(), 'frame-a');
+  assert.strictEqual(buffers[2].toString(), 'frame-b');
+});
+
+test('encodedFrameBuffers accepts binary IPC frame data', () => {
+  const source = Buffer.from('binary-frame');
+  const ipcData = new Uint8Array(source.buffer, source.byteOffset, source.byteLength);
+  const buffers = Array.from(encodedFrameBuffers([{ data: ipcData, duration: 1 }]));
+  assert.strictEqual(buffers.length, 1);
+  assert.strictEqual(buffers[0].toString(), 'binary-frame');
+});
+
 test('RAF_WAIT is a valid JS promise string', () => {
   assert.ok(RAF_WAIT.includes('requestAnimationFrame'));
   assert.ok(RAF_WAIT.includes('Promise'));

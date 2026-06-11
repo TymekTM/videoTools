@@ -90,12 +90,13 @@ async function captureDirect(wc, t) {
   return wc.capturePage();
 }
 
-async function benchmark(name, wc, capture) {
+async function benchmark(name, wc, capture, useBase64) {
   const started = performance.now();
   let bytes = 0;
   for (let i = 0; i < FRAME_COUNT; i++) {
     const image = await capture(wc, i / Math.max(1, FRAME_COUNT - 1));
-    bytes += image.toJPEG(92).length;
+    const jpeg = image.toJPEG(92);
+    bytes += useBase64 ? jpeg.toString('base64').length : jpeg.length;
   }
   const elapsed = performance.now() - started;
   return {
@@ -104,6 +105,18 @@ async function benchmark(name, wc, capture) {
     fps: FRAME_COUNT / (elapsed / 1000),
     bytes,
   };
+}
+
+async function createBenchWindow() {
+  const win = new BrowserWindow({
+    width: WIDTH,
+    height: HEIGHT,
+    show: false,
+    frame: false,
+    webPreferences: { offscreen: true },
+  });
+  await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(HTML)}`);
+  return win;
 }
 
 async function verify(wc, capture) {
@@ -121,29 +134,23 @@ async function verify(wc, capture) {
 }
 
 app.whenReady().then(async () => {
-  const win = new BrowserWindow({
-    width: WIDTH,
-    height: HEIGHT,
-    show: false,
-    frame: false,
-    webPreferences: { offscreen: true },
-  });
-  await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(HTML)}`);
+  const win = await createBenchWindow();
   const wc = win.webContents;
 
   const variants = [
-    ['legacy (2 RAF + 30ms)', (contents, t) => captureLegacy(contents, t)],
-    ['double RAF', captureDoubleRaf],
-    ['single RAF', captureSingleRaf],
-    ['direct', captureDirect],
+    ['legacy (2 RAF + 30ms + base64)', (contents, t) => captureLegacy(contents, t), true],
+    ['double RAF + base64', captureDoubleRaf, true],
+    ['single RAF + base64', captureSingleRaf, true],
+    ['direct + base64', captureDirect, true],
+    ['direct + binary IPC', captureDirect, false],
   ];
 
   console.log(`Renderer benchmark: ${FRAME_COUNT} frames at ${WIDTH}x${HEIGHT}`);
-  for (const [name, capture] of variants) {
+  for (const [name, capture, useBase64] of variants) {
     const correctness = name.startsWith('legacy')
       ? { equal: true, changed: 0, maxDelta: 0 }
       : await verify(wc, capture);
-    const result = await benchmark(name, wc, capture);
+    const result = await benchmark(name, wc, capture, useBase64);
     console.log(JSON.stringify({
       variant: name,
       ms: Number(result.elapsed.toFixed(1)),

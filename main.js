@@ -173,8 +173,8 @@ async function bgCapture({ html = null, js = null, delay = null, format = 'jpeg'
   }
   const image = await wc.capturePage();
   return format === 'png'
-    ? image.toPNG().toString('base64')
-    : image.toJPEG(92).toString('base64');
+    ? image.toPNG()
+    : image.toJPEG(92);
 }
 
 async function runFfmpegExport({ frames, savePath, fps, width, height, writeFrames, buildArgs }) {
@@ -190,6 +190,64 @@ async function runFfmpegExport({ frames, savePath, fps, width, height, writeFram
       fs.rmSync(tmpDir, { recursive: true, force: true });
       if (code === 0) resolve(savePath);
       else reject(new Error('ffmpeg exited ' + code + ': ' + stderr));
+    });
+  });
+}
+
+function* encodedFrameBuffers(frames) {
+  for (const frame of frames) {
+    const buffer = typeof frame.data === 'string'
+      ? Buffer.from(frame.data, 'base64')
+      : Buffer.from(frame.data.buffer, frame.data.byteOffset, frame.data.byteLength);
+    for (let i = 0; i < frame.duration; i++) {
+      yield buffer;
+    }
+  }
+}
+
+async function writeBuffers(stream, buffers) {
+  for (const buffer of buffers) {
+    if (!stream.write(buffer)) {
+      await new Promise((resolve, reject) => {
+        const onDrain = () => {
+          stream.off('error', onError);
+          resolve();
+        };
+        const onError = (error) => {
+          stream.off('drain', onDrain);
+          reject(error);
+        };
+        stream.once('drain', onDrain);
+        stream.once('error', onError);
+      });
+    }
+  }
+  stream.end();
+}
+
+function runFfmpegPipeExport({ frames, savePath, fps, width, height, inputCodec, buildArgs }) {
+  return new Promise((resolve, reject) => {
+    const args = [
+      '-y',
+      '-f', 'image2pipe',
+      '-framerate', String(fps),
+      '-vcodec', inputCodec,
+      '-i', 'pipe:0',
+      ...buildArgs({ fps, width, height, savePath })
+    ];
+    const proc = spawn(ffmpegPath, args, { stdio: ['pipe', 'ignore', 'pipe'] });
+    let stderr = '';
+    let settled = false;
+    proc.stderr.on('data', d => stderr += d.toString());
+    proc.on('error', reject);
+    proc.on('close', (code) => {
+      settled = true;
+      if (code === 0) resolve(savePath);
+      else reject(new Error('ffmpeg exited ' + code + ': ' + stderr));
+    });
+    writeBuffers(proc.stdin, encodedFrameBuffers(frames)).catch((error) => {
+      if (!settled) proc.kill();
+      reject(error);
     });
   });
 }
@@ -272,9 +330,9 @@ ipcMain.handle('bg-eval-capture-batch', async (event, { frames, format }) => {
       }
       const image = await wc.capturePage();
       if (format === 'png') {
-        results.push(image.toPNG().toString('base64'));
+        results.push(image.toPNG());
       } else {
-        results.push(image.toJPEG(92).toString('base64'));
+        results.push(image.toJPEG(92));
       }
     } catch (e) {
       console.error('[bg-eval-capture-batch] frame error:', e.message);
@@ -314,7 +372,7 @@ ipcMain.handle('export-slides', async (event, { slides }) => {
       'window._renderSlide(' + JSON.stringify(d) + ');' + RAF_WAIT
     );
     const image = await wc.capturePage();
-    frames.push({ data: image.toJPEG(92).toString('base64'), duration: d.duration });
+    frames.push({ data: image.toJPEG(92), duration: d.duration });
   }
   return frames;
 });
@@ -323,13 +381,10 @@ ipcMain.handle('export-cleanup', () => {
   if (exportWindow) { exportWindow.close(); exportWindow = null; }
 });
 
-ipcMain.handle('export-mp4', (e, p) => runFfmpegExport({
+ipcMain.handle('export-mp4', (e, p) => runFfmpegPipeExport({
   ...p,
-  writeFrames: writeJpgConcat,
-  buildArgs: (tmpDir, { fps, savePath }) => [
-    '-y', '-f', 'concat', '-safe', '0',
-    '-r', String(fps),
-    '-i', path.join(tmpDir, 'concat.txt'),
+  inputCodec: 'mjpeg',
+  buildArgs: ({ savePath }) => [
     '-vf', 'crop=trunc(iw/2)*2:trunc(ih/2)*2',
     '-c:v', 'libx264', '-pix_fmt', 'yuv420p',
     '-preset', 'fast', '-crf', '18', '-movflags', '+faststart',
@@ -337,12 +392,10 @@ ipcMain.handle('export-mp4', (e, p) => runFfmpegExport({
   ]
 }));
 
-ipcMain.handle('export-mov', (e, p) => runFfmpegExport({
+ipcMain.handle('export-mov', (e, p) => runFfmpegPipeExport({
   ...p,
-  writeFrames: writePngDuplicated,
-  buildArgs: (tmpDir, { fps, width, height, savePath }) => [
-    '-y', '-f', 'image2', '-framerate', String(fps),
-    '-i', path.join(tmpDir, 'f_%06d.png'),
+  inputCodec: 'png',
+  buildArgs: ({ width, height, savePath }) => [
     '-s', `${width}x${height}`,
     '-c:v', 'prores_ks', '-profile:v', '3',
     '-pix_fmt', 'yuva444p10le', '-vendor', 'ap10',
@@ -350,12 +403,10 @@ ipcMain.handle('export-mov', (e, p) => runFfmpegExport({
   ]
 }));
 
-ipcMain.handle('export-webm', (e, p) => runFfmpegExport({
+ipcMain.handle('export-webm', (e, p) => runFfmpegPipeExport({
   ...p,
-  writeFrames: writePngDuplicated,
-  buildArgs: (tmpDir, { fps, savePath }) => [
-    '-y', '-f', 'image2', '-framerate', String(fps),
-    '-i', path.join(tmpDir, 'f_%06d.png'),
+  inputCodec: 'png',
+  buildArgs: ({ savePath }) => [
     '-c:v', 'libvpx-vp9', '-pix_fmt', 'yuva420p',
     '-auto-alt-ref', '0', '-crf', '18', '-b:v', '0',
     savePath
