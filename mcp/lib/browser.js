@@ -2,6 +2,8 @@ const puppeteer = require('puppeteer');
 const fs = require('fs');
 
 let browser = null;
+const pagePool = [];
+const MAX_POOLED_PAGES = 2;
 
 function findChrome() {
   const candidates = [
@@ -31,7 +33,12 @@ async function getBrowser() {
 
 async function createPage(width, height) {
   const b = await getBrowser();
-  const page = await b.newPage();
+  let page = null;
+  while (pagePool.length && !page) {
+    const candidate = pagePool.pop();
+    if (!candidate.isClosed()) page = candidate;
+  }
+  if (!page) page = await b.newPage();
   await page.setViewport({ width, height, deviceScaleFactor: 1 });
   return page;
 }
@@ -78,7 +85,13 @@ async function evalAndCapture(page, js, format = 'jpeg') {
 
 async function closePage(page) {
   try {
-    await page.close();
+    if (!browser || !browser.connected || page.isClosed()) return;
+    if (pagePool.length >= MAX_POOLED_PAGES) {
+      await page.close();
+      return;
+    }
+    await page.goto('about:blank', { waitUntil: 'domcontentloaded' });
+    pagePool.push(page);
   } catch {}
 }
 
@@ -89,6 +102,7 @@ async function closeBrowser() {
     } catch {}
     browser = null;
   }
+  pagePool.length = 0;
 }
 
 module.exports = {

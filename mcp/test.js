@@ -169,6 +169,9 @@ async function testBrowserModule() {
   const canvasJpeg = await browser.captureCanvasFrame(page, '#c');
   assert(Buffer.from(canvasJpeg, 'base64').subarray(0, 2).toString('hex') === 'ffd8', 'canvas JPEG capture is valid');
   await browser.closePage(page);
+  const reusedPage = await browser.createPage(32, 32);
+  assert(reusedPage === page, 'closed render page is reused from the pool');
+  await browser.closePage(reusedPage);
   await browser.closeBrowser();
   console.log(`  ${passed} passed, ${failed} failed`);
 }

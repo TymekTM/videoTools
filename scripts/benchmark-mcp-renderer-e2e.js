@@ -4,11 +4,12 @@ const path = require('path');
 
 const root = path.resolve(process.env.VT_RENDERER_ROOT || path.join(__dirname, '..'));
 const rendererName = process.env.VT_BENCH_RENDERER || 'chat';
+const runs = Number(process.env.VT_BENCH_RUNS || 1);
 const renderer = require(path.join(root, `mcp/renderers/${rendererName}`));
 const { closeBrowser } = require(path.join(root, 'mcp/lib/browser'));
-const output = process.env.VT_BENCH_OUTPUT
+const requestedOutput = process.env.VT_BENCH_OUTPUT
   ? path.resolve(process.env.VT_BENCH_OUTPUT)
-  : path.join(os.tmpdir(), `vt-${rendererName}-${process.pid}.mp4`);
+  : null;
 
 const paramsByRenderer = {
   newspaper: {
@@ -100,20 +101,31 @@ const paramsByRenderer = {
 async function run() {
   const params = paramsByRenderer[rendererName];
   if (!params) throw new Error(`Unsupported renderer: ${rendererName}`);
-  const started = performance.now();
+  const results = [];
   try {
-    const result = await renderer.generate(params, output, 'mp4');
+    for (let runIndex = 0; runIndex < runs; runIndex++) {
+      const output = requestedOutput || path.join(
+        os.tmpdir(),
+        `vt-${rendererName}-${process.pid}-${runIndex}.mp4`
+      );
+      const started = performance.now();
+      const result = await renderer.generate(params, output, 'mp4');
+      results.push({
+        run: runIndex + 1,
+        elapsedMs: Number((performance.now() - started).toFixed(1)),
+        frames: result.frames,
+        duration: result.duration,
+        fileSize: result.fileSize,
+      });
+      if (!requestedOutput) fs.rmSync(output, { force: true });
+    }
     console.log(JSON.stringify({
       root,
       renderer: rendererName,
-      elapsedMs: Number((performance.now() - started).toFixed(1)),
-      frames: result.frames,
-      duration: result.duration,
-      fileSize: result.fileSize,
+      runs: results,
     }));
   } finally {
     await closeBrowser();
-    if (!process.env.VT_BENCH_OUTPUT) fs.rmSync(output, { force: true });
   }
 }
 
