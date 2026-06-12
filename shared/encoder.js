@@ -75,6 +75,69 @@ async function writeBuffers(stream, buffers) {
   stream.end();
 }
 
+function createMp4Stream(savePath, fps, inputCodec = 'mjpeg') {
+  const proc = spawn(ffmpegPath, [
+    '-y',
+    '-f', 'image2pipe',
+    '-framerate', String(fps),
+    '-vcodec', inputCodec,
+    '-i', 'pipe:0',
+    '-vf', 'crop=trunc(iw/2)*2:trunc(ih/2)*2',
+    '-c:v', 'libx264',
+    '-pix_fmt', 'yuv420p',
+    '-preset', X264_PRESET,
+    '-crf', '18',
+    '-movflags', '+faststart',
+    savePath,
+  ], { stdio: ['pipe', 'ignore', 'pipe'] });
+  let stderr = '';
+  let ended = false;
+  proc.stderr.on('data', (chunk) => (stderr += chunk.toString()));
+  const done = new Promise((resolve, reject) => {
+    proc.on('error', reject);
+    proc.on('close', (code) => {
+      if (code === 0) resolve(savePath);
+      else reject(new Error('ffmpeg exited ' + code + ': ' + stderr));
+    });
+  });
+
+  return {
+    async write(frames) {
+      if (ended) throw new Error('Cannot write to a finished MP4 stream');
+      for (const buffer of encodedFrameBuffers(frames)) {
+        if (!proc.stdin.write(buffer)) {
+          await new Promise((resolve, reject) => {
+            const onDrain = () => {
+              proc.stdin.off('error', onError);
+              resolve();
+            };
+            const onError = (error) => {
+              proc.stdin.off('drain', onDrain);
+              reject(error);
+            };
+            proc.stdin.once('drain', onDrain);
+            proc.stdin.once('error', onError);
+          });
+        }
+      }
+    },
+    async finish() {
+      if (!ended) {
+        ended = true;
+        proc.stdin.end();
+      }
+      return done;
+    },
+    abort() {
+      if (ended) return;
+      ended = true;
+      done.catch(() => {});
+      proc.stdin.destroy();
+      proc.kill();
+    },
+  };
+}
+
 async function encodeMp4(frames, savePath, fps) {
   if (!frames.length) throw new Error('Cannot encode an empty frame list');
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'video-tools-mp4-'));
@@ -151,6 +214,7 @@ module.exports = {
   countFrames,
   detectFrameCodec,
   writeBuffers,
+  createMp4Stream,
   X264_PRESET,
   VP9_CPU_USED,
 };

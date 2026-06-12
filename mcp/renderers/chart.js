@@ -1,5 +1,5 @@
 const { createPage, loadHtml, waitForFonts, captureCanvasFrame, closePage } = require('../lib/browser');
-const { encode, countFrames } = require('../lib/encoder');
+const { encode, countFrames, createMp4Stream } = require('../lib/encoder');
 const { getResolution } = require('../registry');
 const AnimationCore = require('../../shared/animation');
 
@@ -97,19 +97,31 @@ async function generate(params, outputPath, format) {
   await loadHtml(page, html);
   await waitForFonts(page);
 
+  const outputFormat = format || 'mp4';
+  const stream = outputFormat === 'mp4' ? createMp4Stream(outputPath, fps) : null;
   const frames = [];
-  for (const spec of framePlan.frames) {
-    await page.evaluate((progress) => window._updateFrame(progress), spec.progress);
-    const d = await captureCanvasFrame(page, '#c');
-    frames.push({ data: d, duration: spec.duration });
+  try {
+    for (const spec of framePlan.frames) {
+      await page.evaluate((progress) => window._updateFrame(progress), spec.progress);
+      const frame = {
+        data: await captureCanvasFrame(page, '#c'),
+        duration: spec.duration,
+      };
+      if (stream) await stream.write([frame]);
+      else frames.push(frame);
+    }
+    if (stream) await stream.finish();
+    else await encode(frames, outputPath, fps, width, height, outputFormat);
+  } catch (error) {
+    if (stream) stream.abort();
+    throw error;
+  } finally {
+    await closePage(page);
   }
-
-  await closePage(page);
-  await encode(frames, outputPath, fps, width, height, format || 'mp4');
 
   const fs = require('fs');
   const stat = fs.statSync(outputPath);
-  const frameCount = countFrames(frames);
+  const frameCount = stream ? framePlan.totalFrames : countFrames(frames);
   return {
     success: true,
     filePath: outputPath,

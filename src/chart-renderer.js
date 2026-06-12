@@ -815,32 +815,43 @@ ctx.font = chartFont('600', st.fontSize * 0.8);
     });
 
     await ipcRenderer.invoke('bg-load-html', { html: html, width: w, height: h });
+    await ipcRenderer.invoke('export-mp4-stream-init', { savePath: savePath, fps: fps });
     setExporting(true, t('chartRenderingFrames'), 5);
 
-    var frames = [];
-    var batchSize = 10;
-    var progressValues = [];
+    var streamActive = true;
+    try {
+      var writtenSpecs = 0;
+      var batchSize = 10;
+      var progressValues = [];
 
-    for (var i = 0; i < framePlan.frames.length; i++) {
-      progressValues.push(framePlan.frames[i].progress);
+      for (var i = 0; i < framePlan.frames.length; i++) {
+        progressValues.push(framePlan.frames[i].progress);
 
-      if (progressValues.length >= batchSize || i === framePlan.frames.length - 1) {
-        var batchData = await ipcRenderer.invoke('bg-chart-capture-batch', { progressValues: progressValues });
-        for (var b = 0; b < batchData.length; b++) {
-          var specIndex = frames.length;
-          frames.push({ data: batchData[b], duration: framePlan.frames[specIndex].duration });
+        if (progressValues.length >= batchSize || i === framePlan.frames.length - 1) {
+          var batchData = await ipcRenderer.invoke('bg-chart-capture-batch', { progressValues: progressValues });
+          var encodedFrames = [];
+          for (var b = 0; b < batchData.length; b++) {
+            encodedFrames.push({
+              data: batchData[b],
+              duration: framePlan.frames[writtenSpecs + b].duration
+            });
+          }
+          await ipcRenderer.invoke('export-mp4-stream-write', { frames: encodedFrames });
+          writtenSpecs += batchData.length;
+          progressValues = [];
+          var pct = 5 + Math.round(((i + 1) / totalFrames) * 80);
+          setExporting(true, t('chartRenderingFrame') + ' ' + (i + 1) + '/' + totalFrames, pct);
         }
-        progressValues = [];
-        var pct = 5 + Math.round(((i + 1) / totalFrames) * 80);
-        setExporting(true, t('chartRenderingFrame') + ' ' + (i + 1) + '/' + totalFrames, pct);
       }
+
+      setExporting(true, t('chartEncodingMp4'), 90);
+      await ipcRenderer.invoke('export-mp4-stream-finish');
+      streamActive = false;
+    } finally {
+      if (streamActive) await ipcRenderer.invoke('export-mp4-stream-abort');
+      await ipcRenderer.invoke('bg-cleanup');
+      setExporting(false);
     }
-
-    setExporting(true, t('chartEncodingMp4'), 90);
-    await ipcRenderer.invoke('export-mp4', { frames: frames, savePath: savePath, fps: fps, width: w, height: h });
-    await ipcRenderer.invoke('bg-cleanup');
-
-    setExporting(false);
   }
 
   function renderDataTable() {

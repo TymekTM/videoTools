@@ -3135,6 +3135,7 @@ const {
   encodedFrameBuffers,
   countFrames,
   detectFrameCodec,
+  createMp4Stream,
   X264_PRESET,
   VP9_CPU_USED,
 } = require('./shared/encoder');
@@ -3545,6 +3546,9 @@ test('detectFrameCodec distinguishes PNG and JPEG data', () => {
   assert.strictEqual(detectFrameCodec([{ data: png, duration: 1 }]), 'png');
   assert.strictEqual(detectFrameCodec([{ data: jpeg, duration: 1 }]), 'mjpeg');
 });
+test('shared encoder exposes incremental MP4 streaming', () => {
+  assert.strictEqual(typeof createMp4Stream, 'function');
+});
 
 test('RAF_WAIT is a valid JS promise string', () => {
   assert.ok(RAF_WAIT.includes('requestAnimationFrame'));
@@ -3567,6 +3571,8 @@ test('GUI chart export uses direct canvas capture IPC', () => {
   const chartSource = fs.readFileSync(path.join(__dirname, 'src', 'chart-renderer.js'), 'utf8');
   assert.ok(mainSource.includes("ipcMain.handle('bg-chart-capture-batch'"));
   assert.ok(chartSource.includes("ipcRenderer.invoke('bg-chart-capture-batch'"));
+  assert.ok(mainSource.includes("ipcMain.handle('export-mp4-stream-write'"));
+  assert.ok(chartSource.includes("ipcRenderer.invoke('export-mp4-stream-write'"));
 });
 
 console.log('\n\x1b[1m' + '='.repeat(40) + '\x1b[0m');

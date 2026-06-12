@@ -143,6 +143,7 @@ async function testEncoderFormats() {
   console.log('\n[encoder formats]');
   const encoder = require(path.join(MCP, 'lib/encoder'));
   assert(typeof encoder.encode === 'function', 'encode is function');
+  assert(typeof encoder.createMp4Stream === 'function', 'incremental MP4 encoder is function');
   assert(encoder.VP9_CPU_USED === '5', 'MCP uses shared VP9 speed preset');
   console.log(`  ${passed} passed, ${failed} failed`);
 }

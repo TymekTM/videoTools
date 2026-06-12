@@ -146,7 +146,7 @@ async function main() {
         reference = md5;
         referencePath = output;
       }
-      const ssim = variant.name === 'x264-veryfast' || variant.name === 'x264-ultrafast'
+      const ssim = variant.name.startsWith('x264-')
         ? await measureSsim(referencePath, output)
         : null;
       results.push({

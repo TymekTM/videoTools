@@ -4,7 +4,7 @@ const fs = require('fs');
 const os = require('os');
 const { spawn } = require('child_process');
 const ffmpegPath = require('ffmpeg-static');
-const { encode } = require('./shared/encoder');
+const { encode, createMp4Stream } = require('./shared/encoder');
 
 function loadEnv() {
   try {
@@ -26,6 +26,7 @@ loadEnv();
 let mainWindow;
 let bgWindow = null;
 let exportWindow = null;
+let mp4Stream = null;
 
 const FONTS_LINK = '<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;700;900&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Crimson+Pro:ital,wght@0,400;0,600;0,700;0,900;1,400&family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;0,9..40,900;1,9..40,400&family=EB+Garamond:ital,wght@0,400;0,700;1,400&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;0,9..144,900;1,9..144,400&family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,600;0,700;1,400&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;600;700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Libre+Franklin:wght@400;600;700;900&family=Lora:ital,wght@0,400;0,700;1,400&family=Manrope:wght@300;400;500;600;700;800&family=Merriweather:wght@400;700;900&family=Outfit:wght@400;500;600;700;800&family=Oswald:wght@400;600;700&family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Roboto+Slab:wght@400;700&family=Sora:wght@400;600;700;800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=Space+Grotesk:wght@400;600;700&family=Work+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">';
 
@@ -299,6 +300,31 @@ ipcMain.handle('export-cleanup', () => {
 ipcMain.handle('export-mp4', (e, p) => encode(p.frames, p.savePath, p.fps, p.width, p.height, 'mp4'));
 ipcMain.handle('export-mov', (e, p) => encode(p.frames, p.savePath, p.fps, p.width, p.height, 'mov'));
 ipcMain.handle('export-webm', (e, p) => encode(p.frames, p.savePath, p.fps, p.width, p.height, 'webm'));
+
+ipcMain.handle('export-mp4-stream-init', (event, { savePath, fps }) => {
+  if (mp4Stream) mp4Stream.abort();
+  mp4Stream = createMp4Stream(savePath, fps);
+  return true;
+});
+
+ipcMain.handle('export-mp4-stream-write', async (event, { frames }) => {
+  if (!mp4Stream) throw new Error('MP4 stream is not initialized');
+  await mp4Stream.write(frames);
+  return true;
+});
+
+ipcMain.handle('export-mp4-stream-finish', async () => {
+  if (!mp4Stream) throw new Error('MP4 stream is not initialized');
+  const stream = mp4Stream;
+  mp4Stream = null;
+  return stream.finish();
+});
+
+ipcMain.handle('export-mp4-stream-abort', () => {
+  if (mp4Stream) mp4Stream.abort();
+  mp4Stream = null;
+  return true;
+});
 
 ipcMain.handle('bg-capture-png', (e, p) => bgCapture({ js: p.js, delay: p.delay, format: 'png' }));
 
@@ -1015,6 +1041,11 @@ app.whenReady().then(createWindow);
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
+});
+
+app.on('before-quit', () => {
+  if (mp4Stream) mp4Stream.abort();
+  mp4Stream = null;
 });
 
 app.on('activate', () => {
