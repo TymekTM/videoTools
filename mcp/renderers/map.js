@@ -1,4 +1,4 @@
-const { createPage, loadHtml, waitForFonts, evalAndCapture, closePage } = require('../lib/browser');
+const { createPage, loadHtml, waitForFonts, createScreencast, closePage } = require('../lib/browser');
 const { createMp4Stream } = require('../lib/encoder');
 const { getResolution } = require('../registry');
 const MapCore = require('../../shared/map');
@@ -256,9 +256,16 @@ async function generate(params, outputPath, format) {
     easing: p.easing,
   }, fps);
   const stream = createMp4Stream(outputPath, fps);
+  let screencast = null;
   try {
+    screencast = await createScreencast(page, {
+      width,
+      height,
+      format: 'jpeg',
+      quality: 92,
+    });
     for (const spec of framePlan.frames) {
-      const data = await evalAndCapture(page, `window._setProgress(${spec.progress})`);
+      const data = await screencast.capture(`window._setProgress(${spec.progress})`);
       await stream.write([{ data, duration: spec.duration }]);
     }
     await stream.finish();
@@ -266,6 +273,7 @@ async function generate(params, outputPath, format) {
     stream.abort();
     throw error;
   } finally {
+    if (screencast) await screencast.stop();
     await closePage(page);
   }
 

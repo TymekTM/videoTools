@@ -156,6 +156,7 @@ async function testBrowserModule() {
   assert(typeof browser.closePage === 'function', 'closePage is function');
   assert(typeof browser.evalAndCapture === 'function', 'evalAndCapture is function');
   assert(typeof browser.captureCanvasFrame === 'function', 'captureCanvasFrame is function');
+  assert(typeof browser.createScreencast === 'function', 'createScreencast is function');
   assert(typeof browser.findChrome === 'function', 'findChrome is function');
   assert(fs.existsSync(browser.findChrome()), 'findChrome returns an installed browser');
   const page = await browser.createPage(64, 64);
@@ -168,6 +169,15 @@ async function testBrowserModule() {
   await browser.loadHtml(page, '<!doctype html><canvas id="c" width="8" height="8"></canvas>');
   const canvasJpeg = await browser.captureCanvasFrame(page, '#c');
   assert(Buffer.from(canvasJpeg, 'base64').subarray(0, 2).toString('hex') === 'ffd8', 'canvas JPEG capture is valid');
+  const screencast = await browser.createScreencast(page, {
+    width: 64,
+    height: 64,
+    format: 'jpeg',
+    quality: 92,
+  });
+  const compositorJpeg = await screencast.capture("document.body.style.background='#00f'");
+  assert(Buffer.from(compositorJpeg, 'base64').subarray(0, 2).toString('hex') === 'ffd8', 'compositor JPEG capture is valid');
+  await screencast.stop();
   await browser.closePage(page);
   const reusedPage = await browser.createPage(32, 32);
   assert(reusedPage === page, 'closed render page is reused from the pool');
@@ -304,6 +314,8 @@ async function testMapFramePlan() {
   assert(plan.frames.some(frame => frame.duration === 13), 'checkpoint reuses its final captured frame');
   assert(plan.frames[0].progress === 0 && plan.frames[plan.frames.length - 1].progress === 1, 'map progress includes exact endpoints');
   assert(plan.totalFrames === plan.frames.reduce((sum, frame) => sum + frame.duration, 0), 'map frame durations preserve logical count');
+  const mapSource = fs.readFileSync(path.join(MCP, 'renderers', 'map.js'), 'utf8');
+  assert(mapSource.includes('createScreencast(page'), 'map uses compositor screencast capture');
   console.log(`  ${passed} passed, ${failed} failed`);
 }
 
