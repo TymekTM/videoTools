@@ -52,6 +52,7 @@ async function testModuleLoad() {
 
   const chart = require(path.join(MCP, 'renderers/chart'));
   assert(typeof chart.generate === 'function', 'chart.generate');
+  assert(typeof chart.buildChartHtml === 'function', 'chart.buildChartHtml');
 
   const map = require(path.join(MCP, 'renderers/map'));
   assert(typeof map.generate === 'function', 'map.generate');
@@ -153,6 +154,7 @@ async function testBrowserModule() {
   assert(typeof browser.loadHtml === 'function', 'loadHtml is function');
   assert(typeof browser.closePage === 'function', 'closePage is function');
   assert(typeof browser.evalAndCapture === 'function', 'evalAndCapture is function');
+  assert(typeof browser.captureCanvasFrame === 'function', 'captureCanvasFrame is function');
   assert(typeof browser.findChrome === 'function', 'findChrome is function');
   assert(fs.existsSync(browser.findChrome()), 'findChrome returns an installed browser');
   const page = await browser.createPage(64, 64);
@@ -162,6 +164,9 @@ async function testBrowserModule() {
   const png = await browser.captureFrame(page, 'png');
   assert(Buffer.from(jpeg, 'base64').subarray(0, 2).toString('hex') === 'ffd8', 'JPEG capture is valid');
   assert(Buffer.from(png, 'base64').subarray(1, 4).toString() === 'PNG', 'PNG capture is valid');
+  await browser.loadHtml(page, '<!doctype html><canvas id="c" width="8" height="8"></canvas>');
+  const canvasJpeg = await browser.captureCanvasFrame(page, '#c');
+  assert(Buffer.from(canvasJpeg, 'base64').subarray(0, 2).toString('hex') === 'ffd8', 'canvas JPEG capture is valid');
   await browser.closePage(page);
   await browser.closeBrowser();
   console.log(`  ${passed} passed, ${failed} failed`);

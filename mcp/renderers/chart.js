@@ -1,4 +1,4 @@
-const { createPage, loadHtml, waitForFonts, evalAndCapture, closePage } = require('../lib/browser');
+const { createPage, loadHtml, waitForFonts, captureCanvasFrame, closePage } = require('../lib/browser');
 const { encode, countFrames } = require('../lib/encoder');
 const { getResolution } = require('../registry');
 const AnimationCore = require('../../shared/animation');
@@ -99,7 +99,8 @@ async function generate(params, outputPath, format) {
 
   const frames = [];
   for (const spec of framePlan.frames) {
-    const d = await evalAndCapture(page, `window._updateFrame(${spec.progress})`);
+    await page.evaluate((progress) => window._updateFrame(progress), spec.progress);
+    const d = await captureCanvasFrame(page, '#c');
     frames.push({ data: d, duration: spec.duration });
   }
 
@@ -118,4 +119,8 @@ async function generate(params, outputPath, format) {
   };
 }
 
-module.exports = { generate, buildFramePlan: AnimationCore.buildFramePlan };
+module.exports = {
+  generate,
+  buildChartHtml,
+  buildFramePlan: AnimationCore.buildFramePlan,
+};

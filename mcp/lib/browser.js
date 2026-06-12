@@ -61,6 +61,16 @@ async function captureFrame(page, format = 'jpeg') {
   return page.screenshot({ type: 'jpeg', quality: 92, encoding: 'base64' });
 }
 
+async function captureCanvasFrame(page, selector = 'canvas', format = 'jpeg') {
+  return page.evaluate((canvasSelector, imageFormat) => {
+    const canvas = document.querySelector(canvasSelector);
+    if (!canvas) throw new Error(`Canvas not found: ${canvasSelector}`);
+    const mime = imageFormat === 'png' ? 'image/png' : 'image/jpeg';
+    const quality = imageFormat === 'png' ? undefined : 0.92;
+    return canvas.toDataURL(mime, quality).split(',')[1];
+  }, selector, format);
+}
+
 async function evalAndCapture(page, js, format = 'jpeg') {
   if (js) await page.evaluate(js);
   return captureFrame(page, format);
@@ -87,6 +97,7 @@ module.exports = {
   loadHtml,
   waitForFonts,
   captureFrame,
+  captureCanvasFrame,
   evalAndCapture,
   closePage,
   closeBrowser,

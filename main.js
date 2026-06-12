@@ -241,6 +241,22 @@ ipcMain.handle('bg-eval-capture-batch', async (event, { frames, format }) => {
   return results;
 });
 
+ipcMain.handle('bg-chart-capture-batch', async (event, { progressValues }) => {
+  if (!bgWindow || bgWindow.isDestroyed()) return [];
+  const wc = bgWindow.webContents;
+  if (wc.isDestroyed()) return [];
+  return wc.executeJavaScript(`
+    (function(values) {
+      var canvas = document.getElementById('c');
+      if (!canvas || typeof window._updateFrame !== 'function') return [];
+      return values.map(function(progress) {
+        window._updateFrame(progress);
+        return canvas.toDataURL('image/jpeg', 0.92).split(',')[1];
+      });
+    })(${JSON.stringify(progressValues)})
+  `);
+});
+
 ipcMain.handle('bg-cleanup', () => {
   if (bgWindow) { try { bgWindow.close(); } catch (_) {} bgWindow = null; }
 });

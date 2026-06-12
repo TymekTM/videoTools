@@ -819,18 +819,18 @@ ctx.font = chartFont('600', st.fontSize * 0.8);
 
     var frames = [];
     var batchSize = 10;
-    var batchItems = [];
+    var progressValues = [];
 
     for (var i = 0; i < framePlan.frames.length; i++) {
-      batchItems.push({ js: 'window._updateFrame(' + framePlan.frames[i].progress + ')' });
+      progressValues.push(framePlan.frames[i].progress);
 
-      if (batchItems.length >= batchSize || i === framePlan.frames.length - 1) {
-        var batchData = await ipcRenderer.invoke('bg-eval-capture-batch', { frames: batchItems });
+      if (progressValues.length >= batchSize || i === framePlan.frames.length - 1) {
+        var batchData = await ipcRenderer.invoke('bg-chart-capture-batch', { progressValues: progressValues });
         for (var b = 0; b < batchData.length; b++) {
           var specIndex = frames.length;
           frames.push({ data: batchData[b], duration: framePlan.frames[specIndex].duration });
         }
-        batchItems = [];
+        progressValues = [];
         var pct = 5 + Math.round(((i + 1) / totalFrames) * 80);
         setExporting(true, t('chartRenderingFrame') + ' ' + (i + 1) + '/' + totalFrames, pct);
       }

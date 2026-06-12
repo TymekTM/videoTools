@@ -3562,6 +3562,12 @@ test('MP4 encoder uses the cross-platform veryfast preset', () => {
 test('WebM encoder uses the cross-platform VP9 speed preset', () => {
   assert.strictEqual(VP9_CPU_USED, '5');
 });
+test('GUI chart export uses direct canvas capture IPC', () => {
+  const mainSource = fs.readFileSync(path.join(__dirname, 'main.js'), 'utf8');
+  const chartSource = fs.readFileSync(path.join(__dirname, 'src', 'chart-renderer.js'), 'utf8');
+  assert.ok(mainSource.includes("ipcMain.handle('bg-chart-capture-batch'"));
+  assert.ok(chartSource.includes("ipcRenderer.invoke('bg-chart-capture-batch'"));
+});
 
 console.log('\n\x1b[1m' + '='.repeat(40) + '\x1b[0m');
 console.log(`\x1b[32m${passCount} passed\x1b[0m, \x1b[31m${failCount} failed\x1b[0m\n`);
