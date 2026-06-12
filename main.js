@@ -25,6 +25,7 @@ loadEnv();
 
 let mainWindow;
 let bgWindow = null;
+let bgWindowMode = null;
 let exportWindow = null;
 let mp4Stream = null;
 
@@ -114,8 +115,51 @@ ipcMain.handle('capture-frame', async (event, { rect }) => {
   return image.toPNG().toString('base64');
 });
 
+function destroyBgWindow() {
+  if (bgWindow && !bgWindow.isDestroyed()) {
+    try { bgWindow.destroy(); } catch (_) {}
+  }
+  bgWindow = null;
+  bgWindowMode = null;
+}
+
+function getBgWindow(mode, width, height) {
+  if (bgWindow && (bgWindow.isDestroyed() || bgWindowMode !== mode)) {
+    destroyBgWindow();
+  }
+  if (!bgWindow) {
+    const transparent = mode === 'transparent';
+    const options = {
+      width,
+      height,
+      show: false,
+      webPreferences: { offscreen: true }
+    };
+    if (transparent) {
+      options.frame = false;
+      options.transparent = true;
+      options.backgroundColor = '#00000000';
+    }
+    const win = new BrowserWindow(options);
+    bgWindow = win;
+    bgWindowMode = mode;
+    win.on('closed', () => {
+      if (bgWindow === win) {
+        bgWindow = null;
+        bgWindowMode = null;
+      }
+    });
+    win.webContents.on('render-process-gone', (e, details) => {
+      console.error('[bgWindow] render-process-gone:', details.reason, details.exitCode);
+      if (bgWindow === win) destroyBgWindow();
+    });
+  } else {
+    bgWindow.setSize(width, height);
+  }
+  return bgWindow;
+}
+
 ipcMain.handle('bg-init', async (event, { width, height, css, body }) => {
-  if (bgWindow) { bgWindow.close(); bgWindow = null; }
 
   const extraCss = css
     ? (css.startsWith('/') || css.match(/^[A-Z]:\\/i) ? fs.readFileSync(css, 'utf8') : css)
@@ -142,14 +186,7 @@ window._bgSetBody = function(html) {
 </script>
 </body></html>`;
 
-  bgWindow = new BrowserWindow({
-    width, height,
-    show: false,
-    frame: false,
-    transparent: true,
-    backgroundColor: '#00000000',
-    webPreferences: { offscreen: true }
-  });
+  bgWindow = getBgWindow('transparent', width, height);
   await bgWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
   await bgWindow.webContents.executeJavaScript('document.fonts.ready');
   return true;
@@ -193,21 +230,9 @@ ipcMain.handle('bg-eval', async (event, code) => {
 });
 
 ipcMain.handle('bg-load-html', async (event, { html, width, height }) => {
-  if (bgWindow) { try { bgWindow.close(); } catch (_) {} bgWindow = null; }
   const tmpHtml = path.join(os.tmpdir(), 'vt-bg-' + Date.now() + '.html');
   fs.writeFileSync(tmpHtml, html, 'utf8');
-  bgWindow = new BrowserWindow({
-    width: width || 1920,
-    height: height || 1080,
-    show: false,
-    webPreferences: { offscreen: true }
-  });
-  bgWindow.webContents.on('render-process-gone', (e, details) => {
-    console.error('[bgWindow] render-process-gone:', details.reason, details.exitCode);
-  });
-  bgWindow.webContents.on('crashed', () => {
-    console.error('[bgWindow] webContents crashed');
-  });
+  bgWindow = getBgWindow('html', width || 1920, height || 1080);
   await bgWindow.loadFile(tmpHtml);
   try { fs.unlinkSync(tmpHtml); } catch (_) {}
   return true;
@@ -258,8 +283,13 @@ ipcMain.handle('bg-chart-capture-batch', async (event, { progressValues }) => {
   `);
 });
 
-ipcMain.handle('bg-cleanup', () => {
-  if (bgWindow) { try { bgWindow.close(); } catch (_) {} bgWindow = null; }
+ipcMain.handle('bg-cleanup', async () => {
+  if (!bgWindow || bgWindow.isDestroyed()) return;
+  try {
+    await bgWindow.loadURL('about:blank');
+  } catch (_) {
+    destroyBgWindow();
+  }
 });
 
 ipcMain.handle('export-init', async (event, { width, height, accent, vignetteOpacity, vignetteSize, vignetteSpread }) => {
@@ -1046,6 +1076,7 @@ app.on('window-all-closed', () => {
 app.on('before-quit', () => {
   if (mp4Stream) mp4Stream.abort();
   mp4Stream = null;
+  destroyBgWindow();
 });
 
 app.on('activate', () => {

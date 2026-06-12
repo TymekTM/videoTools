@@ -3579,6 +3579,13 @@ test('GUI map export uses shared incremental MP4 encoding', () => {
   assert.ok(mapSource.includes("ipcRenderer.invoke('export-mp4-stream-write'"));
   assert.ok(mapSource.includes("ipcRenderer.invoke('export-mp4-stream-finish'"));
 });
+test('GUI background renderer reuses mode-compatible windows', () => {
+  const mainSource = fs.readFileSync(path.join(__dirname, 'main.js'), 'utf8');
+  assert.ok(mainSource.includes("getBgWindow('transparent'"));
+  assert.ok(mainSource.includes("getBgWindow('html'"));
+  assert.ok(mainSource.includes("bgWindowMode !== mode"));
+  assert.ok(mainSource.includes("await bgWindow.loadURL('about:blank')"));
+});
 
 console.log('\n\x1b[1m' + '='.repeat(40) + '\x1b[0m');
 console.log(`\x1b[32m${passCount} passed\x1b[0m, \x1b[31m${failCount} failed\x1b[0m\n`);
