@@ -157,13 +157,15 @@ async function generate(params, outputPath, format) {
   const useAlpha = (format === 'mov' || format === 'webm');
   const captureFormat = useAlpha ? 'png' : 'jpeg';
 
-  const notifWidth = getNotifWidth(width, height);
-
-  const baseHtml = buildBaseHtml({
-    theme: p.theme, notifications: notifs,
+  const baseHtml = NotificationCore.buildOffscreenHtml({
+    width, height, theme: p.theme, notifications: notifs.map((notification, index) => ({
+      ...notification,
+      time: notification.time || TIME_LABELS[Math.min(index, TIME_LABELS.length - 1)],
+    })),
     slideDirection: p.slideDirection, stackPosition: p.stackPosition,
-    maxVisible: p.maxVisible, stackOverlap: p.stackOverlap,
-    bgMode: p.bgMode, notifWidth,
+    animSpeed: p.animSpeed, slideDuration: p.slideDuration,
+    fadeOut: p.fadeOut, maxVisible: p.maxVisible, stackOverlap: p.stackOverlap,
+    bgMode: p.bgMode, icons: APP_ICONS,
     customBg: p.customBg, customBorder: p.customBorder, customTitle: p.customTitle, customText: p.customText, customRadius: p.customRadius,
   });
 
@@ -180,11 +182,8 @@ async function generate(params, outputPath, format) {
   const frames = [];
 
   for (const spec of plan.frames) {
-    const completedCount = spec.slideProgress >= 0
-      ? Math.max(0, spec.visibleCount - 1)
-      : spec.visibleCount;
     const d = await evalAndCapture(page,
-      `window._renderState(${completedCount}, ${spec.slideProgress})`,
+      `window._uf(${spec.t})`,
       captureFormat
     );
     frames.push({ data: d, duration: spec.duration });

@@ -3560,6 +3560,32 @@ test('delayJs produces correct setTimeout string', () => {
   assert.ok(result.includes('500'));
   assert.ok(result.includes('setTimeout'));
 });
+test('shared notification renderer builds the GUI export document', () => {
+  const html = NotificationCore.buildOffscreenHtml({
+    width: 1280,
+    height: 720,
+    notifications: [{ appName: 'App', title: 'Title', message: 'Body', time: 'now', accentColor: '#6366f1' }],
+    icons: { App: '<svg></svg>' },
+    theme: 'ios',
+    slideDirection: 'top',
+    stackPosition: 'right',
+    maxVisible: 5,
+    fadeOut: true,
+    slideDuration: 400,
+    animSpeed: 800,
+    stackOverlap: 0,
+    bgMode: 'greenscreen',
+    customBg: '#fff',
+    customBorder: '#ddd',
+    customTitle: '#000',
+    customText: '#666',
+    customRadius: 16
+  });
+  assert.ok(html.includes('window._uf=function(t)'));
+  assert.ok(html.includes('background:#00FF00'));
+  assert.ok(html.includes('WW=1280;HH=720;Z=1.333333'));
+  assert.ok(html.includes('var FD=true'));
+});
 test('MP4 encoder uses the cross-platform veryfast preset', () => {
   assert.strictEqual(X264_PRESET, 'veryfast');
 });
@@ -3578,6 +3604,13 @@ test('GUI map export uses shared incremental MP4 encoding', () => {
   const mapSource = fs.readFileSync(path.join(__dirname, 'src', 'map-renderer.js'), 'utf8');
   assert.ok(mapSource.includes("ipcRenderer.invoke('export-mp4-stream-write'"));
   assert.ok(mapSource.includes("ipcRenderer.invoke('export-mp4-stream-finish'"));
+});
+test('GUI and MCP notification exports use the shared renderer', () => {
+  const guiSource = fs.readFileSync(path.join(__dirname, 'src', 'notification-renderer.js'), 'utf8');
+  const mcpSource = fs.readFileSync(path.join(__dirname, 'mcp', 'renderers', 'notification.js'), 'utf8');
+  assert.ok(guiSource.includes('NotificationCore.buildOffscreenHtml(opts)'));
+  assert.ok(mcpSource.includes('NotificationCore.buildOffscreenHtml({'));
+  assert.ok(mcpSource.includes('`window._uf(${spec.t})`'));
 });
 test('GUI background renderer reuses mode-compatible windows', () => {
   const mainSource = fs.readFileSync(path.join(__dirname, 'main.js'), 'utf8');

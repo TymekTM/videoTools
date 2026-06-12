@@ -252,6 +252,17 @@ async function testNotificationFramePlan() {
   assert(plan.frames.length < plan.totalFrames, 'static notification states are compacted');
   assert(plan.frames[0].visibleCount === 1 && plan.frames[0].slideProgress === 0, 'first notification starts at zero progress');
   assert(plan.frames[plan.frames.length - 1].visibleCount === 3, 'final state contains all notifications');
+  const notificationCore = require(path.join(MCP, '..', 'shared', 'notification'));
+  const html = notificationCore.buildOffscreenHtml({
+    width: 1280, height: 720,
+    notifications: [{ appName: 'App', title: 'Title', message: 'Body', time: 'now', accentColor: '#6366f1' }],
+    icons: { App: '<svg></svg>' },
+    theme: 'ios', slideDirection: 'top', stackPosition: 'right',
+    maxVisible: 5, fadeOut: true, slideDuration: 400, animSpeed: 800,
+    stackOverlap: 0, bgMode: 'white',
+    customBg: '#fff', customBorder: '#ddd', customTitle: '#000', customText: '#666', customRadius: 16,
+  });
+  assert(html.includes('window._uf=function(t)'), 'shared notification HTML exposes the common frame renderer');
   console.log(`  ${passed} passed, ${failed} failed`);
 }
 
