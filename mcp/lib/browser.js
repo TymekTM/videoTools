@@ -86,12 +86,14 @@ async function evalAndCapture(page, js, format = 'jpeg') {
 async function createScreencast(page, options = {}) {
   const client = await page.target().createCDPSession();
   let latestFrame = null;
+  let lastFrame = null;
   let waiter = null;
   let stopped = false;
 
   client.on('Page.screencastFrame', (event) => {
     client.send('Page.screencastFrameAck', { sessionId: event.sessionId }).catch(() => {});
     latestFrame = event.data;
+    lastFrame = event.data;
     if (waiter) {
       const resolve = waiter;
       waiter = null;
@@ -134,10 +136,14 @@ async function createScreencast(page, options = {}) {
           requestAnimationFrame(() => requestAnimationFrame(resolve));
         });
       }, js);
-      await waitForFrame();
+      try {
+        await waitForFrame(options.unchangedTimeoutMs || 5000);
+      } catch (error) {
+        if (!options.unchangedTimeoutMs || !lastFrame) throw error;
+      }
       const frame = latestFrame;
       latestFrame = null;
-      return frame;
+      return frame || lastFrame;
     },
     async stop() {
       if (stopped) return;

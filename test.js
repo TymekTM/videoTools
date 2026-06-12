@@ -3611,6 +3611,8 @@ test('GUI and MCP notification exports use the shared renderer', () => {
   assert.ok(guiSource.includes('NotificationCore.buildOffscreenHtml(opts)'));
   assert.ok(mcpSource.includes('NotificationCore.buildOffscreenHtml({'));
   assert.ok(mcpSource.includes('`window._uf(${spec.t})`'));
+  assert.ok(mcpSource.includes("outputFormat === 'mp4'"));
+  assert.ok(mcpSource.includes('createScreencast(page'));
 });
 test('GUI background renderer reuses mode-compatible windows', () => {
   const mainSource = fs.readFileSync(path.join(__dirname, 'main.js'), 'utf8');

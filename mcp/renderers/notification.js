@@ -1,4 +1,4 @@
-const { createPage, loadHtml, waitForFonts, evalAndCapture, closePage } = require('../lib/browser');
+const { createPage, loadHtml, waitForFonts, evalAndCapture, createScreencast, closePage } = require('../lib/browser');
 const { encode, countFrames } = require('../lib/encoder');
 const { getResolution } = require('../registry');
 const NotificationCore = require('../../shared/notification');
@@ -180,19 +180,33 @@ async function generate(params, outputPath, format) {
     tailMs: 2000,
   }, fps);
   const frames = [];
-
-  for (const spec of plan.frames) {
-    const d = await evalAndCapture(page,
-      `window._uf(${spec.t})`,
-      captureFormat
-    );
-    frames.push({ data: d, duration: spec.duration });
+  const outputFormat = format || 'mp4';
+  let screencast = null;
+  try {
+    if (outputFormat === 'mp4') {
+      screencast = await createScreencast(page, {
+        width,
+        height,
+        format: 'jpeg',
+        quality: 92,
+        unchangedTimeoutMs: 100,
+      });
+    }
+    for (const spec of plan.frames) {
+      const js = `window._uf(${spec.t})`;
+      const d = screencast
+        ? await screencast.capture(js)
+        : await evalAndCapture(page, js, captureFormat);
+      frames.push({ data: d, duration: spec.duration });
+    }
+  } finally {
+    if (screencast) await screencast.stop();
+    await closePage(page);
   }
 
   frames[frames.length - 1].duration += Math.round(fps * 1.5);
 
-  await closePage(page);
-  await encode(frames, outputPath, fps, width, height, format || 'mp4');
+  await encode(frames, outputPath, fps, width, height, outputFormat);
 
   const fs = require('fs');
   const stat = fs.statSync(outputPath);

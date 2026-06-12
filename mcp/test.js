@@ -174,9 +174,12 @@ async function testBrowserModule() {
     height: 64,
     format: 'jpeg',
     quality: 92,
+    unchangedTimeoutMs: 100,
   });
   const compositorJpeg = await screencast.capture("document.body.style.background='#00f'");
   assert(Buffer.from(compositorJpeg, 'base64').subarray(0, 2).toString('hex') === 'ffd8', 'compositor JPEG capture is valid');
+  const unchangedJpeg = await screencast.capture("document.body.style.background='#00f'");
+  assert(unchangedJpeg === compositorJpeg, 'compositor reuses the last frame when rendering is unchanged');
   await screencast.stop();
   await browser.closePage(page);
   const reusedPage = await browser.createPage(32, 32);
@@ -262,6 +265,9 @@ async function testNotificationFramePlan() {
   assert(plan.frames.length < plan.totalFrames, 'static notification states are compacted');
   assert(plan.frames[0].visibleCount === 1 && plan.frames[0].slideProgress === 0, 'first notification starts at zero progress');
   assert(plan.frames[plan.frames.length - 1].visibleCount === 3, 'final state contains all notifications');
+  const notificationSource = fs.readFileSync(path.join(MCP, 'renderers', 'notification.js'), 'utf8');
+  assert(notificationSource.includes("outputFormat === 'mp4'"), 'notification screencast is limited to MP4');
+  assert(notificationSource.includes('createScreencast(page'), 'notification MP4 uses compositor screencast capture');
   const notificationCore = require(path.join(MCP, '..', 'shared', 'notification'));
   const html = notificationCore.buildOffscreenHtml({
     width: 1280, height: 720,
