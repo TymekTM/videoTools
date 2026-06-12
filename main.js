@@ -6,6 +6,9 @@ const { spawn } = require('child_process');
 const ffmpegPath = require('ffmpeg-static');
 const { encode, createMp4Stream } = require('./shared/encoder');
 
+app.disableHardwareAcceleration();
+app.commandLine.appendSwitch('disable-gpu-compositing');
+
 function loadEnv() {
   try {
     const envPath = path.join(__dirname, '.env');
@@ -1010,6 +1013,7 @@ function formatTime(sec) {
 let webcapWindow = null;
 
 ipcMain.handle('webcap-load-url', async (event, { url, viewportWidth, viewportHeight, fullPage, scaleFactor }) => {
+  console.log('[webcap] start, url:', url);
   if (webcapWindow) { try { webcapWindow.close(); } catch (_) {} webcapWindow = null; }
 
   const vw = Math.max(320, Math.min(7680, viewportWidth || 1920));
@@ -1020,26 +1024,49 @@ ipcMain.handle('webcap-load-url', async (event, { url, viewportWidth, viewportHe
     width: vw,
     height: vh,
     show: false,
-    webPreferences: { offscreen: true }
+    webPreferences: { nodeIntegration: false, contextIsolation: true }
+  });
+  console.log('[webcap] window created');
+
+  webcapWindow.webContents.on('render-process-gone', (e, details) => {
+    console.error('[webcapWindow] render-process-gone:', details.reason, details.exitCode);
+    if (webcapWindow && !webcapWindow.isDestroyed()) {
+      try { webcapWindow.destroy(); } catch (_) {}
+    }
+    webcapWindow = null;
   });
 
-  if (sf > 1) {
-    webcapWindow.webContents.enableDeviceEmulation({
-      deviceScaleFactor: sf,
-      screenPosition: 'desktop'
-    });
-  }
+  webcapWindow.webContents.on('did-fail-load', (e, errorCode, errorDescription) => {
+    console.error('[webcapWindow] did-fail-load:', errorCode, errorDescription);
+  });
 
   try {
+    console.log('[webcap] loading URL...');
     await webcapWindow.loadURL(url);
+    console.log('[webcap] URL loaded OK');
   } catch (e) {
+    console.error('[webcap] loadURL error:', e.message);
     try { webcapWindow.close(); } catch (_) {}
     webcapWindow = null;
     return { error: e.message };
   }
 
+  if (sf > 1) {
+    console.log('[webcap] applying device emulation, scale:', sf);
+    try {
+      webcapWindow.webContents.enableDeviceEmulation({
+        deviceScaleFactor: sf,
+        screenPosition: 'desktop'
+      });
+      await webcapWindow.webContents.executeJavaScript('new Promise(function(r){setTimeout(r,500)})');
+    } catch (e) {
+      console.error('[webcap] enableDeviceEmulation failed:', e.message);
+    }
+  }
+
   await webcapWindow.webContents.executeJavaScript('document.fonts.ready');
   await webcapWindow.webContents.executeJavaScript('new Promise(function(r){setTimeout(r,1000)})');
+  console.log('[webcap] fonts ready + delay done');
 
   if (fullPage) {
     const dimsJson = await webcapWindow.webContents.executeJavaScript(
@@ -1054,6 +1081,7 @@ ipcMain.handle('webcap-load-url', async (event, { url, viewportWidth, viewportHe
   }
 
   const image = await webcapWindow.capturePage();
+  console.log('[webcap] captured page');
   const imgSize = image.getSize();
   const screenshot = image.toPNG().toString('base64');
 
@@ -1068,6 +1096,13 @@ ipcMain.handle('webcap-cleanup', () => {
 });
 
 app.whenReady().then(createWindow);
+
+app.on('render-process-gone', (event, webContents, details) => {
+  console.error('[APP] render-process-gone:', details.reason, details.exitCode);
+});
+app.on('gpu-process-crashed', (event, killed) => {
+  console.error('[APP] gpu-process-crashed, killed:', killed);
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();

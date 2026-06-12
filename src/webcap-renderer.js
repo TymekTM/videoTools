@@ -554,7 +554,7 @@
     var filterExt = format === 'jpg' ? 'jpg' : 'png';
 
     ipcRenderer.invoke('save-dialog', {
-      defaultName: 'webcap' + ext,
+      defaultName: 'webcap-' + Date.now() + ext,
       filters: [{ name: filterName, extensions: [filterExt] }]
     }).then(function (savePath) {
       if (!savePath) return;
