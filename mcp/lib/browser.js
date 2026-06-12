@@ -52,7 +52,11 @@ async function waitForFonts(page, timeoutMs = 5000) {
 
 async function captureFrame(page, format = 'jpeg') {
   if (format === 'png') {
-    return page.screenshot({ type: 'png', encoding: 'base64' });
+    return page.screenshot({
+      type: 'png',
+      encoding: 'base64',
+      optimizeForSpeed: true,
+    });
   }
   return page.screenshot({ type: 'jpeg', quality: 92, encoding: 'base64' });
 }
