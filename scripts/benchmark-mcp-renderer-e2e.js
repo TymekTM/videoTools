@@ -79,6 +79,22 @@ const paramsByRenderer = {
       accentColor: '#E1306C',
     })),
   },
+  map: {
+    waypoints: [
+      { lat: 52.2297, lng: 21.0122, name: 'Warsaw' },
+      { lat: 50.0647, lng: 19.945, name: 'Krakow' },
+    ],
+    transportType: 'plane',
+    mapStyle: 'dark',
+    cameraMode: 'overview',
+    format: '16:9',
+    resolution: '720p',
+    fps: 30,
+    animDuration: 3,
+    zoom: 5,
+    easing: true,
+    showLabels: true,
+  },
 };
 
 async function run() {

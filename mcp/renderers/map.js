@@ -1,5 +1,5 @@
 const { createPage, loadHtml, waitForFonts, evalAndCapture, closePage } = require('../lib/browser');
-const { encode, countFrames } = require('../lib/encoder');
+const { createMp4Stream } = require('../lib/encoder');
 const { getResolution } = require('../registry');
 const MapCore = require('../../shared/map');
 
@@ -255,25 +255,28 @@ async function generate(params, outputPath, format) {
     holdSeconds: 1.5,
     easing: p.easing,
   }, fps);
-  const frames = [];
-
-  for (const spec of framePlan.frames) {
-    const d = await evalAndCapture(page, `window._setProgress(${spec.progress})`);
-    frames.push({ data: d, duration: spec.duration });
+  const stream = createMp4Stream(outputPath, fps);
+  try {
+    for (const spec of framePlan.frames) {
+      const data = await evalAndCapture(page, `window._setProgress(${spec.progress})`);
+      await stream.write([{ data, duration: spec.duration }]);
+    }
+    await stream.finish();
+  } catch (error) {
+    stream.abort();
+    throw error;
+  } finally {
+    await closePage(page);
   }
-
-  await closePage(page);
-  await encode(frames, outputPath, fps, width, height, format || 'mp4');
 
   const fs = require('fs');
   const stat = fs.statSync(outputPath);
-  const frameCount = countFrames(frames);
   return {
     success: true,
     filePath: outputPath,
     fileSize: stat.size,
-    duration: frameCount / fps,
-    frames: frameCount,
+    duration: framePlan.totalFrames / fps,
+    frames: framePlan.totalFrames,
   };
 }
 

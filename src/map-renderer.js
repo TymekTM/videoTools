@@ -927,31 +927,41 @@
       easing: st.easing
     }, fps);
 
-    var frames = [];
-    var batchItems = [];
-    var batchSize = 10;
+    await ipcRenderer.invoke('export-mp4-stream-init', { savePath: savePath, fps: fps });
+    var streamActive = true;
+    try {
+      var writtenSpecs = 0;
+      var batchItems = [];
+      var batchSize = 10;
 
-    for (var i = 0; i < framePlan.frames.length; i++) {
-      batchItems.push({ js: 'window._updateFrame(' + framePlan.frames[i].progress + ',"' + st.cameraMode + '",' + st.zoom + ')' });
+      for (var i = 0; i < framePlan.frames.length; i++) {
+        batchItems.push({ js: 'window._updateFrame(' + framePlan.frames[i].progress + ',"' + st.cameraMode + '",' + st.zoom + ')' });
 
-      if (batchItems.length >= batchSize || i === framePlan.frames.length - 1) {
-        var batchData = await ipcRenderer.invoke('bg-eval-capture-batch', { frames: batchItems });
-        for (var b = 0; b < batchData.length; b++) {
-          var specIndex = frames.length;
-          frames.push({ data: batchData[b], duration: framePlan.frames[specIndex].duration });
+        if (batchItems.length >= batchSize || i === framePlan.frames.length - 1) {
+          var batchData = await ipcRenderer.invoke('bg-eval-capture-batch', { frames: batchItems });
+          var encodedFrames = [];
+          for (var b = 0; b < batchData.length; b++) {
+            encodedFrames.push({
+              data: batchData[b],
+              duration: framePlan.frames[writtenSpecs + b].duration
+            });
+          }
+          await ipcRenderer.invoke('export-mp4-stream-write', { frames: encodedFrames });
+          writtenSpecs += batchData.length;
+          batchItems = [];
+          var pct = 10 + Math.round((writtenSpecs / framePlan.captureFrames) * 70);
+          setExporting(true, t('mapFrame') + ' ' + writtenSpecs, pct);
         }
-        batchItems = [];
-        var doneFrames = frames.length;
-        var pct = 10 + Math.round((doneFrames / framePlan.captureFrames) * 70);
-        setExporting(true, t('mapFrame') + ' ' + doneFrames, pct);
       }
+
+      setExporting(true, t('mapEncodingMp4'), 90);
+      await ipcRenderer.invoke('export-mp4-stream-finish');
+      streamActive = false;
+    } finally {
+      if (streamActive) await ipcRenderer.invoke('export-mp4-stream-abort');
+      await ipcRenderer.invoke('bg-cleanup');
+      setExporting(false);
     }
-
-    setExporting(true, t('mapEncodingMp4'), 90);
-    await ipcRenderer.invoke('export-mp4', { frames: frames, savePath: savePath, fps: fps, width: w, height: h });
-    await ipcRenderer.invoke('bg-cleanup');
-
-    setExporting(false);
   }
 
   function initLeaflet() {

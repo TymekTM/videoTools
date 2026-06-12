@@ -3574,6 +3574,11 @@ test('GUI chart export uses direct canvas capture IPC', () => {
   assert.ok(mainSource.includes("ipcMain.handle('export-mp4-stream-write'"));
   assert.ok(chartSource.includes("ipcRenderer.invoke('export-mp4-stream-write'"));
 });
+test('GUI map export uses shared incremental MP4 encoding', () => {
+  const mapSource = fs.readFileSync(path.join(__dirname, 'src', 'map-renderer.js'), 'utf8');
+  assert.ok(mapSource.includes("ipcRenderer.invoke('export-mp4-stream-write'"));
+  assert.ok(mapSource.includes("ipcRenderer.invoke('export-mp4-stream-finish'"));
+});
 
 console.log('\n\x1b[1m' + '='.repeat(40) + '\x1b[0m');
 console.log(`\x1b[32m${passCount} passed\x1b[0m, \x1b[31m${failCount} failed\x1b[0m\n`);
