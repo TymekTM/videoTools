@@ -280,25 +280,23 @@ test('text with offset wraps around LOREM_PARAGRAPHS length', () => {
 });
 
 console.log('\x1b[1mCentering Math:\x1b[0m');
-test('transform-origin centering puts keyword at canvas center', () => {
+test('top-left transform centering puts keyword at canvas center for any zoom', () => {
   const cw = 1000, ch = 600;
-  const ZOOM = 1.8;
 
   const cases = [
-    { natX: 0.30, natY: 0.30 },
-    { natX: 0.50, natY: 0.50 },
-    { natX: 0.70, natY: 0.70 },
-    { natX: 0.35, natY: 0.45 },
-    { natX: 0.65, natY: 0.55 },
+    { natX: 0.30, natY: 0.30, zoom: 1 },
+    { natX: 0.50, natY: 0.50, zoom: 1.8 },
+    { natX: 0.70, natY: 0.70, zoom: 2.5 },
+    { natX: 0.35, natY: 0.45, zoom: 3 },
+    { natX: 0.65, natY: 0.55, zoom: 0.75 },
   ];
 
-  cases.forEach(({ natX, natY }) => {
+  cases.forEach(({ natX, natY, zoom }) => {
     const kCX = natX * cw;
     const kCY = natY * ch;
-    const dx = cw / 2 - kCX;
-    const dy = ch / 2 - kCY;
-    const resultX = dx + kCX;
-    const resultY = dy + kCY;
+    const pos = getCenteredTransform(cw, ch, kCX, kCY, zoom, 0, 0);
+    const resultX = pos.x + kCX * zoom;
+    const resultY = pos.y + kCY * zoom;
     assert.strictEqual(resultX, cw / 2, `natX=${natX}: expected X=${cw/2}, got ${resultX}`);
     assert.strictEqual(resultY, ch / 2, `natY=${natY}: expected Y=${ch/2}, got ${resultY}`);
   });
@@ -308,10 +306,10 @@ test('centering with offset still produces correct transform', () => {
   const cw = 1920, ch = 1080;
   const offX = 50, offY = -30;
   const kCX = 400, kCY = 300;
-  const dx = cw / 2 - kCX + offX;
-  const dy = ch / 2 - kCY + offY;
-  assert.strictEqual(dx, 610, `dx should be 960-400+50=610, got ${dx}`);
-  assert.strictEqual(dy, 210, `dy should be 540-300-30=210, got ${dy}`);
+  const zoom = 2;
+  const pos = getCenteredTransform(cw, ch, kCX, kCY, zoom, offX, offY);
+  assert.strictEqual(pos.x + kCX * zoom, cw / 2 + offX);
+  assert.strictEqual(pos.y + kCY * zoom, ch / 2 + offY);
 });
 
 console.log('\x1b[1mTemplate Rendering:\x1b[0m');
@@ -654,6 +652,26 @@ test('typing theme renders include inline font-family', () => {
   assert.ok(html.includes('JetBrains Mono'), 'Missing font-family');
 });
 
+test('typing interface scale wraps the complete theme', () => {
+  typingState.interfaceScale = 75;
+  typingState.bgColor = '#123456';
+  const html = typingRenderTheme('editor', 'test');
+  assert.ok(html.includes('class="typing-stage"'));
+  assert.ok(html.includes('class="typing-interface"'));
+  assert.ok(html.includes('width:133.33333333333334%'));
+  assert.ok(html.includes('height:133.33333333333334%'));
+  assert.ok(html.includes('zoom:0.75'));
+  assert.ok(!html.includes('transform:scale'));
+  assert.ok(html.includes('background:#123456'));
+  typingState.interfaceScale = 100;
+  typingState.bgColor = '#1e1e2e';
+});
+
+test('typing interface scale is clamped to supported range', () => {
+  assert.ok(typingScaleInterface('X', '#000', 10).includes('zoom:0.5'));
+  assert.ok(typingScaleInterface('X', '#000', 300).includes('zoom:2'));
+});
+
 test('typing theme terminal includes prompt', () => {
   const html = typingRenderTheme('terminal', 'ls -la');
   assert.ok(html.includes('user@machine'), 'Missing terminal prompt');
@@ -704,6 +722,7 @@ test('typingState has required fields', () => {
   assert.strictEqual(typeof typingState.typeSpeed, 'number');
   assert.strictEqual(typeof typingState.delSpeed, 'number');
   assert.strictEqual(typeof typingState.fontSize, 'number');
+  assert.strictEqual(typeof typingState.interfaceScale, 'number');
   assert.strictEqual(typeof typingState.bgColor, 'string');
   assert.strictEqual(typeof typingState.textColor, 'string');
   assert.strictEqual(typeof typingState.cursorColor, 'string');
@@ -744,6 +763,7 @@ test('typingState default values are correct', () => {
   typingState.typeSpeed = 80;
   typingState.delSpeed = 40;
   typingState.fontSize = 20;
+  typingState.interfaceScale = 100;
   typingState.bgColor = '#1e1e2e';
   typingState.textColor = '#cdd6f4';
   typingState.cursorColor = '#f5e0dc';
@@ -765,6 +785,7 @@ test('typingState default values are correct', () => {
   assert.strictEqual(typingState.typeSpeed, 80);
   assert.strictEqual(typingState.delSpeed, 40);
   assert.strictEqual(typingState.fontSize, 20);
+  assert.strictEqual(typingState.interfaceScale, 100);
   assert.strictEqual(typingState.bgColor, '#1e1e2e');
   assert.strictEqual(typingState.textColor, '#cdd6f4');
   assert.strictEqual(typingState.cursorColor, '#f5e0dc');
@@ -1518,6 +1539,14 @@ test('chatBubbleHTML for discord includes avatar and author', () => {
   assert.ok(html.includes('#007AFF'), 'Should contain contact color');
 });
 
+test('chatBubbleHTML for slack includes avatar and author', () => {
+  const msg = { sender: 0, text: 'Slack message' };
+  const html = chatBubbleHTML(msg, 0, 'slack', '', '', false);
+  assert.ok(html.includes('Slack message'));
+  assert.ok(html.includes('Jan'));
+  assert.ok(html.includes('chat-bubble-content'));
+});
+
 test('chatBubbleHTML for non-discord includes text but no avatar', () => {
   const msg = { sender: 0, text: 'Test msg' };
   const html = chatBubbleHTML(msg, 0, 'imessage', '', '', false);
@@ -1578,6 +1607,28 @@ test('chatTypingHTML for discord includes name and dots', () => {
   assert.ok(html.includes('Jan'), 'Should contain sender name');
   assert.ok(html.includes('chat-typing-dot'), 'Should contain typing dots');
   chatState.platform = saved;
+});
+
+test('chatTypingHTML for slack includes name and dots', () => {
+  const saved = chatState.platform;
+  chatState.platform = 'slack';
+  const html = chatTypingHTML(0);
+  assert.ok(html.includes('Jan'));
+  assert.ok(html.includes('chat-typing-dot'));
+  chatState.platform = saved;
+});
+
+test('chat export frame helpers produce deterministic inline animation states', () => {
+  const typingStart = chatTypingFrameState(0);
+  const typingMiddle = chatTypingFrameState(0.5);
+  assert.notStrictEqual(typingStart.indicatorStyle, typingMiddle.indicatorStyle);
+  assert.notStrictEqual(typingStart.dotStyles[0], typingMiddle.dotStyles[0]);
+  assert.ok(typingStart.dotStyles.every(style => style.includes('animation:none')));
+
+  const bubbleStart = chatBubbleFrameStyle(0, 'imessage');
+  const bubbleEnd = chatBubbleFrameStyle(1, 'imessage');
+  assert.ok(bubbleStart.includes('opacity:0.000'));
+  assert.ok(bubbleEnd.includes('translateY(0.00px)'));
 });
 
 test('chatTypingHTML for non-discord is simpler', () => {
@@ -2484,10 +2535,11 @@ test('imessage platform produces empty custom styles', () => {
 });
 
 test('chat platform statuses map', () => {
-  const statuses = { imessage: 'iMessage', whatsapp: 'online', discord: '', messenger: 'Active now', custom: 'online' };
+  const statuses = { imessage: 'iMessage', whatsapp: 'online', discord: '', slack: 'general', messenger: 'Active now', custom: 'online' };
   assert.strictEqual(statuses['imessage'], 'iMessage');
   assert.strictEqual(statuses['whatsapp'], 'online');
   assert.strictEqual(statuses['discord'], '');
+  assert.strictEqual(statuses['slack'], 'general');
   assert.strictEqual(statuses['messenger'], 'Active now');
   assert.strictEqual(statuses['custom'], 'online');
 });
@@ -2550,6 +2602,16 @@ test('chat MP4 pause frame count', () => {
   const pauseMs = 600;
   const framesPerPause = Math.round((pauseMs / 1000) * fps);
   assert.strictEqual(framesPerPause, 18);
+});
+
+test('chat frame plan separates smooth animation frames from holds', () => {
+  const plan = ChatCore.buildFramePlan({ messageCount: 1, animSpeed: 600 }, 30);
+  const typing = plan.phases.find(phase => phase.type === 'typing');
+  const message = plan.phases.find(phase => phase.type === 'message');
+  assert.strictEqual(typing.animationDuration, 11);
+  assert.strictEqual(message.animationDuration, 11);
+  assert.strictEqual(message.holdDuration, 18);
+  assert.strictEqual(message.duration, 29);
 });
 
 test('chat MP4 end frame count at 1.5s', () => {
@@ -3620,6 +3682,42 @@ test('GUI background renderer reuses mode-compatible windows', () => {
   assert.ok(mainSource.includes("getBgWindow('html'"));
   assert.ok(mainSource.includes("bgWindowMode !== mode"));
   assert.ok(mainSource.includes("await bgWindow.loadURL('about:blank')"));
+});
+test('Web capture supports native full-height PNG export', () => {
+  const mainSource = fs.readFileSync(path.join(__dirname, 'main.js'), 'utf8');
+  const rendererSource = fs.readFileSync(path.join(__dirname, 'src', 'webcap-renderer.js'), 'utf8');
+  const htmlSource = fs.readFileSync(path.join(__dirname, 'src', 'index.html'), 'utf8');
+  assert.ok(mainSource.includes("ipcMain.handle('webcap-export-full-png'"));
+  assert.ok(mainSource.includes('captureWebcapFullPage'));
+  assert.ok(rendererSource.includes("ipcRenderer.invoke('webcap-export-full-png'"));
+  assert.ok(htmlSource.includes('id="webcapExportFullPng"'));
+  assert.ok(htmlSource.includes('id="webcapHideOverlays"'));
+  assert.ok(mainSource.includes('hideWebcapOverlays'));
+});
+test('Web capture blocks advertising requests and removes ad slots', () => {
+  const mainSource = fs.readFileSync(path.join(__dirname, 'main.js'), 'utf8');
+  assert.ok(mainSource.includes("partition: 'webcapture'"));
+  assert.ok(mainSource.includes('configureWebcapAdBlock(webcapWindow)'));
+  assert.ok(mainSource.includes('webSession.webRequest.onBeforeRequest'));
+  assert.ok(mainSource.includes('WEBCAP_AD_HOSTS.some'));
+  assert.ok(mainSource.includes("details.resourceType === 'subFrame'"));
+  assert.ok(mainSource.includes("redirectURL: 'data:text/html,'"));
+  assert.ok(mainSource.includes('if (!isMainFrame || errorCode === -3 || errorCode === -20) return'));
+  assert.ok(mainSource.includes('await hideWebcapAds(webcapWindow)'));
+  assert.ok(mainSource.includes("'[data-ad-client]'"));
+});
+test('Web capture scroll MP4 streams deterministic top-to-bottom frames', () => {
+  const mainSource = fs.readFileSync(path.join(__dirname, 'main.js'), 'utf8');
+  const rendererSource = fs.readFileSync(path.join(__dirname, 'src', 'webcap-renderer.js'), 'utf8');
+  assert.ok(mainSource.includes("ipcMain.handle('webcap-export-scroll-mp4'"));
+  assert.ok(mainSource.includes('const rangeStart = scrollRange'));
+  assert.ok(mainSource.includes('const rangeEnd = Math.max(rangeStart'));
+  assert.ok(mainSource.includes('const scrollY = Math.round(rangeStart + (rangeEnd - rangeStart) * progress)'));
+  assert.ok(mainSource.includes("createMp4Stream(savePath, safeFps, 'mjpeg')"));
+  assert.ok(mainSource.includes("event.sender.send('webcap-export-progress'"));
+  assert.ok(rendererSource.includes("ipcRenderer.invoke('webcap-export-scroll-mp4'"));
+  assert.ok(rendererSource.includes("ipcRenderer.on('webcap-export-progress'"));
+  assert.ok(rendererSource.includes('getSelectedScrollRange()'));
 });
 
 console.log('\n\x1b[1m' + '='.repeat(40) + '\x1b[0m');
