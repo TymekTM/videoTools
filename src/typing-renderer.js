@@ -65,7 +65,6 @@ function typingUpdatePreviewSize() {
   canvas.style.transformOrigin = '';
 
   const [fullW, fullH] = typingGetResolution();
-  $('#globalResInfo').textContent = `${fullW}x${fullH}`;
 }
 
 function typingEscapeHTML(str) {

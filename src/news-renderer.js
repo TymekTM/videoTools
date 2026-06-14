@@ -450,7 +450,6 @@ function initNewspaper() {
   state.currentIndex++;
 
   const [nw, nh] = getResolution();
-  $('#globalResInfo').textContent = `${nw}x${nh}`;
 
   $('#keywordInput').addEventListener('input', (e) => {
     state.keyword = e.target.value || 'KEYWORD';
@@ -482,8 +481,6 @@ function initNewspaper() {
   $('#resolutionSelect').addEventListener('change', (e) => {
     state.resolution = e.target.value;
     updatePreviewSize();
-    const [w, h] = getResolution();
-    $('#globalResInfo').textContent = `${w}x${h}`;
   });
 
   $('#btnPlay').addEventListener('click', () => {

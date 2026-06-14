@@ -63,7 +63,6 @@
     canvas.style.transform = 'scale(' + scale + ')';
     canvas.style.transformOrigin = '0 0';
 
-    $('#globalResInfo').textContent = w + 'x' + h;
     var info = $('#subResolutionInfo');
     if (info) info.textContent = w + ' \u00D7 ' + h;
   }

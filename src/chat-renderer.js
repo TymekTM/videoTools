@@ -58,7 +58,6 @@ function chatUpdatePreviewSize() {
 
   const si = $('#chatScaleVal');
   if (si) si.textContent = chatState.fontScale + '%';
-  $('#globalResInfo').textContent = `${w}x${h}`;
 }
 
 function chatAvatarHTML(contact, size) {
