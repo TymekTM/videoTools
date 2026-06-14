@@ -223,18 +223,6 @@ html, body {
 
 .app-bar-btn:hover { background: var(--bg-surface); color: var(--text); }
 
-.app-bar-lang {
-  width: auto;
-  padding: 0 9px;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-}
-
-.theme-toggle-nav .icon-moon { display: none; }
-[data-theme="light"] .theme-toggle-nav .icon-sun { display: none; }
-[data-theme="light"] .theme-toggle-nav .icon-moon { display: block; }
-
 /* ─── Tool Navigation (categorized rail) ─── */
 
 .tool-nav {
@@ -252,8 +240,6 @@ html, body {
 }
 
 .tool-nav.collapsed { width: var(--tool-nav-collapsed); }
-
-.tool-nav-logo { display: none; }
 
 .nav-section { display: flex; flex-direction: column; gap: 2px; }
 
@@ -371,7 +357,6 @@ html, body {
 .nav-collapse-btn:hover { background: var(--bg-surface); color: var(--text); }
 .tool-nav.collapsed .nav-collapse-btn { justify-content: center; padding: 0; }
 .tool-nav.collapsed .nav-collapse-btn .nav-label { display: none; }
-.tool-nav-res { display: none; }
 
 /* ─── Tool Panels ─── */
 

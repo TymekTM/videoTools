@@ -207,58 +207,6 @@
   line-height: 1.45;
 }
 
-.webcap-error {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  text-align: center;
-  padding: 20px;
-}
-
-.webcap-error-icon {
-  color: var(--danger);
-  opacity: 0.7;
-}
-
-.webcap-error-msg {
-  font-size: 12px;
-  color: var(--text-muted);
-  max-width: 300px;
-  word-break: break-word;
-}
-
-.webcap-guide-handles {
-  display: none;
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 4;
-}
-
-.webcap-guide-handles .gh-line {
-  position: absolute;
-  background: rgba(99, 102, 241, 0.25);
-}
-
-.webcap-guide-handles .gh-h {
-  left: 0;
-  right: 0;
-  height: 1px;
-}
-
-.webcap-guide-handles .gh-v {
-  top: 0;
-  bottom: 0;
-  width: 1px;
-}
-
-.webcap-guide-handles .gh-h.gh-third-1 { top: 33.33%; }
-.webcap-guide-handles .gh-h.gh-third-2 { top: 66.66%; }
-.webcap-guide-handles .gh-v.gh-third-1 { left: 33.33%; }
-.webcap-guide-handles .gh-v.gh-third-2 { left: 66.66%; }
-
 .webcap-preview-modal {
   position: fixed;
   inset: 0;
