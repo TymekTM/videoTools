@@ -49,6 +49,13 @@ function lerp(a, b, t) {
   return a + (b - a) * t;
 }
 
+function getCenteredTransform(viewWidth, viewHeight, pointX, pointY, zoom, offX, offY) {
+  return {
+    x: viewWidth / 2 + offX - pointX * zoom,
+    y: viewHeight / 2 + offY - pointY * zoom
+  };
+}
+
 const ANIMATION_PRESETS = {
   none: { name: t('newsAnimNone'), easing: 'linear' },
   zoomIn: { name: 'Zoom In', easing: 'ease-in-out', resolve: (p, s) => {
@@ -266,21 +273,22 @@ function showSlide(template, direction = 'next') {
       var kR = kwEl.getBoundingClientRect();
       var kCX = (kR.left + kR.width / 2 - sR.left) / cScale;
       var kCY = (kR.top + kR.height / 2 - sR.top) / cScale;
-      inner.style.transformOrigin = kCX + 'px ' + kCY + 'px';
       var z = state.zoomLevel;
-      var dx = cw / 2 - kCX + state.zoomOffsetX;
-      var dy = ch / 2 - kCY + state.zoomOffsetY;
+      var offX = state.zoomOffsetX;
+      var offY = state.zoomOffsetY;
       if (state.animationPreset !== 'none') {
         const preset = ANIMATION_PRESETS[state.animationPreset];
         const total = state.queue.length || 1;
         const pos = state.currentIndex % total;
         const progress = total > 1 ? pos / (total - 1) : 0.5;
         const vals = preset.resolve(progress, { zoom: z, offX: state.zoomOffsetX, offY: state.zoomOffsetY, intensity: state.animIntensity / 100 });
-        dx = cw / 2 - kCX + vals.offX;
-        dy = ch / 2 - kCY + vals.offY;
+        offX = vals.offX;
+        offY = vals.offY;
         z = vals.zoom;
       }
-      inner.style.transform = `translate(${dx}px, ${dy}px) scale(${z})`;
+      var pos = getCenteredTransform(cw, ch, kCX, kCY, z, offX, offY);
+      inner.style.transformOrigin = '0 0';
+      inner.style.transform = `translate(${pos.x}px, ${pos.y}px) scale(${z})`;
     }
     slide.classList.add('active');
     if (existing) {
@@ -570,18 +578,18 @@ function initNewspaper() {
             var kCX = kR.left + kR.width / 2 - sR.left;
             var kCY = kR.top + kR.height / 2 - sR.top;
             var z = ${d.zoom};
-            var dx = sR.width / 2 - kCX + ${d.offX};
-            var dy = sR.height / 2 - kCY + ${d.offY};
-            inner.style.transformOrigin = kCX + 'px ' + kCY + 'px';
+            var dx = sR.width / 2 + ${d.offX} - kCX * z;
+            var dy = sR.height / 2 + ${d.offY} - kCY * z;
+            inner.style.transformOrigin = '0 0';
             inner.style.transform = 'translate('+dx+'px,'+dy+'px) scale('+z+')';
           }
         })();
       `;
       let data;
       if (d.slideIdx === prevSlideIdx) {
-        data = await ipcRenderer.invoke('bg-apply-capture', { js });
+        data = await ipcRenderer.invoke('bg-apply-capture', { js, waitForPaint: true });
       } else {
-        data = await ipcRenderer.invoke('bg-render-js', { html: d.bodyHtml, js });
+        data = await ipcRenderer.invoke('bg-render-js', { html: d.bodyHtml, js, waitForPaint: true });
         prevSlideIdx = d.slideIdx;
       }
       frames.push({ data, duration: d.duration });
@@ -783,6 +791,7 @@ function initNewspaper() {
     else if (activeTool === 'chat') chatUpdatePreviewSize();
     else if (activeTool === 'typing') typingUpdatePreviewSize();
     else if (activeTool === 'notification') { if (window.notificationUpdatePreviewSize) window.notificationUpdatePreviewSize(); }
+    else if (activeTool === 'character') { if (window.characterUpdatePreviewSize) window.characterUpdatePreviewSize(); }
   });
   ro.observe($('[data-tool="newspaper"] .preview-area'));
 
@@ -791,6 +800,7 @@ function initNewspaper() {
     else if (activeTool === 'chat') chatUpdatePreviewSize();
     else if (activeTool === 'typing') typingUpdatePreviewSize();
     else if (activeTool === 'notification') { if (window.notificationUpdatePreviewSize) window.notificationUpdatePreviewSize(); }
+    else if (activeTool === 'character') { if (window.characterUpdatePreviewSize) window.characterUpdatePreviewSize(); }
   });
 
   window.addEventListener('lang-changed', () => {

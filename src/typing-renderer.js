@@ -20,6 +20,7 @@ const typingState = {
   typeSpeed: 80,
   delSpeed: 40,
   fontSize: 20,
+  interfaceScale: 100,
   bgColor: '#1e1e2e',
   textColor: '#cdd6f4',
   cursorColor: '#f5e0dc',
@@ -97,13 +98,23 @@ function typingRenderTheme(theme, contentHTML) {
   const fg = typingState.textColor;
   const fs = typingState.fontSize;
   const f = typingState.themeFields[theme] || {};
+  let interfaceHtml;
   switch (theme) {
-    case 'editor': return typingThemeEditor(contentHTML, bg, fg, fs, f);
-    case 'terminal': return typingThemeTerminal(contentHTML, bg, fg, fs, f);
-    case 'email': return typingThemeEmail(contentHTML, bg, fg, fs, f);
-    case 'sms': return typingThemeSMS(contentHTML, bg, fg, fs, f);
-    default: return typingThemeGeneric(contentHTML, bg, fg, fs);
+    case 'editor': interfaceHtml = typingThemeEditor(contentHTML, bg, fg, fs, f); break;
+    case 'terminal': interfaceHtml = typingThemeTerminal(contentHTML, bg, fg, fs, f); break;
+    case 'email': interfaceHtml = typingThemeEmail(contentHTML, bg, fg, fs, f); break;
+    case 'sms': interfaceHtml = typingThemeSMS(contentHTML, bg, fg, fs, f); break;
+    default: interfaceHtml = typingThemeGeneric(contentHTML, bg, fg, fs);
   }
+  return typingScaleInterface(interfaceHtml, bg, typingState.interfaceScale);
+}
+
+function typingScaleInterface(interfaceHtml, bg, scalePercent) {
+  const scale = Math.max(0.5, Math.min(2, Number(scalePercent) / 100 || 1));
+  const layoutSize = 100 / scale;
+  return `<div class="typing-stage" style="position:relative;width:100%;height:100%;overflow:hidden;background:${bg}">
+    <div class="typing-interface" style="position:absolute;top:0;left:0;width:${layoutSize}%;height:${layoutSize}%;zoom:${scale}">${interfaceHtml}</div>
+  </div>`;
 }
 
 function typingThemeEditor(html, bg, fg, fs, f) {
@@ -429,6 +440,12 @@ function initTyping() {
   $('#typingFontSize').addEventListener('input', (e) => {
     typingState.fontSize = parseInt(e.target.value);
     $('#typingFontSizeVal').textContent = typingState.fontSize + 'px';
+    typingRefreshPreview();
+  });
+
+  $('#typingInterfaceScale').addEventListener('input', (e) => {
+    typingState.interfaceScale = parseInt(e.target.value);
+    $('#typingInterfaceScaleVal').textContent = typingState.interfaceScale + '%';
     typingRefreshPreview();
   });
 
