@@ -1,0 +1,99 @@
+/* ─── Character Intro Tool ───
+   Only tool-specific layout. All buttons/inputs/labels reuse the global
+   .control-btn-group / .control-btn / .control-input / .control-label
+   system from base.css so the sidebar feels identical to other tools. */
+
+.character-photo-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.character-photo-preview {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  background-size: cover;
+  background-position: center;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+  font-size: 9px;
+  overflow: hidden;
+}
+
+.character-age-row {
+  display: flex;
+  gap: 6px;
+}
+
+/* ── Custom key:value fields ── */
+.character-custom-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.character-custom-item {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.character-custom-item .control-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.character-custom-del {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.15s;
+  padding: 0;
+}
+
+.character-custom-del:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+/* ── Background preset swatches ── */
+.character-bg-presets {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 5px;
+}
+
+.character-bg-preset {
+  height: 34px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.15s;
+  background-size: cover;
+  padding: 0;
+}
+
+.character-bg-preset:hover {
+  transform: scale(1.06);
+  border-color: var(--border-hover);
+}
+
+.character-bg-preset.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
