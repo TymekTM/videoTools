@@ -201,7 +201,7 @@ function delayJs(ms) {
   return 'new Promise(function(r){setTimeout(r,' + ms + ');});';
 }
 
-async function bgCapture({ html = null, js = null, delay = null, format = 'jpeg' } = {}) {
+async function bgCapture({ html = null, js = null, delay = null, format = 'jpeg', waitForPaint = false } = {}) {
   if (!bgWindow) return null;
   const wc = bgWindow.webContents;
   if (html !== null) {
@@ -213,19 +213,36 @@ async function bgCapture({ html = null, js = null, delay = null, format = 'jpeg'
   if (delay) {
     await wc.executeJavaScript(delayJs(delay));
   }
+  if (waitForPaint) {
+    await wc.executeJavaScript(RAF_WAIT);
+  }
   const image = await wc.capturePage();
   return format === 'png'
     ? image.toPNG()
     : image.toJPEG(92);
 }
 
-ipcMain.handle('bg-render', (e, p) => bgCapture({ html: p.html, delay: p.delay, format: 'jpeg' }));
+ipcMain.handle('bg-render', (e, p) => bgCapture({
+  html: p.html,
+  delay: p.delay,
+  format: 'jpeg',
+  waitForPaint: p.waitForPaint
+}));
 
 ipcMain.handle('bg-render-png', (e, p) => bgCapture({ html: p.html, format: 'png' }));
 
-ipcMain.handle('bg-render-js', (e, p) => bgCapture({ html: p.html, js: p.js, format: 'jpeg' }));
+ipcMain.handle('bg-render-js', (e, p) => bgCapture({
+  html: p.html,
+  js: p.js,
+  format: 'jpeg',
+  waitForPaint: p.waitForPaint
+}));
 
-ipcMain.handle('bg-apply-capture', (e, p) => bgCapture({ js: p.js, format: 'jpeg' }));
+ipcMain.handle('bg-apply-capture', (e, p) => bgCapture({
+  js: p.js,
+  format: 'jpeg',
+  waitForPaint: p.waitForPaint
+}));
 
 ipcMain.handle('bg-eval', async (event, code) => {
   if (!bgWindow || bgWindow.isDestroyed()) return null;
@@ -1011,11 +1028,66 @@ function formatTime(sec) {
 }
 
 let webcapWindow = null;
+const webcapAdBlockSessions = new WeakSet();
+const WEBCAP_AD_HOSTS = [
+  '2mdn.net',
+  'adform.net',
+  'adnxs.com',
+  'adsrvr.org',
+  'amazon-adsystem.com',
+  'criteo.com',
+  'criteo.net',
+  'doubleclick.net',
+  'googlesyndication.com',
+  'googleadservices.com',
+  'imasdk.googleapis.com',
+  'moatads.com',
+  'outbrain.com',
+  'pubmatic.com',
+  'rubiconproject.com',
+  'scorecardresearch.com',
+  'taboola.com'
+];
 
-ipcMain.handle('webcap-load-url', async (event, { url, viewportWidth, viewportHeight, fullPage, scaleFactor }) => {
-  console.log('[webcap] start, url:', url);
-  if (webcapWindow) { try { webcapWindow.close(); } catch (_) {} webcapWindow = null; }
+function destroyWebcapWindow() {
+  if (webcapWindow && !webcapWindow.isDestroyed()) {
+    try { webcapWindow.destroy(); } catch (_) {}
+  }
+  webcapWindow = null;
+}
 
+function configureWebcapAdBlock(win) {
+  const webSession = win.webContents.session;
+  if (webcapAdBlockSessions.has(webSession)) return;
+
+  webSession.webRequest.onBeforeRequest(
+    { urls: ['http://*/*', 'https://*/*'] },
+    (details, callback) => {
+      if (details.resourceType === 'mainFrame') {
+        callback({});
+        return;
+      }
+
+      let hostname = '';
+      try {
+        hostname = new URL(details.url).hostname.toLowerCase();
+      } catch (_) {}
+
+      const blocked = WEBCAP_AD_HOSTS.some(
+        host => hostname === host || hostname.endsWith('.' + host)
+      );
+      if (blocked && details.resourceType === 'subFrame') {
+        callback({ redirectURL: 'data:text/html,' });
+        return;
+      }
+      callback({ cancel: blocked });
+    }
+  );
+  webcapAdBlockSessions.add(webSession);
+}
+
+async function createWebcapWindow({ url, viewportWidth, viewportHeight, scaleFactor }) {
+  destroyWebcapWindow();
   const vw = Math.max(320, Math.min(7680, viewportWidth || 1920));
   const vh = Math.max(400, Math.min(8000, viewportHeight || 900));
   const sf = Math.max(1, Math.min(4, scaleFactor || 1));
@@ -1024,19 +1096,24 @@ ipcMain.handle('webcap-load-url', async (event, { url, viewportWidth, viewportHe
     width: vw,
     height: vh,
     show: false,
-    webPreferences: { nodeIntegration: false, contextIsolation: true }
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      partition: 'webcapture'
+    }
   });
+  configureWebcapAdBlock(webcapWindow);
   console.log('[webcap] window created');
 
   webcapWindow.webContents.on('render-process-gone', (e, details) => {
     console.error('[webcapWindow] render-process-gone:', details.reason, details.exitCode);
-    if (webcapWindow && !webcapWindow.isDestroyed()) {
-      try { webcapWindow.destroy(); } catch (_) {}
-    }
-    webcapWindow = null;
+    destroyWebcapWindow();
   });
 
-  webcapWindow.webContents.on('did-fail-load', (e, errorCode, errorDescription) => {
+  webcapWindow.webContents.on('did-fail-load', (
+    e, errorCode, errorDescription, validatedURL, isMainFrame
+  ) => {
+    if (!isMainFrame || errorCode === -3 || errorCode === -20) return;
     console.error('[webcapWindow] did-fail-load:', errorCode, errorDescription);
   });
 
@@ -1046,9 +1123,8 @@ ipcMain.handle('webcap-load-url', async (event, { url, viewportWidth, viewportHe
     console.log('[webcap] URL loaded OK');
   } catch (e) {
     console.error('[webcap] loadURL error:', e.message);
-    try { webcapWindow.close(); } catch (_) {}
-    webcapWindow = null;
-    return { error: e.message };
+    destroyWebcapWindow();
+    throw e;
   }
 
   if (sf > 1) {
@@ -1066,33 +1142,224 @@ ipcMain.handle('webcap-load-url', async (event, { url, viewportWidth, viewportHe
 
   await webcapWindow.webContents.executeJavaScript('document.fonts.ready');
   await webcapWindow.webContents.executeJavaScript('new Promise(function(r){setTimeout(r,1000)})');
+  await hideWebcapAds(webcapWindow);
   console.log('[webcap] fonts ready + delay done');
+  return { win: webcapWindow, vw, vh, sf };
+}
 
-  if (fullPage) {
-    const dimsJson = await webcapWindow.webContents.executeJavaScript(
-      'JSON.stringify({w:Math.max(document.documentElement.scrollWidth,document.body?document.body.scrollWidth:0,' + vw + '),h:Math.max(document.documentElement.scrollHeight,document.body?document.body.scrollHeight:0,' + vh + ')})'
-    );
-    const dims = JSON.parse(dimsJson);
-    const fpW = Math.min(dims.w, 7680);
-    const fpH = Math.min(dims.h, 32768);
-    webcapWindow.setSize(fpW, fpH);
-    await webcapWindow.webContents.executeJavaScript('new Promise(function(r){requestAnimationFrame(function(){requestAnimationFrame(r)})})');
-    await webcapWindow.webContents.executeJavaScript('new Promise(function(r){setTimeout(r,500)})');
+async function getWebcapPageDimensions(win, vw, vh) {
+  const dimsJson = await win.webContents.executeJavaScript(
+    'JSON.stringify({w:Math.max(document.documentElement.scrollWidth,document.body?document.body.scrollWidth:0,' + vw + '),h:Math.max(document.documentElement.scrollHeight,document.body?document.body.scrollHeight:0,' + vh + ')})'
+  );
+  return JSON.parse(dimsJson);
+}
+
+async function hideWebcapAds(win) {
+  await win.webContents.insertCSS(`
+    [data-ad-client], [data-ad-slot], [data-ad-unit],
+    [id^="google_ads_"], [id^="div-gpt-ad"], [id*="taboola" i],
+    [class*="advertisement" i], [class~="advert"], [class~="adsbygoogle"],
+    iframe[src*="doubleclick.net"], iframe[src*="googlesyndication.com"],
+    iframe[src*="amazon-adsystem.com"], iframe[src*="adnxs.com"] {
+      display: none !important;
+      visibility: hidden !important;
+    }
+  `);
+  await win.webContents.executeJavaScript(`
+    (function() {
+      var selectors = [
+        '[data-ad-client]', '[data-ad-slot]', '[data-ad-unit]',
+        '[id^="google_ads_"]', '[id^="div-gpt-ad"]', '[id*="taboola" i]',
+        '[class*="advertisement" i]', '[class~="advert"]', '.adsbygoogle',
+        'iframe[src*="doubleclick.net"]', 'iframe[src*="googlesyndication.com"]',
+        'iframe[src*="amazon-adsystem.com"]', 'iframe[src*="adnxs.com"]'
+      ];
+      selectors.forEach(function(selector) {
+        document.querySelectorAll(selector).forEach(function(el) {
+          el.remove();
+        });
+      });
+      return true;
+    })();
+  `);
+  await win.webContents.executeJavaScript(RAF_WAIT);
+}
+
+async function hideWebcapOverlays(win) {
+  await win.webContents.executeJavaScript(`
+    (function() {
+      var selectors = [
+        '#onetrust-banner-sdk', '#onetrust-consent-sdk', '.onetrust-pc-dark-filter',
+        '#CybotCookiebotDialog', '#cookiebot', '.cookiebot',
+        '#didomi-host', '.didomi-popup-container', '.didomi-popup-backdrop',
+        '.qc-cmp2-container', '.qc-cmp2-main-messaging',
+        '[id*="cookie-banner" i]', '[class*="cookie-banner" i]',
+        '[id*="cookie-consent" i]', '[class*="cookie-consent" i]',
+        '[id*="cookie-policy" i]', '[class*="cookie-policy" i]',
+        '[id*="consent-banner" i]', '[class*="consent-banner" i]',
+        '[id*="consent-modal" i]', '[class*="consent-modal" i]',
+        '[aria-label*="cookie" i]', '[aria-label*="consent" i]'
+      ];
+      var hidden = new Set();
+      selectors.forEach(function(selector) {
+        document.querySelectorAll(selector).forEach(function(el) {
+          el.style.setProperty('display', 'none', 'important');
+          hidden.add(el);
+        });
+      });
+      Array.from(document.querySelectorAll('body *')).forEach(function(el) {
+        if (hidden.has(el)) return;
+        var style = getComputedStyle(el);
+        if (style.position !== 'fixed' && style.position !== 'sticky') return;
+        var rect = el.getBoundingClientRect();
+        if (rect.width < innerWidth * 0.45 || rect.height < 45) return;
+        var text = (el.innerText || '').toLowerCase();
+        var cookieText = /cookie|cookies|ciastecz|consent|privacy preferences|preferencje prywatno/.test(text);
+        var modalOverlay = Number(style.zIndex) >= 1000 && rect.width >= innerWidth * 0.8 && rect.height >= innerHeight * 0.25;
+        if (cookieText || modalOverlay) {
+          el.style.setProperty('display', 'none', 'important');
+        }
+      });
+      document.documentElement.style.setProperty('overflow', 'auto', 'important');
+      if (document.body) document.body.style.setProperty('overflow', 'auto', 'important');
+      return true;
+    })();
+  `);
+  await win.webContents.executeJavaScript(RAF_WAIT);
+}
+
+async function captureWebcapFullPage(win, vw, vh) {
+  const dims = await getWebcapPageDimensions(win, vw, vh);
+  const fpW = Math.min(dims.w, 7680);
+  const fpH = Math.min(dims.h, 32768);
+  win.setSize(fpW, fpH);
+  await win.webContents.executeJavaScript(RAF_WAIT);
+  await win.webContents.executeJavaScript(delayJs(500));
+  return win.capturePage();
+}
+
+ipcMain.handle('webcap-load-url', async (event, {
+  url, viewportWidth, viewportHeight, fullPage, hideOverlays, scaleFactor
+}) => {
+  console.log('[webcap] start, url:', url);
+  let page;
+  try {
+    page = await createWebcapWindow({ url, viewportWidth, viewportHeight, scaleFactor });
+  } catch (e) {
+    return { error: e.message };
   }
+  if (hideOverlays) await hideWebcapOverlays(page.win);
 
-  const image = await webcapWindow.capturePage();
+  const image = fullPage
+    ? await captureWebcapFullPage(page.win, page.vw, page.vh)
+    : await page.win.capturePage();
+
   console.log('[webcap] captured page');
   const imgSize = image.getSize();
   const screenshot = image.toPNG().toString('base64');
 
-  try { webcapWindow.close(); } catch (_) {}
-  webcapWindow = null;
+  destroyWebcapWindow();
 
   return { screenshot, width: imgSize.width, height: imgSize.height };
 });
 
+ipcMain.handle('webcap-export-full-png', async (event, {
+  url, viewportWidth, viewportHeight, scaleFactor, hideOverlays, savePath
+}) => {
+  try {
+    event.sender.send('webcap-export-progress', { label: 'Loading page...', percent: 10 });
+    const page = await createWebcapWindow({ url, viewportWidth, viewportHeight, scaleFactor });
+    if (hideOverlays) await hideWebcapOverlays(page.win);
+    event.sender.send('webcap-export-progress', { label: 'Capturing full page...', percent: 60 });
+    const image = await captureWebcapFullPage(page.win, page.vw, page.vh);
+    const size = image.getSize();
+    fs.writeFileSync(savePath, image.toPNG());
+    destroyWebcapWindow();
+    return { success: true, width: size.width, height: size.height };
+  } catch (e) {
+    destroyWebcapWindow();
+    return { error: e.message };
+  }
+});
+
+ipcMain.handle('webcap-export-scroll-mp4', async (event, {
+  url, viewportWidth, viewportHeight, scaleFactor, hideOverlays, duration, fps, scrollRange, savePath
+}) => {
+  let stream = null;
+  try {
+    const safeFps = [24, 30, 60].includes(Number(fps)) ? Number(fps) : 30;
+    const safeDuration = Math.max(2, Math.min(30, Number(duration) || 8));
+    const totalFrames = Math.max(2, Math.round(safeDuration * safeFps));
+
+    event.sender.send('webcap-export-progress', { label: 'Loading page...', percent: 2 });
+    const page = await createWebcapWindow({ url, viewportWidth, viewportHeight, scaleFactor });
+    if (hideOverlays) await hideWebcapOverlays(page.win);
+    const wc = page.win.webContents;
+    const dimensions = await getWebcapPageDimensions(page.win, page.vw, page.vh);
+    const maxScroll = Math.max(0, dimensions.h - page.vh);
+    const rangeStart = scrollRange
+      ? Math.max(0, Math.min(maxScroll, dimensions.h * Number(scrollRange.start || 0)))
+      : 0;
+    const rangeBottom = scrollRange
+      ? dimensions.h * Math.max(0, Math.min(1, Number(scrollRange.end || 1)))
+      : dimensions.h;
+    const rangeEnd = Math.max(rangeStart, Math.min(maxScroll, rangeBottom - page.vh));
+
+    await wc.executeJavaScript(`
+      (function() {
+        var style = document.createElement('style');
+        style.id = 'webcap-scroll-export-style';
+        style.textContent = 'html{scroll-behavior:auto!important}body{scroll-behavior:auto!important}::-webkit-scrollbar{display:none!important}';
+        document.head.appendChild(style);
+        window.scrollTo(0, ${Math.round(rangeStart)});
+      })();
+    `);
+    await wc.executeJavaScript(RAF_WAIT);
+
+    const firstImage = await page.win.capturePage();
+    const outputSize = firstImage.getSize();
+    stream = createMp4Stream(savePath, safeFps, 'mjpeg');
+    event.sender.send('webcap-export-progress', {
+      label: 'Rendering scroll 1/' + totalFrames,
+      percent: 5
+    });
+    await stream.write([{ data: firstImage.toJPEG(94), duration: 1 }]);
+
+    for (let i = 1; i < totalFrames; i++) {
+      const progress = i / (totalFrames - 1);
+      const scrollY = Math.round(rangeStart + (rangeEnd - rangeStart) * progress);
+      await wc.executeJavaScript('window.scrollTo(0,' + scrollY + ');' + RAF_WAIT);
+      const image = await page.win.capturePage();
+      await stream.write([{ data: image.toJPEG(94), duration: 1 }]);
+
+      if (i % Math.max(1, Math.round(safeFps / 2)) === 0 || i === totalFrames - 1) {
+        event.sender.send('webcap-export-progress', {
+          label: 'Rendering scroll ' + (i + 1) + '/' + totalFrames,
+          percent: 5 + Math.round(((i + 1) / totalFrames) * 90)
+        });
+      }
+    }
+
+    event.sender.send('webcap-export-progress', { label: 'Finalizing MP4...', percent: 97 });
+    await stream.finish();
+    stream = null;
+    destroyWebcapWindow();
+    return {
+      success: true,
+      width: outputSize.width,
+      height: outputSize.height,
+      frames: totalFrames,
+      duration: safeDuration
+    };
+  } catch (e) {
+    if (stream) stream.abort();
+    destroyWebcapWindow();
+    return { error: e.message };
+  }
+});
+
 ipcMain.handle('webcap-cleanup', () => {
-  if (webcapWindow) { try { webcapWindow.close(); } catch (_) {} webcapWindow = null; }
+  destroyWebcapWindow();
 });
 
 app.whenReady().then(createWindow);

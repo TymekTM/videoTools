@@ -22,6 +22,7 @@
     viewportW: 1920,
     viewportH: 900,
     loaded: false,
+    loadedFullPage: false,
     dragState: null
   };
 
@@ -41,6 +42,7 @@
     els.customVpW = $('#webcapCustomVpW');
     els.customVpH = $('#webcapCustomVpH');
     els.fullPageToggle = $('#webcapFullPage');
+    els.hideOverlays = $('#webcapHideOverlays');
     els.scaleGroup = $('#webcapScaleGroup');
     els.formatGroup = $('#webcapFormatGroup');
     els.resSelect = $('#webcapResSelect');
@@ -58,6 +60,15 @@
     els.infoBar = $('#webcapInfoBar');
     els.exportPng = $('#webcapExportPng');
     els.exportJpg = $('#webcapExportJpg');
+    els.exportFullPng = $('#webcapExportFullPng');
+    els.exportScrollMp4 = $('#webcapExportScrollMp4');
+    els.scrollDuration = $('#webcapScrollDuration');
+    els.scrollDurationVal = $('#webcapScrollDurationVal');
+    els.scrollFps = $('#webcapScrollFps');
+    els.scrollSelection = $('#webcapScrollSelection');
+    els.exportProgress = $('#webcapExportProgress');
+    els.exportBarFill = $('#webcapExportBarFill');
+    els.exportLabel = $('#webcapExportLabel');
     els.previewBtn = $('#webcapPreviewBtn');
     els.previewModal = $('#webcapPreviewModal');
     els.previewClose = $('#webcapPreviewClose');
@@ -123,6 +134,19 @@
 
     els.exportPng.addEventListener('click', function () { exportImage('png'); });
     els.exportJpg.addEventListener('click', function () { exportImage('jpg'); });
+    els.exportFullPng.addEventListener('click', exportFullHeightPng);
+    els.exportScrollMp4.addEventListener('click', exportScrollMp4);
+    els.scrollDuration.addEventListener('input', function () {
+      els.scrollDurationVal.textContent = this.value + 's';
+    });
+    els.scrollDuration.addEventListener('dblclick', function () {
+      this.value = this.dataset.default;
+      this.dispatchEvent(new Event('input'));
+    });
+
+    ipcRenderer.on('webcap-export-progress', function (event, progress) {
+      setExporting(true, progress.label, progress.percent);
+    });
 
     els.previewBtn.addEventListener('click', showPreview);
     els.previewClose.addEventListener('click', hidePreview);
@@ -138,16 +162,10 @@
   }
 
   function loadUrl() {
-    var url = els.urlInput.value.trim();
+    var url = getNormalizedUrl();
     if (!url) return;
-
-    if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
-    els.urlInput.value = url;
-
-    if (els.viewportSelect.value === 'custom') {
-      state.viewportW = parseInt(els.customVpW.value) || 1920;
-      state.viewportH = parseInt(els.customVpH.value) || 900;
-    }
+    syncViewportState();
+    var requestedFullPage = state.fullPage;
 
     els.idle.style.display = 'none';
     els.container.style.display = 'none';
@@ -158,6 +176,7 @@
       viewportWidth: state.viewportW,
       viewportHeight: state.viewportH,
       fullPage: state.fullPage,
+      hideOverlays: els.hideOverlays.checked,
       scaleFactor: state.scaleFactor
     }).then(function (result) {
       els.loading.style.display = 'none';
@@ -166,6 +185,7 @@
         els.idle.style.display = 'flex';
         return;
       }
+      state.loadedFullPage = requestedFullPage;
       showScreenshot(result);
     }).catch(function (err) {
       els.loading.style.display = 'none';
@@ -590,6 +610,109 @@
       };
       img.src = 'data:image/png;base64,' + state.imageBase64;
     });
+  }
+
+  function getNormalizedUrl() {
+    var url = els.urlInput.value.trim();
+    if (!url) return '';
+    if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+    els.urlInput.value = url;
+    return url;
+  }
+
+  function syncViewportState() {
+    if (els.viewportSelect.value === 'custom') {
+      state.viewportW = parseInt(els.customVpW.value) || 1920;
+      state.viewportH = parseInt(els.customVpH.value) || 900;
+    }
+  }
+
+  function setExporting(active, label, percent) {
+    if (!els.exportProgress) return;
+    els.exportProgress.style.display = active ? 'flex' : 'none';
+    els.exportFullPng.disabled = active;
+    els.exportScrollMp4.disabled = active;
+    if (active) {
+      els.exportLabel.textContent = label || 'Preparing...';
+      els.exportBarFill.style.width = Math.max(0, Math.min(100, percent || 0)) + '%';
+    } else {
+      els.exportBarFill.style.width = '';
+    }
+  }
+
+  async function exportFullHeightPng() {
+    var url = getNormalizedUrl();
+    if (!url) return;
+    syncViewportState();
+
+    var savePath = await ipcRenderer.invoke('save-dialog', {
+      defaultName: 'webcap-full-' + Date.now() + '.png',
+      filters: [{ name: 'PNG', extensions: ['png'] }]
+    });
+    if (!savePath) return;
+
+    setExporting(true, 'Capturing full page...', 5);
+    try {
+      var result = await ipcRenderer.invoke('webcap-export-full-png', {
+        url: url,
+        viewportWidth: state.viewportW,
+        viewportHeight: state.viewportH,
+        scaleFactor: state.scaleFactor,
+        hideOverlays: els.hideOverlays.checked,
+        savePath: savePath
+      });
+      if (result && result.error) throw new Error(result.error);
+      setExporting(true, 'Saved ' + result.width + ' × ' + result.height + ' px', 100);
+      setTimeout(function () { setExporting(false); }, 1200);
+    } catch (err) {
+      setExporting(false);
+      alert('Error: ' + err.message);
+    }
+  }
+
+  async function exportScrollMp4() {
+    var url = getNormalizedUrl();
+    if (!url) return;
+    syncViewportState();
+    if (els.scrollSelection.checked && (!state.loaded || !state.loadedFullPage)) {
+      alert('Load a full-page screenshot and select a vertical range first.');
+      return;
+    }
+
+    var savePath = await ipcRenderer.invoke('save-dialog', {
+      defaultName: 'webcap-scroll-' + Date.now() + '.mp4',
+      filters: [{ name: 'MP4', extensions: ['mp4'] }]
+    });
+    if (!savePath) return;
+
+    setExporting(true, 'Loading page...', 2);
+    try {
+      var result = await ipcRenderer.invoke('webcap-export-scroll-mp4', {
+        url: url,
+        viewportWidth: state.viewportW,
+        viewportHeight: state.viewportH,
+        scaleFactor: state.scaleFactor,
+        hideOverlays: els.hideOverlays.checked,
+        duration: parseInt(els.scrollDuration.value) || 8,
+        fps: parseInt(els.scrollFps.value) || 30,
+        scrollRange: els.scrollSelection.checked ? getSelectedScrollRange() : null,
+        savePath: savePath
+      });
+      if (result && result.error) throw new Error(result.error);
+      setExporting(true, 'Saved ' + result.width + ' × ' + result.height + ' MP4', 100);
+      setTimeout(function () { setExporting(false); }, 1200);
+    } catch (err) {
+      setExporting(false);
+      alert('Error: ' + err.message);
+    }
+  }
+
+  function getSelectedScrollRange() {
+    var imageHeight = Math.max(1, state.imageHeight);
+    return {
+      start: Math.max(0, Math.min(1, state.crop.y / imageHeight)),
+      end: Math.max(0, Math.min(1, (state.crop.y + state.crop.h) / imageHeight))
+    };
   }
 
   window.initWebcap = initWebcap;

@@ -183,6 +183,30 @@
   white-space: nowrap;
 }
 
+.webcap-long-export {
+  gap: 8px;
+}
+
+.webcap-long-export .btn {
+  width: 100%;
+}
+
+.webcap-scroll-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-surface);
+}
+
+.webcap-export-hint {
+  color: var(--text-dim);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
 .webcap-error {
   display: flex;
   flex-direction: column;
