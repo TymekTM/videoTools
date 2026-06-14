@@ -6,6 +6,8 @@ let activeTool = 'newspaper';
 
 function switchTool(toolId) {
   activeTool = toolId;
+  const hubEl = document.querySelector('.hub');
+  if (hubEl) hubEl.classList.remove('active');
   $$('.tool-nav-btn').forEach(b => b.classList.toggle('active', b.dataset.tool === toolId));
   $$('.tool-panel').forEach(p => p.classList.toggle('active', p.dataset.tool === toolId));
   if (toolId === 'newspaper') {
@@ -35,6 +37,16 @@ function switchTool(toolId) {
       try { CK.init(); } catch (e) { console.error('[init] corridorkey activate:', e); }
     }
   }
+  if (typeof window.onToolChanged === 'function') window.onToolChanged(toolId);
+}
+
+function goHub() {
+  activeTool = null;
+  $$('.tool-nav-btn').forEach(b => b.classList.remove('active'));
+  $$('.tool-panel').forEach(p => p.classList.remove('active'));
+  const hubEl = document.querySelector('.hub');
+  if (hubEl) hubEl.classList.add('active');
+  if (typeof window.onToolChanged === 'function') window.onToolChanged(null);
 }
 
 function initToolNav() {
