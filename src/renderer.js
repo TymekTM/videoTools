@@ -20,12 +20,16 @@ function switchTool(toolId) {
     if (window.mapActivate) window.mapActivate();
   } else if (toolId === 'chart') {
     if (window.chartActivate) window.chartActivate();
+  } else if (toolId === 'calendar') {
+    if (window.calendarActivate) window.calendarActivate();
   } else if (toolId === 'notification') {
     if (window.notificationActivate) window.notificationActivate();
   } else if (toolId === 'subtitles') {
     if (window.subtitlesActivate) window.subtitlesActivate();
   } else if (toolId === 'webcap') {
     if (window.webcapActivate) window.webcapActivate();
+  } else if (toolId === 'character') {
+    if (window.characterActivate) window.characterActivate();
   } else if (toolId === 'corridorkey') {
     if (typeof CK !== 'undefined' && CK.els && !CK.els.statusBadge) {
       try { CK.init(); } catch (e) { console.error('[init] corridorkey activate:', e); }
@@ -92,9 +96,11 @@ function init() {
   try { initTyping(); } catch (e) { console.error('[init] typing:', e); }
   try { if (window.initMapTool) window.initMapTool(); } catch (e) { console.error('[init] map:', e); }
   try { if (window.initChartTool) window.initChartTool(); } catch (e) { console.error('[init] chart:', e); }
+  try { if (window.initCalendarTool) window.initCalendarTool(); } catch (e) { console.error('[init] calendar:', e); }
   try { if (window.initNotificationTool) window.initNotificationTool(); } catch (e) { console.error('[init] notification:', e); }
   try { if (window.initSubtitlesTool) window.initSubtitlesTool(); } catch (e) { console.error('[init] subtitles:', e); }
   try { if (window.initWebcap) window.initWebcap(); } catch (e) { console.error('[init] webcap:', e); }
+  try { if (window.initCharacterTool) window.initCharacterTool(); } catch (e) { console.error('[init] character:', e); }
 }
 
 document.addEventListener('DOMContentLoaded', init);
