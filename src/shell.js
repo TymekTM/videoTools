@@ -613,8 +613,12 @@
     });
   }
 
-  /* ─── Shortcuts legend (in Settings) ─── */
-  function renderShortcuts() {
+  function initHubSearch() {
+    const input = document.getElementById('hubSearch');
+    if (input) input.addEventListener('input', () => filterHub(input.value));
+  }
+
+  /* ─── Shortcuts legend (in Settings) ─── */  function renderShortcuts() {
     const wrap = document.getElementById('settingsShortcuts');
     if (!wrap) return;
     const mac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
@@ -674,6 +678,7 @@
   function init() {
     buildNav();
     renderHub();
+    initHubSearch();
     renderRecents();
     initPalette();
     initChrome();
