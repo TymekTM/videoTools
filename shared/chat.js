@@ -19,18 +19,23 @@
 
     for (let index = 0; index < messageCount; index++) {
       if (options.animSpeed > 0) {
+        const typingDuration = framesForMs(typingMs, fps, 1);
         phases.push({
           type: 'typing',
           messageIndex: index,
-          duration: framesForMs(typingMs, fps, 1),
-          renderDelay: Math.max(1, Math.round(typingMs / framesForMs(typingMs, fps, 1))),
+          duration: typingDuration,
+          animationDuration: typingDuration,
+          renderDelay: Math.max(1, Math.round(typingMs / typingDuration)),
         });
       }
+      const animationDuration = framesForMs(options.bubbleMs ?? 350, fps, 1);
+      const holdDuration = framesForMs(options.pauseMs ?? 600, fps);
       phases.push({
         type: 'message',
         messageIndex: index,
-        duration: framesForMs(options.bubbleMs ?? 350, fps, 1)
-          + framesForMs(options.pauseMs ?? 600, fps),
+        duration: animationDuration + holdDuration,
+        animationDuration,
+        holdDuration,
         renderDelay: options.bubbleRenderDelayMs ?? 450,
       });
     }

@@ -246,6 +246,8 @@ async function testChatFramePlan() {
   assert(plan.phases[0].type === 'empty' && plan.phases[0].duration === 18, 'initial pause is 18 frames');
   assert(plan.phases[1].type === 'typing' && plan.phases[1].duration === 11, 'typing phase uses shared timing');
   assert(plan.phases[2].type === 'message' && plan.phases[2].duration === 29, 'message combines bubble and pause');
+  assert(plan.phases[1].animationDuration === 11, 'typing phase exposes animation frames');
+  assert(plan.phases[2].animationDuration === 11 && plan.phases[2].holdDuration === 18, 'message splits animation and hold frames');
   assert(plan.phases[5].type === 'end' && plan.phases[5].duration === 45, 'end hold is 45 frames');
   assert(plan.totalFrames === plan.phases.reduce((sum, phase) => sum + phase.duration, 0), 'total frame count matches phases');
   console.log(`  ${passed} passed, ${failed} failed`);

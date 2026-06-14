@@ -36,10 +36,10 @@ const TOOLS = [
   {
     id: 'chat',
     name: 'Fake Chat Conversation Video',
-    description: 'Generates animated fake chat conversations styled as iMessage, WhatsApp, Discord, Messenger, or custom theme. Messages appear one by one with typing indicators.',
+    description: 'Generates animated fake chat conversations styled as iMessage, WhatsApp, Discord, Slack, Messenger, or custom theme. Messages appear one by one with typing indicators.',
     formats: ['mp4'],
     params: {
-      platform: { type: 'string', enum: ['imessage', 'whatsapp', 'discord', 'messenger', 'custom'], default: 'imessage' },
+      platform: { type: 'string', enum: ['imessage', 'whatsapp', 'discord', 'slack', 'messenger', 'custom'], default: 'imessage' },
       format: { type: 'string', enum: ['16:9', '9:16', '1:1'], default: '9:16' },
       resolution: { type: 'string', enum: ['720p', '1080p', '4K'], default: '1080p' },
       fps: { type: 'number', default: 30 },

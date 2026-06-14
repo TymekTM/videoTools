@@ -41,6 +41,18 @@ html,body{width:100%;height:100%;overflow:hidden}
 .chat-platform-discord .chat-bubble-text{margin-top:0.1em}
 .chat-platform-discord .chat-bubble-meta{display:flex;align-items:baseline}
 
+.chat-platform-slack{background:#fff;color:#1d1c1d;font-size:1.5em}
+.chat-platform-slack .chat-render-header{background:#4a154b;color:#fff}
+.chat-platform-slack .chat-render-name,.chat-platform-slack .chat-render-status{color:#fff}
+.chat-platform-slack .chat-bubble{display:flex;gap:0.4em;max-width:100%;padding:0.2em 0.28em;font-size:1em}
+.chat-platform-slack .chat-bubble-left,.chat-platform-slack .chat-bubble-right{background:none;color:#1d1c1d;border-radius:0;max-width:100%;align-self:stretch;font-size:0.85em;line-height:1.35}
+.chat-platform-slack .chat-render-avatar{border-radius:0.22em}
+.chat-platform-slack .chat-bubble-content{flex:1}
+.chat-platform-slack .chat-bubble-author{font-weight:700;font-size:0.8em;color:#1d1c1d!important}
+.chat-platform-slack .chat-bubble-time{font-size:0.6em;color:#616061;margin-left:0.5em}
+.chat-platform-slack .chat-bubble-text{margin-top:0.1em}
+.chat-platform-slack .chat-bubble-meta{display:flex;align-items:baseline}
+
 .chat-platform-messenger{background:#fff;color:#000}
 .chat-platform-messenger .chat-render-header{background:#0084ff;color:#fff}
 .chat-platform-messenger .chat-render-name,.chat-platform-messenger .chat-render-status{color:#fff}
@@ -49,6 +61,7 @@ html,body{width:100%;height:100%;overflow:hidden}
 
 .chat-typing-indicator{display:flex;gap:0.25em;padding:0.5em 0.8em;align-self:flex-start}
 .chat-typing-dot{width:0.45em;height:0.45em;border-radius:50%;background:#999;animation:typingBounce 1.2s infinite}
+.chat-platform-discord .chat-typing-indicator,.chat-platform-slack .chat-typing-indicator{font-size:0.42em;gap:0.28em;padding:0.17em 0.5em}
 .chat-typing-dot:nth-child(2){animation-delay:0.2s}
 .chat-typing-dot:nth-child(3){animation-delay:0.4s}
 @keyframes typingBounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-3px)}}
@@ -87,10 +100,11 @@ function buildChatHtml(platform, contacts, messages, upTo, showTypingFrom, custo
   }
 
   const avatar = chatAvatarHTML(headerContact, '1.7em');
-  const statuses = { imessage: 'iMessage', whatsapp: 'online', discord: '', messenger: 'Active now', custom: 'online' };
+  const statuses = { imessage: 'iMessage', whatsapp: 'online', discord: '', slack: 'general', messenger: 'Active now', custom: 'online' };
+  const wideBack = platform === 'discord' || platform === 'slack';
 
   const headerHTML = `<div class="chat-render-header" ${headerStyle ? `style="${headerStyle}"` : ''}>
-<div class="chat-render-back"><svg width="0.56em" height="0.56em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></div>
+<div class="chat-render-back"><svg width="${wideBack ? '0.72em' : '0.56em'}" height="${wideBack ? '0.72em' : '0.56em'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></div>
 ${avatar}<div class="chat-render-info"><div class="chat-render-name">${headerContact.name}</div><div class="chat-render-status">${statuses[platform] || ''}</div></div></div>`;
 
   const limit = typeof upTo === 'number' ? upTo : messages.length;
@@ -101,7 +115,7 @@ ${avatar}<div class="chat-render-info"><div class="chat-render-name">${headerCon
     const isRight = msg.sender === 0;
     const time = hideTime ? '' : chatTimeStr(i);
 
-    if (platform === 'discord') {
+    if (platform === 'discord' || platform === 'slack') {
       const discAvatar = chatAvatarHTML(contact, '2.25em');
       messagesHTML += `<div class="chat-bubble ${isRight ? 'chat-bubble-right' : 'chat-bubble-left'}">${discAvatar}<div class="chat-bubble-content"><div class="chat-bubble-meta"><span class="chat-bubble-author" style="color:${contact.color}">${contact.name}</span>${time ? `<span class="chat-bubble-time">${time}</span>` : ''}</div><div class="chat-bubble-text">${msg.text}</div></div></div>`;
     } else {
@@ -115,7 +129,7 @@ ${avatar}<div class="chat-render-info"><div class="chat-render-name">${headerCon
     const sender = messages[showTypingFrom].sender;
     const isRight = sender === 0;
     const align = isRight ? 'align-self:flex-end' : '';
-    if (platform === 'discord') {
+    if (platform === 'discord' || platform === 'slack') {
       const contact = contacts[sender] || c1;
       typingHTML = `<div class="chat-typing-indicator"><span class="chat-discord-typing-name" style="color:${contact.color}">${contact.name}</span><span>pisze</span><span style="display:flex;gap:0.15em"><span class="chat-typing-dot"></span><span class="chat-typing-dot"></span><span class="chat-typing-dot"></span></span></div>`;
     } else {
