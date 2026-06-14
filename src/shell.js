@@ -361,15 +361,6 @@
         else if (e.key === 'Escape') { e.preventDefault(); closePalette(); }
       });
     }
-    document.addEventListener('keydown', (e) => {
-      if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
-        e.preventDefault();
-        palette.open ? closePalette() : openPalette();
-      } else if (e.key === 'Escape') {
-        if (palette.open) closePalette();
-        else if (document.getElementById('settingsBackdrop').classList.contains('open')) closeSettings();
-      }
-    });
   }
 
   /* ─── Settings ─── */
@@ -428,6 +419,7 @@
 
   function openSettings() {
     reflectSettings();
+    renderShortcuts();
     document.getElementById('settingsBackdrop').classList.add('open');
   }
   function closeSettings() {
@@ -491,8 +483,174 @@
     }
   }
 
+  /* ─── Tool action maps (Adobe-style shortcuts) ─── */
+  const TOOL_PLAY = {
+    newspaper: '#btnPlay', chat: '#chatPreviewAnimBtn', typing: '#typingPlayBtn',
+    map: '#mapPlayBtn', chart: '#chartPlayBtn', calendar: '#calendarPlayBtn',
+    notification: '#notifPlayBtn', subtitles: '#subPlayBtn', character: '#characterPlayBtn',
+    webcap: '#webcapPreviewBtn'
+  };
+  const TOOL_STOP = {
+    newspaper: '#btnStop', typing: '#typingStopBtn', map: '#mapStopBtn',
+    chart: '#chartStopBtn', calendar: '#calendarStopBtn', notification: '#notifStopBtn',
+    subtitles: '#subStopBtn', character: '#characterStopBtn'
+  };
+  const TOOL_EXPORT = {
+    newspaper: '#btnExportMp4', chat: '#chatExportMp4Btn', typing: '#typingExportMp4Btn',
+    map: '#mapExportBtn', chart: '#chartExportBtn', calendar: '#calendarExportBtn',
+    notification: '#notifExportMp4', subtitles: '#subExportMp4', character: '#characterExportMp4',
+    webcap: '#webcapExportScrollMp4'
+  };
+
+  let currentTool = null;
+  let playingTool = null;
+
+  function bindPlayTracking() {
+    Object.entries(TOOL_PLAY).forEach(([tool, sel]) => {
+      const b = document.querySelector(sel);
+      if (b) b.addEventListener('click', () => { playingTool = tool; });
+    });
+    Object.entries(TOOL_STOP).forEach(([tool, sel]) => {
+      const b = document.querySelector(sel);
+      if (b) b.addEventListener('click', () => { if (playingTool === tool) playingTool = null; });
+    });
+  }
+
+  function spaceToggle() {
+    if (!currentTool) return;
+    const stopSel = TOOL_STOP[currentTool];
+    if (playingTool === currentTool && stopSel) {
+      const sb = document.querySelector(stopSel);
+      if (sb) { sb.click(); return; }
+    }
+    const playSel = TOOL_PLAY[currentTool];
+    if (playSel) { const b = document.querySelector(playSel); if (b) b.click(); }
+  }
+
+  function exportActive() {
+    if (!currentTool) return;
+    const sel = TOOL_EXPORT[currentTool];
+    if (sel) { const b = document.querySelector(sel); if (b) b.click(); }
+  }
+
+  /* ─── Hub keyboard navigation ─── */
+  function isTextTarget(el) {
+    if (!el) return false;
+    const tag = el.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
+  }
+  function hubVisibleCards() {
+    return Array.from(document.querySelectorAll('.hub-card')).filter(c => c.style.display !== 'none');
+  }
+  function hubRowMove(cards, idx, dir) {
+    const base = cards[idx].getBoundingClientRect();
+    const center = (base.left + base.right) / 2;
+    const candidates = [];
+    cards.forEach((c, i) => {
+      if (i === idx) return;
+      const r = c.getBoundingClientRect();
+      const rowDelta = (r.top - base.top) * dir;
+      if (rowDelta > 5) candidates.push({ i, top: r.top, cx: (r.left + r.right) / 2 });
+    });
+    if (!candidates.length) return Math.max(0, Math.min(cards.length - 1, idx + dir));
+    const nearestTop = candidates.reduce((a, o) => Math.abs(o.top - base.top) < Math.abs(a.top - base.top) ? o : a).top;
+    const row = candidates.filter(o => Math.abs(o.top - nearestTop) < 5);
+    return row.reduce((a, o) => Math.abs(o.cx - center) < Math.abs(a.cx - center) ? o : a).i;
+  }
+  function hubNav(e) {
+    if (!document.querySelector('.hub.active')) return;
+    if (isTextTarget(document.activeElement)) return;
+    const cards = hubVisibleCards();
+    if (!cards.length) return;
+    let idx = cards.indexOf(document.activeElement);
+    if (idx === -1) idx = 0;
+    let target = idx;
+    switch (e.key) {
+      case 'ArrowRight': target = Math.min(cards.length - 1, idx + 1); break;
+      case 'ArrowLeft': target = Math.max(0, idx - 1); break;
+      case 'ArrowDown': target = hubRowMove(cards, idx, 1); break;
+      case 'ArrowUp': target = hubRowMove(cards, idx, -1); break;
+      case 'Home': target = 0; break;
+      case 'End': target = cards.length - 1; break;
+      default: return;
+    }
+    e.preventDefault();
+    cards[target].focus();
+    cards[target].scrollIntoView({ block: 'nearest' });
+  }
+
+  function initShortcuts() {
+    document.addEventListener('keydown', (e) => {
+      const mod = e.ctrlKey || e.metaKey;
+      const k = e.key.toLowerCase ? e.key.toLowerCase() : e.key;
+      const ae = document.activeElement;
+
+      if (mod && k === 'k') { e.preventDefault(); palette.open ? closePalette() : openPalette(); return; }
+      if (mod && k === 'm') { e.preventDefault(); exportActive(); return; }
+      if (mod && e.key === ',') { e.preventDefault(); openSettings(); return; }
+
+      if (e.key === 'Escape') {
+        if (palette.open) { closePalette(); return; }
+        if (document.getElementById('settingsBackdrop').classList.contains('open')) { closeSettings(); return; }
+        if (isTextTarget(ae)) { ae.blur(); return; }
+        if (currentTool && typeof goHub === 'function') { goHub(); return; }
+        return;
+      }
+
+      if (e.key === ' ' || e.code === 'Space') {
+        if (mod || e.altKey) return;
+        if (isTextTarget(ae)) return;
+        if (palette.open || document.getElementById('settingsBackdrop').classList.contains('open')) return;
+        if (!currentTool) return;
+        e.preventDefault();
+        spaceToggle();
+        return;
+      }
+
+      if (e.key.indexOf('Arrow') === 0 || e.key === 'Home' || e.key === 'End') {
+        hubNav(e);
+      }
+    });
+  }
+
+  /* ─── Shortcuts legend (in Settings) ─── */
+  function renderShortcuts() {
+    const wrap = document.getElementById('settingsShortcuts');
+    if (!wrap) return;
+    const mac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+    const m = mac ? '⌘' : 'Ctrl';
+    const dict = L === 'pl' ? {
+      title: 'Skróty klawiaturowe',
+      items: [
+        ['Play / Stop', ['Space']],
+        ['Eksportuj MP4', [m, 'M']],
+        ['Ustawienia', [m, ',']],
+        ['Paleta narzędzi', [m, 'K']],
+        ['Wstecz do Huba', ['Esc']],
+      ]
+    } : {
+      title: 'Keyboard shortcuts',
+      items: [
+        ['Play / Stop', ['Space']],
+        ['Export MP4', [m, 'M']],
+        ['Settings', [m, ',']],
+        ['Command palette', [m, 'K']],
+        ['Back to Hub', ['Esc']],
+      ]
+    };
+    let html = '<div class="settings-divider"></div>';
+    html += '<span class="settings-section-title">' + dict.title + '</span>';
+    dict.items.forEach(([label, keys]) => {
+      const kbd = keys.map(k => '<span class="kbd">' + k + '</span>').join('');
+      html += '<div class="shortcut-row"><span class="shortcut-label">' + label + '</span><span class="shortcut-keys">' + kbd + '</span></div>';
+    });
+    wrap.innerHTML = html;
+  }
+
   /* ─── Hooks ─── */
   window.onToolChanged = function (id) {
+    currentTool = id;
+    if (playingTool && playingTool !== id) playingTool = null;
     updateCrumb(id);
     if (id) { pushRecent(id); renderRecents(); }
     closePalette();
@@ -505,6 +663,7 @@
     relabelHub();
     renderRecents();
     settingsLabels();
+    renderShortcuts();
     const active = document.querySelector('.tool-panel.active');
     updateCrumb(active ? active.dataset.tool : null);
   }
@@ -519,6 +678,8 @@
     initPalette();
     initChrome();
     initSettings();
+    bindPlayTracking();
+    initShortcuts();
     applyDefaultResolution(settings.resolution);
     paletteBuildList();
     if (typeof goHub === 'function') goHub();

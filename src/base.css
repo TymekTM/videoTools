@@ -1202,3 +1202,63 @@ html, body {
   background: var(--accent);
   color: var(--on-accent);
 }
+
+.hub-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-color: var(--accent-line);
+}
+
+.settings-shortcuts {
+  padding: 4px 10px 2px;
+}
+
+.settings-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 14px 6px 12px;
+}
+
+.settings-section-title {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  padding: 0 6px 8px;
+}
+
+.shortcut-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.shortcut-row:hover { background: var(--bg); }
+
+.shortcut-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.shortcut-keys {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.shortcut-keys .kbd {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 18px;
+  text-align: center;
+}
